@@ -12,7 +12,7 @@ domain: meta
 slug: decision-policy
 supersedes: null
 supersededBy: null
-tags: 
+tags:
   - governance
   - meta
 ---
@@ -33,13 +33,13 @@ A simple, consistent mechanism is needed to:
 
 ## ⚖️ Options Considered
 
-*List the main options or alternatives that were evaluated before making the decision, including why each was accepted or rejected.*
+_List the main options or alternatives that were evaluated before making the decision, including why each was accepted or rejected._
 
-| Option | Description | Outcome | Rationale |
-|---------|--------------|----------|------------|
-| **A. Do nothing** | Continue with implicit decisions and ad-hoc reasoning. | Rejected | Lacks traceability and continuity across domains. |
-| **B. Use a standard ADR framework (e.g. MADR, Nygard)** | Adopt formal software-style ADR format across all domains. | Rejected | Too rigid for cross-domain use; heavy for personal workflow. |
-| **C. Create lightweight cross-domain Decision Record system (this)** | Design minimal YAML + Markdown format with CLI support. | **Accepted** | Matches personal systems philosophy; composable and automatable. |
+| Option                                                               | Description                                                | Outcome      | Rationale                                                        |
+| -------------------------------------------------------------------- | ---------------------------------------------------------- | ------------ | ---------------------------------------------------------------- |
+| **A. Do nothing**                                                    | Continue with implicit decisions and ad-hoc reasoning.     | Rejected     | Lacks traceability and continuity across domains.                |
+| **B. Use a standard ADR framework (e.g. MADR, Nygard)**              | Adopt formal software-style ADR format across all domains. | Rejected     | Too rigid for cross-domain use; heavy for personal workflow.     |
+| **C. Create lightweight cross-domain Decision Record system (this)** | Design minimal YAML + Markdown format with CLI support.    | **Accepted** | Matches personal systems philosophy; composable and automatable. |
 
 ## 🧠 Decision
 
@@ -74,23 +74,23 @@ The canonical CLI for managing these files is **`drctl`**, built with modular lo
 
 ### Change Types
 
-| Type | Meaning | Representation |
-|------|----------|----------------|
-| **creation** | Initial capture | new file |
-| **correction** | Minor factual or formatting fix | same file, changelog note |
-| **revision** | Confidence or context update | version bump (`1.0 → 1.1`) |
-| **supersession** | Decision replaced | new DR linked both ways |
-| **retirement** | Decision obsolete | marked `retired` |
+| Type             | Meaning                         | Representation             |
+| ---------------- | ------------------------------- | -------------------------- |
+| **creation**     | Initial capture                 | new file                   |
+| **correction**   | Minor factual or formatting fix | same file, changelog note  |
+| **revision**     | Confidence or context update    | version bump (`1.0 → 1.1`) |
+| **supersession** | Decision replaced               | new DR linked both ways    |
+| **retirement**   | Decision obsolete               | marked `retired`           |
 
 ## ⚙️ Implementation Guidelines
 
-| Layer | Role |
-|-------|------|
+| Layer             | Role                                                       |
+| ----------------- | ---------------------------------------------------------- |
 | **CLI (`drctl`)** | Create, list, accept, revise, supersede, retire decisions. |
-| **Core Services** | Contain reusable business logic. |
-| **Repository** | File persistence with YAML + Markdown via `gray-matter`. |
-| **Versioning** | Manages version bumps and changelogs. |
-| **Config** | Defines root path and defaults. |
+| **Core Services** | Contain reusable business logic.                           |
+| **Repository**    | File persistence with YAML + Markdown via `gray-matter`.   |
+| **Versioning**    | Manages version bumps and changelogs.                      |
+| **Config**        | Defines root path and defaults.                            |
 
 Example root layout:
 
@@ -106,19 +106,19 @@ Example root layout:
 
 ## 🌱 Plan
 
-| Phase | Goal | Outcome |
-|-------|------|----------|
-| **Phase 1** | CLI-only, file-based | Validate friction and value |
-| **Phase 2** | Add index & diff | Trace history and lineage |
-| **Phase 3** | REST API adapter | Allow n8n / Express integrations |
-| **Phase 4** | Vue dashboard | Visualise and search reasoning |
-| **Phase 5** | Sync/export layer | Integrate with Notion, Airtable, TheBrain |
+| Phase       | Goal                 | Outcome                                   |
+| ----------- | -------------------- | ----------------------------------------- |
+| **Phase 1** | CLI-only, file-based | Validate friction and value               |
+| **Phase 2** | Add index & diff     | Trace history and lineage                 |
+| **Phase 3** | REST API adapter     | Allow n8n / Express integrations          |
+| **Phase 4** | Vue dashboard        | Visualise and search reasoning            |
+| **Phase 5** | Sync/export layer    | Integrate with Notion, Airtable, TheBrain |
 
 ## 🧩 Reasoning
 
 This approach balances rigour with simplicity:
 
-- Treats decisions as *living hypotheses* rather than final truths
+- Treats decisions as _living hypotheses_ rather than final truths
 - Encourages healthy revision without bureaucratic overhead
 - Keeps reasoning portable — usable via text, API, or automation
 - Fits your broader systems mindset of modular, observable design
@@ -139,4 +139,4 @@ Review scheduled after the initial dogfooding period (April 2026).
 
 - 2025-10-29: Initial creation
 
-*End of record.*
+_End of record._

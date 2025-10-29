@@ -1,20 +1,20 @@
 ---
-id: {{ id }}
-dateCreated: {{ dateCreated }}
-lastEdited: {{ lastEdited }}
-version: {{ version }}
-status: {{ status }}
-changeType: {{ changeType }}
+id: { { id } }
+dateCreated: { { dateCreated } }
+lastEdited: { { lastEdited } }
+version: { { version } }
+status: { { status } }
+changeType: { { changeType } }
 changelog:
-  - date: {{ changeDate }}
-    note: {{ changeNote }}
-confidence: {{ confidence }}
-reviewDate: {{ reviewDate }}
-domain: {{ domain }}
-slug: {{ slug }}
-supersedes: {{ supersedes }}
-supersededBy: {{ supersededBy }}
-tags: {{ tags }}
+  - date: { { changeDate } }
+    note: { { changeNote } }
+confidence: { { confidence } }
+reviewDate: { { reviewDate } }
+domain: { { domain } }
+slug: { { slug } }
+supersedes: { { supersedes } }
+supersededBy: { { supersededBy } }
+tags: { { tags } }
 ---
 
 # {{name}} {{id}}
