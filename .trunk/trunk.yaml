@@ -30,3 +30,9 @@ actions:
     - trunk-check-pre-push
     - trunk-fmt-pre-commit
     - trunk-upgrade-available
+    - commitlint-pre-commit
+
+  definitions:
+    - id: commitlint-pre-commit
+      trigger: pre-commit
+      run: npx commitlint --edit "$1"
