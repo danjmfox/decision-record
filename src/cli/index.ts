@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import fs from "fs";
 import { Command } from "commander";
 import {
   acceptDecision,
@@ -11,6 +12,7 @@ import {
 import type { RepoContext } from "../config.js";
 import { formatRepoContext } from "./repo-format.js";
 import { collectRepoOptions } from "./options.js";
+import { createRepoEntry } from "./repo-manage.js";
 
 interface GlobalCliOptions {
   repo?: string;
@@ -21,13 +23,48 @@ program.name("drctl").description("Decision Record CLI").version("0.1.0");
 
 program.option("--repo <repo>", "target repo alias or path");
 
-program
+const repoCommand = program
   .command("repo")
-  .description("Show the resolved repository context")
+  .description("Show or manage repository configuration")
   .action(
     handleAction(function (command: Command) {
       const repoOptions = resolveRepoOptions(command);
       logRepo(repoOptions.context);
+    }),
+  );
+
+repoCommand
+  .command("new <name> <root>")
+  .description("Add a repository entry to the nearest .drctl.yaml")
+  .option("--default", "mark the new repo as the default")
+  .option(
+    "--domain-dir <dir>",
+    "relative path to the folder where domain directories live",
+  )
+  .action(
+    handleAction(function (
+      name: string,
+      root: string,
+      command: Command & { default?: boolean; domainDir?: string },
+    ) {
+      const cwd = process.cwd();
+      const repoOptions = {
+        cwd,
+        name,
+        repoPath: root,
+        setDefault: Boolean(command.default),
+        ...(command.domainDir ? { defaultDomainDir: command.domainDir } : {}),
+      } satisfies Parameters<typeof createRepoEntry>[0];
+      const result = createRepoEntry(repoOptions);
+      fs.mkdirSync(result.repoRoot, { recursive: true });
+      console.log(`🆕 Added repo "${name}" → ${root}`);
+      if (command.domainDir) {
+        console.log(`   Domain directory: ${command.domainDir}`);
+      }
+      if (command.default) {
+        console.log("   Marked as default repo");
+      }
+      console.log(`📝 Updated config: ${result.configPath}`);
     }),
   );
 

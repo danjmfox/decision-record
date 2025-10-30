@@ -123,6 +123,7 @@ Remove the link later with `npm unlink -g decision-record` (or run `npm unlink` 
 | ------------------------ | ------------------------------------------------------------------------ |
 | `src/cli/index.ts`       | Commander-based CLI entry point; forwards work to the service layer.     |
 | `src/cli/repo-format.ts` | Formats repo context information for CLI output.                         |
+| `src/cli/repo-manage.ts` | Utilities for mutating `.drctl.yaml` repo definitions.                   |
 | `src/config.ts`          | Loads `.drctl.yaml` configs (CLI/env/local/global), resolves repo roots. |
 | `src/config.test.ts`     | Vitest coverage of configuration resolution scenarios.                   |
 | `src/core/models.ts`     | Type definitions shared across the domain.                               |
@@ -141,6 +142,7 @@ Remove the link later with `npm unlink -g decision-record` (or run `npm unlink` 
 | `drctl list`                        | List decisions (filterable)            |
 | `drctl accept <id>`                 | Mark proposed decision accepted        |
 | `drctl repo`                        | Display the currently resolved repo    |
+| `drctl repo new <name> <path>`      | Add a repo entry to the nearest config |
 | `drctl correct <id> --note`         | Record a small correction              |
 | `drctl revise <id> --note`          | Increment version, update metadata     |
 | `drctl supersede <old_id> <new_id>` | Replace old decision                   |

@@ -86,6 +86,7 @@ For more information, refer to [meta/DR--20251029--meta--decision-policy.md](dec
 | ------------------------ | ----------------------------------------------------------------- |
 | `src/cli/index.ts`       | CLI entry point; parses flags and delegates to services.          |
 | `src/cli/repo-format.ts` | Formats repo context information for display/logging.             |
+| `src/cli/repo-manage.ts` | Helpers for updating `.drctl.yaml` repo entries.                  |
 | `src/config.ts`          | Multi-layer config loader resolving repo and domain directories.  |
 | `src/config.test.ts`     | Vitest checks ensuring config resolution behaves as designed.     |
 | `src/core/models.ts`     | Shared decision record types and enums.                           |

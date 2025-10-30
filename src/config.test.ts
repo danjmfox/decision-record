@@ -14,7 +14,7 @@ import { resolveRepoContext } from "./config.js";
 
 const tempDirs: string[] = [];
 const originalEnvRepo = process.env.DRCTL_REPO;
-let homedirSpy: ReturnType<typeof vi.spyOn> | null = null;
+const restoreSpies: Array<() => void> = [];
 
 function makeTempDir(): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-config-test-"));
@@ -28,9 +28,9 @@ afterEach(() => {
     delete process.env.DRCTL_REPO;
   }
   delete process.env.TEST_DECISIONS_PATH;
-  if (homedirSpy) {
-    homedirSpy.mockRestore();
-    homedirSpy = null;
+  while (restoreSpies.length > 0) {
+    const restore = restoreSpies.pop();
+    restore?.();
   }
 });
 
@@ -106,7 +106,9 @@ repos:
   it("falls back to the cwd decisions directory when present", () => {
     const dir = makeTempDir();
     const home = makeTempDir();
-    homedirSpy = vi.spyOn(os, "homedir").mockReturnValue(home);
+    const spy = vi.spyOn(os, "homedir");
+    spy.mockReturnValue(home);
+    restoreSpies.push(() => spy.mockRestore());
 
     const localDecisions = path.join(dir, "decisions");
     const homeDecisions = path.join(home, "decisions");
@@ -122,7 +124,9 @@ repos:
   it("falls back to the home decisions directory when local workspace is missing", () => {
     const dir = makeTempDir();
     const home = makeTempDir();
-    homedirSpy = vi.spyOn(os, "homedir").mockReturnValue(home);
+    const spy = vi.spyOn(os, "homedir");
+    spy.mockReturnValue(home);
+    restoreSpies.push(() => spy.mockRestore());
 
     const homeDecisions = path.join(home, "decisions");
     fs.mkdirSync(homeDecisions, { recursive: true });
@@ -136,7 +140,9 @@ repos:
   it("expands env variables and tildes in repo configuration paths", () => {
     const dir = makeTempDir();
     const home = makeTempDir();
-    homedirSpy = vi.spyOn(os, "homedir").mockReturnValue(home);
+    const spy = vi.spyOn(os, "homedir");
+    spy.mockReturnValue(home);
+    restoreSpies.push(() => spy.mockRestore());
 
     const envRepo = path.join(dir, "env-decisions");
     fs.mkdirSync(envRepo, { recursive: true });
