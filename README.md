@@ -79,7 +79,7 @@ A Markdown file with YAML frontmatter holding:
 ```bash
 npm test             # run vitest
 npm run test:watch   # watch mode
-npm run test:coverage # c8 coverage report
+npm run test:coverage # coverage report
 ```
 
 Vitest is configured to pick up `*.test.ts` files inside `src/`, keeping tests close to the code they exercise.

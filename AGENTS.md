@@ -70,6 +70,7 @@ For more information, refer to [meta/DR--20251029--meta--decision-policy.md](dec
 - Prefer colocated test files (`*.test.ts`) alongside the modules they cover.
 - Use Vitest for fast, ESM-friendly unit and integration tests.
 - Write tests first (TDD-style) whenever practical; code changes should land with corresponding coverage.
+- Coverage runs via Vitest's V8 provider (`npm run test:coverage`).
 
 ---
 
