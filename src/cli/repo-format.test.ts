@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest";
 import type { RepoContext } from "../config.js";
 import { formatRepoContext } from "./repo-format.js";
 
+const NOTE =
+  "   Note: No .drctl.yaml found. Create one to configure multiple decision repos.";
+
 describe("formatRepoContext", () => {
   it("includes config details and domain overrides", () => {
     const context: RepoContext = {
@@ -49,5 +52,17 @@ describe("formatRepoContext", () => {
       "   Default domain dir: <domain>",
       "   Domain overrides: none",
     ]);
+    expect(lines).not.toContain(NOTE);
+  });
+
+  it("appends the missing-config note for fallback sources", () => {
+    const context: RepoContext = {
+      root: path.join("/tmp", "decisions"),
+      source: "fallback-home",
+      domainMap: {},
+    };
+
+    const lines = formatRepoContext(context);
+    expect(lines.at(-1)).toBe(NOTE);
   });
 });
