@@ -33,6 +33,7 @@ program
 
 program
   .command("new <domain> <slug>")
+  .description("Create a new decision record for the given domain and slug")
   .option("--confidence <n>", "initial confidence", (value) =>
     Number.parseFloat(value),
   )
@@ -62,6 +63,7 @@ program
 
 program
   .command("list")
+  .description("List decision records, optionally filtered by status")
   .option("--status <status>", "filter by status")
   .action(
     handleAction(function (
@@ -77,15 +79,18 @@ program
     }),
   );
 
-program.command("accept <id>").action(
-  handleAction(function (id: string, command: Command) {
-    const repoOptions = resolveRepoOptions(command);
-    logRepo(repoOptions.context);
-    const result = acceptDecision(id, repoOptions);
-    console.log(`✅ ${result.record.id} marked as accepted`);
-    console.log(`📄 File: ${result.filePath}`);
-  }),
-);
+program
+  .command("accept <id>")
+  .description("Mark a decision as accepted and update its changelog")
+  .action(
+    handleAction(function (id: string, command: Command) {
+      const repoOptions = resolveRepoOptions(command);
+      logRepo(repoOptions.context);
+      const result = acceptDecision(id, repoOptions);
+      console.log(`✅ ${result.record.id} marked as accepted`);
+      console.log(`📄 File: ${result.filePath}`);
+    }),
+  );
 
 program.parse();
 
