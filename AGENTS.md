@@ -61,6 +61,7 @@ For more information, refer to [meta/DR--20251029--meta--decision-policy.md](dec
 | **File conventions** | Use `DR--YYYYMMDD--domain--slug.md` IDs; domain as folder; markdown + YAML frontmatter.                                              |
 | **Private data**     | `.drctl.yaml` and `decisions/` folders are `.gitignore`d; only `decisions-example/` is public.                                       |
 | **AI collaboration** | All reasoning steps remain inspectable; outputs versioned in code, not ephemeral.                                                    |
+| **CLI feedback**     | Commands echo repo context and file paths; `drctl repo` surfaces the resolved workspace on demand.                                   |
 
 ---
 
@@ -68,6 +69,7 @@ For more information, refer to [meta/DR--20251029--meta--decision-policy.md](dec
 
 - Prefer colocated test files (`*.test.ts`) alongside the modules they cover.
 - Use Vitest for fast, ESM-friendly unit and integration tests.
+- Write tests first (TDD-style) whenever practical; code changes should land with corresponding coverage.
 
 ---
 
@@ -82,6 +84,7 @@ For more information, refer to [meta/DR--20251029--meta--decision-policy.md](dec
 | Path                     | Purpose                                                           |
 | ------------------------ | ----------------------------------------------------------------- |
 | `src/cli/index.ts`       | CLI entry point; parses flags and delegates to services.          |
+| `src/cli/repo-format.ts` | Formats repo context information for display/logging.             |
 | `src/config.ts`          | Multi-layer config loader resolving repo and domain directories.  |
 | `src/config.test.ts`     | Vitest checks ensuring config resolution behaves as designed.     |
 | `src/core/models.ts`     | Shared decision record types and enums.                           |

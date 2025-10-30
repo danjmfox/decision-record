@@ -102,6 +102,19 @@ drctl list --repo home
 drctl new personal hydrate-every-hour --repo home
 ```
 
+Every command echoes the resolved repo and any file it touches. Example output:
+
+```bash
+📁 Repo: home (/Users/me/Documents/home-decisions)
+   Source: local-config
+   Definition: local
+   Config: /Users/me/.drctl.yaml
+   Default domain dir: domains
+   Domain overrides: none
+✅ Created DR--20251030--personal--hydrate (proposed)
+📄 File: /Users/me/Documents/home-decisions/domains/personal/DR--20251030--personal--hydrate.md
+```
+
 Remove the link later with `npm unlink -g decision-record` (or run `npm unlink` inside the repo).
 
 ## 🧱 Code Structure
@@ -109,6 +122,7 @@ Remove the link later with `npm unlink -g decision-record` (or run `npm unlink` 
 | Path                     | Purpose                                                                  |
 | ------------------------ | ------------------------------------------------------------------------ |
 | `src/cli/index.ts`       | Commander-based CLI entry point; forwards work to the service layer.     |
+| `src/cli/repo-format.ts` | Formats repo context information for CLI output.                         |
 | `src/config.ts`          | Loads `.drctl.yaml` configs (CLI/env/local/global), resolves repo roots. |
 | `src/config.test.ts`     | Vitest coverage of configuration resolution scenarios.                   |
 | `src/core/models.ts`     | Type definitions shared across the domain.                               |
@@ -126,6 +140,7 @@ Remove the link later with `npm unlink -g decision-record` (or run `npm unlink` 
 | `drctl new <domain> <slug>`         | Create new record                      |
 | `drctl list`                        | List decisions (filterable)            |
 | `drctl accept <id>`                 | Mark proposed decision accepted        |
+| `drctl repo`                        | Display the currently resolved repo    |
 | `drctl correct <id> --note`         | Record a small correction              |
 | `drctl revise <id> --note`          | Increment version, update metadata     |
 | `drctl supersede <old_id> <new_id>` | Replace old decision                   |
