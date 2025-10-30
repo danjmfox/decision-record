@@ -10,6 +10,7 @@ import {
 } from "../core/service.js";
 import type { RepoContext } from "../config.js";
 import { formatRepoContext } from "./repo-format.js";
+import { collectRepoOptions } from "./options.js";
 
 interface GlobalCliOptions {
   repo?: string;
@@ -91,11 +92,7 @@ program.parse();
 function resolveRepoOptions(
   command: Command,
 ): RepoOptions & { context: RepoContext } {
-  const opts = command.optsWithGlobals<GlobalCliOptions>();
-  const repoOptions: RepoOptions = { cwd: process.cwd() };
-  if (opts.repo) {
-    repoOptions.repo = opts.repo;
-  }
+  const repoOptions = collectRepoOptions(command);
   const context = resolveContext(repoOptions);
   return { ...repoOptions, context };
 }
