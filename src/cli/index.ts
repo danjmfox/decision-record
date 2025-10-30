@@ -4,9 +4,12 @@ import {
   acceptDecision,
   createDecision,
   listAll,
+  resolveContext,
   type CreateDecisionOptions,
   type RepoOptions,
 } from "../core/service.js";
+import type { RepoContext } from "../config.js";
+import { formatRepoContext } from "./repo-format.js";
 
 interface GlobalCliOptions {
   repo?: string;
@@ -16,6 +19,16 @@ const program = new Command();
 program.name("drctl").description("Decision Record CLI").version("0.1.0");
 
 program.option("--repo <repo>", "target repo alias or path");
+
+program
+  .command("repo")
+  .description("Show the resolved repository context")
+  .action(
+    handleAction(function (command: Command) {
+      const repoOptions = resolveRepoOptions(command);
+      logRepo(repoOptions.context);
+    }),
+  );
 
 program
   .command("new <domain> <slug>")
@@ -29,7 +42,8 @@ program
       commandOptions: { confidence?: number },
       command: Command,
     ) {
-      const repoOptions = buildRepoOptions(command);
+      const repoOptions = resolveRepoOptions(command);
+      logRepo(repoOptions.context);
       const confidence =
         typeof commandOptions.confidence === "number" &&
         Number.isFinite(commandOptions.confidence)
@@ -39,8 +53,9 @@ program
       if (confidence !== undefined) {
         options.confidence = confidence;
       }
-      const rec = createDecision(domain, slug, options);
-      console.log(`✅ Created ${rec.id} (${rec.status})`);
+      const result = createDecision(domain, slug, options);
+      console.log(`✅ Created ${result.record.id} (${result.record.status})`);
+      console.log(`📄 File: ${result.filePath}`);
     }),
   );
 
@@ -52,7 +67,8 @@ program
       commandOptions: { status?: string },
       command: Command,
     ) {
-      const repoOptions = buildRepoOptions(command);
+      const repoOptions = resolveRepoOptions(command);
+      logRepo(repoOptions.context);
       const list = listAll(commandOptions.status, repoOptions);
       list.forEach((r) =>
         console.log(`${r.id.padEnd(45)} ${r.status.padEnd(10)} ${r.domain}`),
@@ -62,21 +78,26 @@ program
 
 program.command("accept <id>").action(
   handleAction(function (id: string, command: Command) {
-    const repoOptions = buildRepoOptions(command);
-    const rec = acceptDecision(id, repoOptions);
-    console.log(`✅ ${rec.id} marked as accepted`);
+    const repoOptions = resolveRepoOptions(command);
+    logRepo(repoOptions.context);
+    const result = acceptDecision(id, repoOptions);
+    console.log(`✅ ${result.record.id} marked as accepted`);
+    console.log(`📄 File: ${result.filePath}`);
   }),
 );
 
 program.parse();
 
-function buildRepoOptions(command: Command): RepoOptions {
+function resolveRepoOptions(
+  command: Command,
+): RepoOptions & { context: RepoContext } {
   const opts = command.optsWithGlobals<GlobalCliOptions>();
   const repoOptions: RepoOptions = { cwd: process.cwd() };
   if (opts.repo) {
     repoOptions.repo = opts.repo;
   }
-  return repoOptions;
+  const context = resolveContext(repoOptions);
+  return { ...repoOptions, context };
 }
 
 function handleAction<T extends unknown[]>(
@@ -92,4 +113,11 @@ function handleAction<T extends unknown[]>(
       process.exitCode = 1;
     }
   };
+}
+
+function logRepo(context: RepoContext): void {
+  const lines = formatRepoContext(context);
+  for (const line of lines) {
+    console.log(line);
+  }
 }
