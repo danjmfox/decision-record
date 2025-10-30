@@ -25,6 +25,7 @@ export function formatRepoContext(context: RepoContext): string[] {
   }
 
   if (context.source === "fallback-home" || context.source === "fallback-cwd") {
+    lines.push(`\n`);
     lines.push(
       "   Note: No .drctl.yaml found. Create one to configure multiple decision repos.",
     );
