@@ -13,17 +13,21 @@
     "dev": "tsx src/cli/index.ts",
     "build": "tsc",
     "start": "node dist/cli/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage",
     "commit": "cz"
   },
   "devDependencies": {
+    "@vitest/coverage-c8": "^0.33.0",
     "@commitlint/cli": "^20.1.0",
     "@commitlint/config-conventional": "^20.0.0",
     "@types/node": "^24.9.2",
     "commitizen": "^4.3.1",
     "cz-conventional-changelog": "^3.3.0",
     "tsx": "^4.20.6",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.5"
   },
   "config": {
     "commitizen": {

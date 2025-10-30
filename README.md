@@ -71,8 +71,53 @@ A Markdown file with YAML frontmatter holding:
 | **CLI (Commander)** | Entry point for creating and managing DRs (drctl) |
 | **Core Services**   | Business logic: create, revise, supersede, list   |
 | **Repository**      | File persistence via YAML + Markdown              |
-| **Versioning**      | Bumps versions, manages changelogs                |
 | **Config**          | Defines root path, default behaviour              |
+| **Tests (Vitest)**  | Colocated unit tests ensuring config & CLI logic  |
+
+### Running the Suite
+
+```bash
+npm test             # run vitest
+npm run test:watch   # watch mode
+npm run test:coverage # c8 coverage report
+```
+
+Vitest is configured to pick up `*.test.ts` files inside `src/`, keeping tests close to the code they exercise.
+
+### CLI Usage
+
+During development you can invoke the CLI via tsx without building:
+
+```bash
+npx tsx src/cli/index.ts new personal hydrate-every-hour --repo home
+```
+
+To install `drctl` on your PATH:
+
+```bash
+npm run build   # produce dist/cli/index.js
+npm link        # exposes the drctl bin globally
+
+drctl list --repo home
+drctl new personal hydrate-every-hour --repo home
+```
+
+Remove the link later with `npm unlink -g decision-record` (or run `npm unlink` inside the repo).
+
+## 🧱 Code Structure
+
+| Path                     | Purpose                                                                  |
+| ------------------------ | ------------------------------------------------------------------------ |
+| `src/cli/index.ts`       | Commander-based CLI entry point; forwards work to the service layer.     |
+| `src/config.ts`          | Loads `.drctl.yaml` configs (CLI/env/local/global), resolves repo roots. |
+| `src/config.test.ts`     | Vitest coverage of configuration resolution scenarios.                   |
+| `src/core/models.ts`     | Type definitions shared across the domain.                               |
+| `src/core/utils.ts`      | Helpers (`generateId`, `extractDomainFromId`).                           |
+| `src/core/repository.ts` | File-system access; saves, loads, lists Markdown decisions.              |
+| `src/core/service.ts`    | Business logic wrapping repository operations with repo context.         |
+| `src/core/versioning.ts` | Version bump helper for decision records.                                |
+| `src/types/js-yaml.d.ts` | Minimal types so `js-yaml` can be imported without errors.               |
+| `decisions-example/`     | Public sample decision records for demonstrations/tests.                 |
 
 ## Key CLI Commands
 
@@ -102,9 +147,10 @@ A Markdown file with YAML frontmatter holding:
     └── DR--0000--decision-policy.md
 ```
 
-Each DR looks like:
+Each DR comprises YAML frontmatter, and a series of headings:
 
-```yaml
+```markdown
+---
 id: DR--20251029--infra--secure-docs-repo-split
 version: "1.2"
 status: accepted
@@ -114,16 +160,48 @@ changelog:
   - date: 2025-11-05
     note: Increased confidence after successful backups
 supersededBy: DR--20251110--infra--merge-secure-and-backup-policies
+---
+
+# {{name}} {{id}}
+
+## 🧭 Context
+
+_Describe the background and circumstances leading to this decision._
+
+## ⚖️ Options Considered
+
+_List the main options or alternatives that were evaluated before making the decision, including why each was accepted or rejected._
+
+| Option | Description | Outcome  | Rationale                      |
+| ------ | ----------- | -------- | ------------------------------ |
+| A      | Do nothing  | Rejected | Insufficient long-term clarity |
+| B      |             |          |                                |
+
+## 🧠 Decision
+
+## 🪶 Principles
+
+## 🔁 Lifecycle
+
+## 🧩 Reasoning
+
+## 🔄 Next Actions
+
+## 🧠 Confidence
+
+## 🧾 Changelog
 ```
+
+See [decision-record-template.md](./decisions-example/decision-record-template.md)
 
 ## 🔁 Workflow Summary
 
-1. Capture: `drctl new infra "secure-docs-repo"`
-2. Accept: `drctl accept <id>` when it’s adopted
-3. Revise: `drctl revise <id> --note "Raised confidence" --confidence 0.9`
-4. Supersede: `drctl supersede <old_id> <new_id>` when replaced
-5. Review: periodically check reviewDate for updates.
-6. Index: auto-generate `DecisionIndex.md` for browsing.
+1. **Capture**: `drctl new infra "secure-docs-repo"`
+2. **Accept**: `drctl accept <id>` when it’s adopted
+3. **Revise**: `drctl revise <id> --note "Raised confidence" --confidence 0.9`
+4. **Supersede**: `drctl supersede <old_id> <new_id>` when replaced
+5. **Review**: periodically check reviewDate for updates.
+6. **Index**: auto-generate `DecisionIndex.md` for browsing.
 
 ## 🌱 Plan for Evolution
 

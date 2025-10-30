@@ -57,10 +57,40 @@ For more information, refer to [meta/DR--20251029--meta--decision-policy.md](dec
 | **Source control**   | `decision-record` (public GitHub) contains code and examples; actual DRs live in private repos (`work-decisions`, `home-decisions`). |
 | **Configuration**    | `.drctl.yaml` supports multiple named repos and optional domain mappings.                                                            |
 | **Development**      | Use `tsx` + `Commander.js` for CLI; logic separated from CLI interface for future API/UI reuse.                                      |
-| **Decision records** | Each architectural choice (like this config system) is captured in a `DR--YYYYMMDD--meta--*.md`.                                     |
+| **Decision records** | Each architectural choice (for this app) is captured in a `DR--YYYYMMDD--meta--*.md`.                                                |
 | **File conventions** | Use `DR--YYYYMMDD--domain--slug.md` IDs; domain as folder; markdown + YAML frontmatter.                                              |
 | **Private data**     | `.drctl.yaml` and `decisions/` folders are `.gitignore`d; only `decisions-example/` is public.                                       |
 | **AI collaboration** | All reasoning steps remain inspectable; outputs versioned in code, not ephemeral.                                                    |
+
+---
+
+### 🧪 Testing Strategy
+
+- Prefer colocated test files (`*.test.ts`) alongside the modules they cover.
+- Use Vitest for fast, ESM-friendly unit and integration tests.
+
+---
+
+### 📓 Documentation Rhythm
+
+- When README.md is updated, mirror relevant context in AGENTS.md so both guides stay in sync.
+
+---
+
+### 🧱 Code Structure (Current)
+
+| Path                     | Purpose                                                           |
+| ------------------------ | ----------------------------------------------------------------- |
+| `src/cli/index.ts`       | CLI entry point; parses flags and delegates to services.          |
+| `src/config.ts`          | Multi-layer config loader resolving repo and domain directories.  |
+| `src/config.test.ts`     | Vitest checks ensuring config resolution behaves as designed.     |
+| `src/core/models.ts`     | Shared decision record types and enums.                           |
+| `src/core/utils.ts`      | ID helpers and domain extraction utilities.                       |
+| `src/core/repository.ts` | Persistence layer writing/reading Markdown frontmatter files.     |
+| `src/core/service.ts`    | High-level actions (create/list/accept) that thread repo context. |
+| `src/core/versioning.ts` | Semantic version bump helper.                                     |
+| `src/types/js-yaml.d.ts` | Minimal type declaration for js-yaml loader.                      |
+| `decisions-example/`     | Example decision records used for demos and tests.                |
 
 ---
 
@@ -148,6 +178,8 @@ repos:
 ---
 
 ## 📅 Meta-History
+
+Please maintain this to ensure we have a good record of major changes:
 
 | Date           | Event                                                                           |
 | -------------- | ------------------------------------------------------------------------------- |
