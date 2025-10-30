@@ -73,4 +73,17 @@ describe("service layer", () => {
     expect(acceptedRecord).toBeDefined();
     expect(acceptedRecord?.status).toBe("accepted");
   });
+
+  it("uses the full template when creating a record", () => {
+    const context = makeContext();
+    const result = createDecision("personal", "template-check", {
+      context,
+    });
+
+    const content = fs.readFileSync(result.filePath, "utf8");
+    expect(content).toContain("## 🧭 Context");
+    expect(content).toContain("## 🧾 Changelog");
+    expect(content).toContain("| Option | Description | Outcome  | Rationale");
+    expect(content).not.toContain("{ { id } }");
+  });
 });
