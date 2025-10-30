@@ -4,21 +4,34 @@
   "description": "",
   "license": "ISC",
   "author": "",
-  "type": "commonjs",
+  "type": "module",
   "main": "index.js",
+  "bin": {
+    "drctl": "dist/cli/index.js"
+  },
   "scripts": {
+    "dev": "tsx src/cli/index.ts",
+    "build": "tsc",
+    "start": "node dist/cli/index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "commit": "cz"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.1.0",
     "@commitlint/config-conventional": "^20.0.0",
+    "@types/node": "^24.9.2",
     "commitizen": "^4.3.1",
-    "cz-conventional-changelog": "^3.3.0"
+    "cz-conventional-changelog": "^3.3.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
   },
   "config": {
     "commitizen": {
       "path": "./node_modules/cz-conventional-changelog"
     }
+  },
+  "dependencies": {
+    "commander": "^14.0.2",
+    "gray-matter": "^4.0.3"
   }
 }
