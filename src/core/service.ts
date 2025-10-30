@@ -4,6 +4,12 @@ import { generateId } from "./utils.js";
 import type { RepoContext, ResolveRepoOptions } from "../config.js";
 import { resolveRepoContext } from "../config.js";
 
+export interface DecisionWriteResult {
+  record: DecisionRecord;
+  filePath: string;
+  context: RepoContext;
+}
+
 export interface RepoOptions {
   repo?: string;
   envRepo?: string;
@@ -19,7 +25,7 @@ export function createDecision(
   domain: string,
   slug: string,
   options: CreateDecisionOptions = {},
-): DecisionRecord {
+): DecisionWriteResult {
   const { confidence } = options;
   const context = ensureContext(options);
   const today = new Date().toISOString().slice(0, 10);
@@ -39,26 +45,26 @@ export function createDecision(
       },
     ],
   };
-  saveDecision(
+  const filePath = saveDecision(
     context,
     record,
     `# ${record.id}\n\n## 🧭 Context\n\n## ⚖️ Options Considered\n\n## 🧠 Decision\n`,
   );
-  return record;
+  return { record, filePath, context };
 }
 
 export function acceptDecision(
   id: string,
   options: RepoOptions = {},
-): DecisionRecord {
+): DecisionWriteResult {
   const context = ensureContext(options);
   const rec = loadDecision(context, id);
   const today = new Date().toISOString().slice(0, 10);
   rec.status = "accepted";
   rec.lastEdited = today;
   rec.changelog?.push({ date: today, note: "Marked as accepted" });
-  saveDecision(context, rec);
-  return rec;
+  const filePath = saveDecision(context, rec);
+  return { record: rec, filePath, context };
 }
 
 export function listAll(
@@ -80,4 +86,8 @@ function ensureContext(options: RepoOptions): RepoContext {
     resolveOptions.cwd = options.cwd;
   }
   return resolveRepoContext(resolveOptions);
+}
+
+export function resolveContext(options: RepoOptions = {}): RepoContext {
+  return ensureContext(options);
 }
