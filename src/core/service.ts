@@ -3,6 +3,7 @@ import { saveDecision, loadDecision, listDecisions } from "./repository.js";
 import { generateId } from "./utils.js";
 import type { RepoContext, ResolveRepoOptions } from "../config.js";
 import { resolveRepoContext } from "../config.js";
+import { createGitClient, type GitClient } from "./git.js";
 
 export interface DecisionWriteResult {
   record: DecisionRecord;
@@ -15,6 +16,7 @@ export interface RepoOptions {
   envRepo?: string;
   cwd?: string;
   context?: RepoContext;
+  gitClient?: GitClient;
 }
 
 export interface CreateDecisionOptions extends RepoOptions {
@@ -33,7 +35,7 @@ export function createDecision(
     id: generateId(domain, slug),
     dateCreated: today,
     version: "1.0",
-    status: "proposed",
+    status: "draft",
     changeType: "creation",
     domain,
     slug,
@@ -49,6 +51,52 @@ export function createDecision(
   return { record, filePath, context };
 }
 
+export async function draftDecision(
+  id: string,
+  options: RepoOptions = {},
+): Promise<DecisionWriteResult> {
+  const context = ensureContext(options);
+  const record = loadDecision(context, id);
+  const today = new Date().toISOString().slice(0, 10);
+  record.status = "draft";
+  record.lastEdited = today;
+  const changelog = record.changelog ?? [];
+  changelog.push({ date: today, note: "Marked as draft" });
+  record.changelog = changelog;
+  const filePath = saveDecision(context, record);
+
+  const gitClient = options.gitClient ?? createGitClient();
+  await gitClient.stageAndCommit([filePath], {
+    cwd: context.root,
+    message: `drctl: draft ${record.id}`,
+  });
+
+  return { record, filePath, context };
+}
+
+export async function proposeDecision(
+  id: string,
+  options: RepoOptions = {},
+): Promise<DecisionWriteResult> {
+  const context = ensureContext(options);
+  const record = loadDecision(context, id);
+  const today = new Date().toISOString().slice(0, 10);
+  record.status = "proposed";
+  record.lastEdited = today;
+  const changelog = record.changelog ?? [];
+  changelog.push({ date: today, note: "Marked as proposed" });
+  record.changelog = changelog;
+  const filePath = saveDecision(context, record);
+
+  const gitClient = options.gitClient ?? createGitClient();
+  await gitClient.stageAndCommit([filePath], {
+    cwd: context.root,
+    message: `drctl: propose ${record.id}`,
+  });
+
+  return { record, filePath, context };
+}
+
 export function acceptDecision(
   id: string,
   options: RepoOptions = {},
@@ -58,7 +106,9 @@ export function acceptDecision(
   const today = new Date().toISOString().slice(0, 10);
   rec.status = "accepted";
   rec.lastEdited = today;
-  rec.changelog?.push({ date: today, note: "Marked as accepted" });
+  const changelog = rec.changelog ?? [];
+  changelog.push({ date: today, note: "Marked as accepted" });
+  rec.changelog = changelog;
   const filePath = saveDecision(context, rec);
   return { record: rec, filePath, context };
 }

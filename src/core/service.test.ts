@@ -3,7 +3,13 @@ import os from "os";
 import path from "path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { RepoContext } from "../config.js";
-import { acceptDecision, createDecision, listAll } from "./service.js";
+import {
+  acceptDecision,
+  createDecision,
+  draftDecision,
+  proposeDecision,
+  listAll,
+} from "./service.js";
 
 const tempRoots: string[] = [];
 
@@ -39,7 +45,7 @@ describe("service layer", () => {
     });
 
     expect(result.record.id).toBe("DR--20251030--personal--hydrate");
-    expect(result.record.status).toBe("proposed");
+    expect(result.record.status).toBe("draft");
     expect(result.record.confidence).toBe(0.6);
 
     const expectedPath = path.join(
@@ -55,7 +61,7 @@ describe("service layer", () => {
     const storedRecord = stored[0];
     expect(storedRecord).toBeDefined();
     expect(storedRecord?.id).toBe(result.record.id);
-    expect(storedRecord?.status).toBe("proposed");
+    expect(storedRecord?.status).toBe("draft");
   });
 
   it("accepts an existing decision and reflects new status", () => {
@@ -85,5 +91,55 @@ describe("service layer", () => {
     expect(content).toContain("## 🧾 Changelog");
     expect(content).toContain("| Option | Description | Outcome  | Rationale");
     expect(content).not.toContain("{ { id } }");
+  });
+
+  it("marks a decision as draft and commits via git", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const creation = createDecision("personal", "hydrate", { context });
+
+    const result = await draftDecision(creation.record.id, {
+      context,
+      gitClient,
+    });
+
+    expect(result.record.status).toBe("draft");
+    expect(result.record.lastEdited).toBe("2025-10-30");
+    expect(result.record.changelog?.at(-1)).toEqual({
+      date: "2025-10-30",
+      note: "Marked as draft",
+    });
+
+    expect(gitClient.stageAndCommit).toHaveBeenCalledWith([result.filePath], {
+      cwd: context.root,
+      message: `drctl: draft ${creation.record.id}`,
+    });
+  });
+
+  it("marks a decision as proposed and commits via git", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const creation = createDecision("personal", "hydrate", { context });
+
+    const result = await proposeDecision(creation.record.id, {
+      context,
+      gitClient,
+    });
+
+    expect(result.record.status).toBe("proposed");
+    expect(result.record.lastEdited).toBe("2025-10-30");
+    expect(result.record.changelog?.at(-1)).toEqual({
+      date: "2025-10-30",
+      note: "Marked as proposed",
+    });
+
+    expect(gitClient.stageAndCommit).toHaveBeenCalledWith([result.filePath], {
+      cwd: context.root,
+      message: `drctl: propose ${creation.record.id}`,
+    });
   });
 });

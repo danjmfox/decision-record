@@ -1,8 +1,10 @@
 export type DecisionStatus =
+  | "draft"
   | "proposed"
   | "accepted"
   | "deprecated"
   | "superseded"
+  | "rejected"
   | "retired"
   | "archived";
 

@@ -4,6 +4,8 @@ import { Command } from "commander";
 import {
   acceptDecision,
   createDecision,
+  draftDecision,
+  proposeDecision,
   listAll,
   resolveContext,
   type CreateDecisionOptions,
@@ -113,6 +115,36 @@ program
       list.forEach((r) =>
         console.log(`${r.id.padEnd(45)} ${r.status.padEnd(10)} ${r.domain}`),
       );
+    }),
+  );
+
+program
+  .command("draft <id>")
+  .description("Mark a decision as draft and commit the changes")
+  .action(
+    handleAction(async function (id: string, command: Command) {
+      const repoOptions = resolveRepoOptions(command);
+      logRepo(repoOptions.context);
+      const result = await draftDecision(id, {
+        ...repoOptions,
+      });
+      console.log(`✏️ ${result.record.id} saved as draft`);
+      console.log(`📄 File: ${result.filePath}`);
+    }),
+  );
+
+program
+  .command("propose <id>")
+  .description("Mark a decision as proposed and commit the changes")
+  .action(
+    handleAction(async function (id: string, command: Command) {
+      const repoOptions = resolveRepoOptions(command);
+      logRepo(repoOptions.context);
+      const result = await proposeDecision(id, {
+        ...repoOptions,
+      });
+      console.log(`📤 ${result.record.id} proposed`);
+      console.log(`📄 File: ${result.filePath}`);
     }),
   );
 
