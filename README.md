@@ -151,6 +151,7 @@ Remove the link later with `npm unlink -g decision-record` (or run `npm unlink` 
 | `drctl revise <id> --note`          | Increment version, update metadata     |
 | `drctl supersede <old_id> <new_id>` | Replace old decision                   |
 | `drctl retire <id>`                 | Retire obsolete decision               |
+| `drctl config check`                | Validate configuration files and repos |
 | `drctl index`                       | Rebuild master index                   |
 | `drctl export`                      | Export metadata as JSON for dashboards |
 

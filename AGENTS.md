@@ -118,9 +118,9 @@ home-decisions/
 ## 🧱 Implementation Steps
 
 1. **Config System**
-   - [ ] Implement multi-repo `.drctl.yaml` support (`decisions.work`, `decisions.home`).
-   - [ ] Add CLI flag `--repo` (default from config or env `DRCTL_REPO`).
-   - [ ] Add config validation command: `drctl config check`.
+   - [x] Implement multi-repo `.drctl.yaml` support (`decisions.work`, `decisions.home`).
+   - [x] Add CLI flag `--repo` (default from config or env `DRCTL_REPO`).
+   - [x] Add config validation command: `drctl config check`.
 
 2. **Repository Logic**
    - [ ] Update `repository.ts` to handle per-repo domain folders.
