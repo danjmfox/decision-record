@@ -64,14 +64,29 @@ describe("service layer", () => {
     expect(storedRecord?.status).toBe("draft");
   });
 
-  it("accepts an existing decision and reflects new status", () => {
+  it("accepts an existing decision, updates changelog, and commits via git", async () => {
     const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
     const creation = createDecision("personal", "hydrate", { context });
 
-    const accepted = acceptDecision(creation.record.id, { context });
+    const accepted = await acceptDecision(creation.record.id, {
+      context,
+      gitClient,
+    });
     expect(accepted.record.status).toBe("accepted");
     expect(accepted.record.lastEdited).toBe("2025-10-30");
     expect(accepted.filePath).toBe(creation.filePath);
+    expect(accepted.record.changelog?.at(-1)).toEqual({
+      date: "2025-10-30",
+      note: "Marked as accepted",
+    });
+
+    expect(gitClient.stageAndCommit).toHaveBeenCalledWith([creation.filePath], {
+      cwd: context.root,
+      message: `drctl: accept ${creation.record.id}`,
+    });
 
     const acceptedRecords = listAll("accepted", { context });
     expect(acceptedRecords).toHaveLength(1);

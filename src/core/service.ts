@@ -97,10 +97,10 @@ export async function proposeDecision(
   return { record, filePath, context };
 }
 
-export function acceptDecision(
+export async function acceptDecision(
   id: string,
   options: RepoOptions = {},
-): DecisionWriteResult {
+): Promise<DecisionWriteResult> {
   const context = ensureContext(options);
   const rec = loadDecision(context, id);
   const today = new Date().toISOString().slice(0, 10);
@@ -110,6 +110,11 @@ export function acceptDecision(
   changelog.push({ date: today, note: "Marked as accepted" });
   rec.changelog = changelog;
   const filePath = saveDecision(context, rec);
+  const gitClient = options.gitClient ?? createGitClient();
+  await gitClient.stageAndCommit([filePath], {
+    cwd: context.root,
+    message: `drctl: accept ${rec.id}`,
+  });
   return { record: rec, filePath, context };
 }
 
