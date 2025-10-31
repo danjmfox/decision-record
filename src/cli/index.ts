@@ -13,7 +13,7 @@ import {
 } from "../core/service.js";
 import type { RepoContext } from "../config.js";
 import { formatRepoContext } from "./repo-format.js";
-import { collectRepoOptions } from "./options.js";
+import { collectRepoOptions, ensureRepoFlagNotUsed } from "./options.js";
 import { createRepoEntry } from "./repo-manage.js";
 
 interface GlobalCliOptions {
