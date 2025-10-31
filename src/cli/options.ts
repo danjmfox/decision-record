@@ -14,6 +14,16 @@ export function collectRepoOptions(command: Command): RepoOptions {
   return repoOptions;
 }
 
+export function ensureRepoFlagNotUsed(
+  command: Command,
+  commandName: string,
+): void {
+  const repo = findRepoFlag(command);
+  if (repo) {
+    throw new Error(`--repo cannot be used with ${commandName}`);
+  }
+}
+
 function findRepoFlag(command: Command | null | undefined): string | undefined {
   if (!command) return undefined;
   const opts = typeof command.opts === "function" ? command.opts() : undefined;

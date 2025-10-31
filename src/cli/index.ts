@@ -45,10 +45,12 @@ repoCommand
   )
   .action(
     handleAction(function (
+      this: Command,
       name: string,
       root: string,
       command: Command & { default?: boolean; domainDir?: string },
     ) {
+      ensureRepoFlagNotUsed(this, "repo new");
       const cwd = process.cwd();
       const repoOptions = {
         cwd,
