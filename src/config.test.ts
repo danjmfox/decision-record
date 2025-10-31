@@ -10,7 +10,7 @@ import {
   beforeEach,
   vi,
 } from "vitest";
-import { resolveRepoContext } from "./config.js";
+import { resolveRepoContext, diagnoseConfig } from "./config.js";
 
 const tempDirs: string[] = [];
 const originalEnvRepo = process.env.DRCTL_REPO;
@@ -184,5 +184,53 @@ repos:
     context = resolveRepoContext({ cwd: dir, repoFlag: "tilde" });
     expect(context.root).toBe(path.join(home, "decisions-tilde"));
     expect(context.domainMap.personal).toBe("custom/personal");
+  });
+});
+
+describe("diagnoseConfig", () => {
+  it("warns when no repositories are configured", () => {
+    const dir = makeTempDir();
+
+    const diagnostics = diagnoseConfig({ cwd: dir });
+
+    expect(diagnostics.repos).toHaveLength(0);
+    expect(diagnostics.warnings).toContain(
+      "No repositories configured. Create a .drctl.yaml to get started.",
+    );
+    expect(diagnostics.errors).toHaveLength(0);
+  });
+
+  it("reports existing repositories without warnings", () => {
+    const dir = makeTempDir();
+    const repoDir = path.join(dir, "workspace");
+    fs.mkdirSync(repoDir, { recursive: true });
+    const config = `defaultRepo: work\nrepos:\n  work:\n    path: ./workspace\n`;
+    fs.writeFileSync(path.join(dir, ".drctl.yaml"), config);
+
+    const diagnostics = diagnoseConfig({ cwd: dir });
+
+    expect(diagnostics.defaultRepoName).toBe("work");
+    expect(diagnostics.repos).toHaveLength(1);
+    expect(diagnostics.repos[0]?.exists).toBe(true);
+    expect(diagnostics.warnings).toHaveLength(0);
+  });
+
+  it("warns when repositories point to missing paths", () => {
+    const dir = makeTempDir();
+    const config = `repos:\n  missing:\n    path: ./missing\n  other:\n    path: ./other\n`;
+    fs.writeFileSync(path.join(dir, ".drctl.yaml"), config);
+
+    const diagnostics = diagnoseConfig({ cwd: dir });
+
+    expect(diagnostics.repos).toHaveLength(2);
+    expect(
+      diagnostics.repos.find((repo) => repo.name === "missing")?.exists,
+    ).toBe(false);
+    expect(diagnostics.warnings).toContainEqual(
+      expect.stringMatching(/Repository "missing"/),
+    );
+    expect(diagnostics.warnings).toContain(
+      "Multiple repositories configured but no defaultRepo specified.",
+    );
   });
 });

@@ -23,6 +23,26 @@ export interface RepoContext {
   defaultDomainDir?: string;
 }
 
+export interface RepoDiagnostic {
+  name: string;
+  root: string;
+  definitionSource: RepoDefinitionSource;
+  configPath: string;
+  domainMap: Record<string, string>;
+  defaultDomainDir?: string;
+  exists: boolean;
+}
+
+export interface ConfigDiagnostics {
+  cwd: string;
+  localConfigPath?: string;
+  globalConfigPath?: string;
+  defaultRepoName?: string;
+  repos: RepoDiagnostic[];
+  warnings: string[];
+  errors: string[];
+}
+
 export interface ResolveRepoOptions {
   repoFlag?: string | null;
   envRepo?: string | null;
@@ -84,27 +104,9 @@ export function resolveRepoContext(
   const repoFlag = sanitizeString(options.repoFlag);
   const envRepo = sanitizeString(options.envRepo ?? process.env.DRCTL_REPO);
 
-  const localConfigPath = findConfigRecursive(cwd);
-  const localConfig = localConfigPath
-    ? loadConfigLayer(localConfigPath, "local")
-    : undefined;
+  const { localConfig, globalConfig } = loadConfigLayers(cwd);
 
-  const globalConfigPath = findFirstExisting(GLOBAL_CONFIG_CANDIDATES);
-  const globalConfig = globalConfigPath
-    ? loadConfigLayer(globalConfigPath, "global")
-    : undefined;
-
-  const combinedRepos = new Map<string, NormalizedRepo>();
-  if (globalConfig) {
-    for (const repo of Object.values(globalConfig.repos)) {
-      combinedRepos.set(repo.name, repo);
-    }
-  }
-  if (localConfig) {
-    for (const repo of Object.values(localConfig.repos)) {
-      combinedRepos.set(repo.name, repo);
-    }
-  }
+  const combinedRepos = combineRepoLayers(globalConfig, localConfig);
 
   const defaultRepoName =
     localConfig?.defaultRepo ?? globalConfig?.defaultRepo ?? null;
@@ -172,6 +174,67 @@ export function resolveRepoContext(
     root: fallback.root,
     source: fallback.source,
     domainMap: {},
+  };
+}
+
+export function diagnoseConfig(
+  options: { cwd?: string } = {},
+): ConfigDiagnostics {
+  const cwd = options.cwd ? path.resolve(options.cwd) : process.cwd();
+  const layers = loadConfigLayers(cwd);
+  const combinedRepos = combineRepoLayers(
+    layers.globalConfig,
+    layers.localConfig,
+  );
+  const defaultRepoName =
+    layers.localConfig?.defaultRepo ?? layers.globalConfig?.defaultRepo;
+
+  const repos: RepoDiagnostic[] = [];
+  for (const repo of combinedRepos.values()) {
+    repos.push({
+      name: repo.name,
+      root: repo.root,
+      definitionSource: repo.definitionSource,
+      configPath: repo.configPath,
+      domainMap: repo.domainMap,
+      ...(repo.defaultDomainDir
+        ? { defaultDomainDir: repo.defaultDomainDir }
+        : {}),
+      exists: fs.existsSync(repo.root),
+    });
+  }
+
+  const warnings: string[] = [];
+  const errors: string[] = [];
+
+  if (repos.length === 0) {
+    warnings.push(
+      "No repositories configured. Create a .drctl.yaml to get started.",
+    );
+  }
+
+  for (const repo of repos) {
+    if (!repo.exists) {
+      warnings.push(
+        `Repository "${repo.name}" points to missing path: ${repo.root}`,
+      );
+    }
+  }
+
+  if (repos.length > 1 && !defaultRepoName) {
+    warnings.push(
+      "Multiple repositories configured but no defaultRepo specified.",
+    );
+  }
+
+  return {
+    cwd,
+    localConfigPath: layers.localConfigPath,
+    globalConfigPath: layers.globalConfigPath,
+    defaultRepoName: defaultRepoName ?? undefined,
+    repos,
+    warnings,
+    errors,
   };
 }
 
@@ -428,4 +491,46 @@ function selectFallbackRoot(cwd: string): {
     return { root: localDir, source: "fallback-cwd" };
   }
   return { root: homeDir, source: "fallback-home" };
+}
+
+function loadConfigLayers(cwd: string): {
+  localConfigPath?: string;
+  localConfig?: NormalizedConfigLayer;
+  globalConfigPath?: string;
+  globalConfig?: NormalizedConfigLayer;
+} {
+  const localConfigPath = findConfigRecursive(cwd);
+  const localConfig = localConfigPath
+    ? loadConfigLayer(localConfigPath, "local")
+    : undefined;
+
+  const globalConfigPath = findFirstExisting(GLOBAL_CONFIG_CANDIDATES);
+  const globalConfig = globalConfigPath
+    ? loadConfigLayer(globalConfigPath, "global")
+    : undefined;
+
+  return {
+    localConfigPath,
+    localConfig,
+    globalConfigPath,
+    globalConfig,
+  };
+}
+
+function combineRepoLayers(
+  globalConfig?: NormalizedConfigLayer,
+  localConfig?: NormalizedConfigLayer,
+): Map<string, NormalizedRepo> {
+  const combined = new Map<string, NormalizedRepo>();
+  if (globalConfig) {
+    for (const repo of Object.values(globalConfig.repos)) {
+      combined.set(repo.name, repo);
+    }
+  }
+  if (localConfig) {
+    for (const repo of Object.values(localConfig.repos)) {
+      combined.set(repo.name, repo);
+    }
+  }
+  return combined;
 }

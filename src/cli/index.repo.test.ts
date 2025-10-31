@@ -3,10 +3,13 @@ import os from "os";
 import path from "path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-describe("cli repo new", () => {
+describe("cli index commands", () => {
   const originalArgv = process.argv.slice();
+  const originalCwd = process.cwd();
   let exitSpy: ReturnType<typeof vi.spyOn> | undefined;
-  let consoleSpy: ReturnType<typeof vi.spyOn> | undefined;
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn> | undefined;
+  let consoleWarnSpy: ReturnType<typeof vi.spyOn> | undefined;
+  let consoleLogSpy: ReturnType<typeof vi.spyOn> | undefined;
 
   beforeEach(() => {
     vi.resetModules();
@@ -14,18 +17,27 @@ describe("cli repo new", () => {
       // eslint-disable-next-line @typescript-eslint/no-empty-function
       (() => {}) as never,
     );
-    consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
   });
 
   afterEach(() => {
     if (exitSpy) {
       exitSpy.mockRestore();
     }
-    if (consoleSpy) {
-      consoleSpy.mockRestore();
+    if (consoleErrorSpy) {
+      consoleErrorSpy.mockRestore();
+    }
+    if (consoleWarnSpy) {
+      consoleWarnSpy.mockRestore();
+    }
+    if (consoleLogSpy) {
+      consoleLogSpy.mockRestore();
     }
     process.exitCode = 0;
     process.argv = originalArgv.slice();
+    process.chdir(originalCwd);
     vi.resetModules();
   });
 
@@ -44,9 +56,38 @@ describe("cli repo new", () => {
 
     await import("./index.js");
 
-    expect(consoleSpy).toHaveBeenCalledWith(
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
       expect.stringMatching(/--repo cannot be used with repo new/),
     );
     expect(process.exitCode).toBe(1);
+
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("prints diagnostics for config check", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
+    fs.writeFileSync(
+      path.join(tempDir, ".drctl.yaml"),
+      `repos:
+  missing:
+    path: ./missing
+  present:
+    path: ./present
+`,
+    );
+    process.chdir(tempDir);
+    process.argv = ["node", "drctl", "config", "check"];
+
+    await import("./index.js");
+
+    expect(consoleLogSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/Working directory/),
+    );
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/Repository "missing"/),
+    );
+    expect(process.exitCode).toBe(0);
+
+    fs.rmSync(tempDir, { recursive: true, force: true });
   });
 });

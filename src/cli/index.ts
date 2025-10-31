@@ -11,7 +11,7 @@ import {
   type CreateDecisionOptions,
   type RepoOptions,
 } from "../core/service.js";
-import type { RepoContext } from "../config.js";
+import { diagnoseConfig, type RepoContext } from "../config.js";
 import { formatRepoContext } from "./repo-format.js";
 import { collectRepoOptions, ensureRepoFlagNotUsed } from "./options.js";
 import { createRepoEntry } from "./repo-manage.js";
@@ -32,6 +32,64 @@ const repoCommand = program
     handleAction(function (this: Command) {
       const repoOptions = resolveRepoOptions(this);
       logRepo(repoOptions.context);
+    }),
+  );
+
+const configCommand = program
+  .command("config")
+  .description("Inspect drctl configuration");
+
+configCommand
+  .command("check")
+  .description("Validate configuration files and repository paths")
+  .action(
+    handleAction(function (this: Command) {
+      ensureRepoFlagNotUsed(this, "config check");
+      const diagnostics = diagnoseConfig({ cwd: process.cwd() });
+      console.log(`🧭 Working directory: ${diagnostics.cwd}`);
+      console.log(
+        `📄 Local config: ${diagnostics.localConfigPath ?? "not found"}`,
+      );
+      console.log(
+        `🏠 Global config: ${diagnostics.globalConfigPath ?? "not found"}`,
+      );
+      console.log(
+        `⭐ Default repo: ${diagnostics.defaultRepoName ?? "(not set)"}`,
+      );
+
+      if (diagnostics.repos.length > 0) {
+        console.log("📚 Repositories:");
+        for (const repo of diagnostics.repos) {
+          const status = repo.exists ? "✅" : "⚠️";
+          const sourceLabel =
+            repo.definitionSource === "local"
+              ? "local-config"
+              : "global-config";
+          console.log(
+            `   ${status} ${repo.name} → ${repo.root} (${sourceLabel})`,
+          );
+        }
+      } else {
+        console.log("📚 Repositories: none");
+      }
+
+      for (const warning of diagnostics.warnings) {
+        console.warn(`⚠️ ${warning}`);
+      }
+      for (const error of diagnostics.errors) {
+        console.error(`❌ ${error}`);
+      }
+
+      if (
+        diagnostics.errors.length === 0 &&
+        diagnostics.warnings.length === 0
+      ) {
+        console.log("✅ Configuration looks good.");
+      }
+
+      if (diagnostics.errors.length > 0) {
+        process.exitCode = 1;
+      }
     }),
   );
 
