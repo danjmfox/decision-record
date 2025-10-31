@@ -79,14 +79,12 @@ program
     Number.parseFloat(value),
   )
   .action(
-    handleAction(function (
-      this: Command,
+    createRepoAction(function (
+      repoOptions,
       domain: string,
       slug: string,
       commandOptions: { confidence?: number },
     ) {
-      const repoOptions = resolveRepoOptions(this);
-      logRepo(repoOptions.context);
       const confidence =
         typeof commandOptions.confidence === "number" &&
         Number.isFinite(commandOptions.confidence)
@@ -107,9 +105,10 @@ program
   .description("List decision records, optionally filtered by status")
   .option("--status <status>", "filter by status")
   .action(
-    handleAction(function (this: Command, commandOptions: { status?: string }) {
-      const repoOptions = resolveRepoOptions(this);
-      logRepo(repoOptions.context);
+    createRepoAction(function (
+      repoOptions,
+      commandOptions: { status?: string },
+    ) {
       const list = listAll(commandOptions.status, repoOptions);
       list.forEach((r) =>
         console.log(`${r.id.padEnd(45)} ${r.status.padEnd(10)} ${r.domain}`),
@@ -121,9 +120,7 @@ program
   .command("draft <id>")
   .description("Mark a decision as draft and commit the changes")
   .action(
-    handleAction(async function (this: Command, id: string) {
-      const repoOptions = resolveRepoOptions(this);
-      logRepo(repoOptions.context);
+    createRepoAction(async function (repoOptions, id: string) {
       const result = await draftDecision(id, {
         ...repoOptions,
       });
@@ -136,9 +133,7 @@ program
   .command("propose <id>")
   .description("Mark a decision as proposed and commit the changes")
   .action(
-    handleAction(async function (this: Command, id: string) {
-      const repoOptions = resolveRepoOptions(this);
-      logRepo(repoOptions.context);
+    createRepoAction(async function (repoOptions, id: string) {
       const result = await proposeDecision(id, {
         ...repoOptions,
       });
@@ -151,9 +146,7 @@ program
   .command("accept <id>")
   .description("Mark a decision as accepted and update its changelog")
   .action(
-    handleAction(async function (this: Command, id: string) {
-      const repoOptions = resolveRepoOptions(this);
-      logRepo(repoOptions.context);
+    createRepoAction(async function (repoOptions, id: string) {
       const result = await acceptDecision(id, { ...repoOptions });
       console.log(`✅ ${result.record.id} marked as accepted`);
       console.log(`📄 File: ${result.filePath}`);
@@ -190,4 +183,18 @@ function logRepo(context: RepoContext): void {
   for (const line of lines) {
     console.log(line);
   }
+}
+
+function createRepoAction<T extends unknown[]>(
+  fn: (
+    this: Command,
+    repoOptions: RepoOptions & { context: RepoContext },
+    ...args: T
+  ) => void | Promise<void>,
+) {
+  return handleAction(function (this: Command, ...args: T) {
+    const repoOptions = resolveRepoOptions(this);
+    logRepo(repoOptions.context);
+    return fn.apply(this, [repoOptions, ...args]);
+  });
 }
