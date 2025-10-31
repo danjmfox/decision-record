@@ -117,28 +117,26 @@ home-decisions/
 
 ## 🧱 Implementation Steps
 
-1. **Config System**
-   - [x] Implement multi-repo `.drctl.yaml` support (`decisions.work`, `decisions.home`).
-   - [x] Add CLI flag `--repo` (default from config or env `DRCTL_REPO`).
-   - [x] Add config validation command: `drctl config check`.
+1. **Repository Logic (Next Up)**
+   - [ ] Update `repository.ts` to honour per-repo domain folders from config.
+   - [ ] Auto-create domain subfolders when writing records.
+   - [ ] Add an `index` generator that aggregates across configured repos.
 
-2. **Repository Logic**
-   - [ ] Update `repository.ts` to handle per-repo domain folders.
-   - [ ] Auto-create domain subfolders if missing.
-   - [ ] Add `index` generator across multiple repos.
+2. **Examples & Documentation**
+   - [ ] Add a README note clarifying `decisions-example/` as the default demo workspace.
+   - [ ] Capture the multi-repo config design in `DR--20251030--meta--multi-repo-config.md`.
+   - [ ] Continue treating `AGENTS.md` as the canonical collaboration record (update as decisions land).
 
-3. **Example Setup**
-   - [x] Move sample DR to `decisions-example/meta/DR--20251029--meta--decision-policy.md`.
-   - [ ] Add note in README: “Uses decisions-example as default demo workspace.”
-
-4. **Documentation**
-   - [ ] Keep this `AGENTS.md` as the canonical collaboration record.
-   - [ ] Add meta DR for config design: `DR--20251030--meta--multi-repo-config.md`.
-
-5. **Future**
+3. **Automation & Integrations (Future)**
    - [ ] Add REST API and dashboard layer.
    - [ ] Support remote DR syncing via `git` or API calls.
    - [ ] Explore n8n automation for scheduled reviews.
+
+4. **Completed**
+   - [x] Multi-repo config resolution + `--repo` flag support.
+   - [x] `drctl config check` diagnostics.
+   - [x] Example decision records relocated to `decisions-example/meta/...`.
+   - [x] Community-first docs (`CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`, `SECURITY.md`, `SUPPORT.md`).
 
 ---
 
