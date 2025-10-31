@@ -102,6 +102,8 @@ drctl list --repo home
 drctl new personal hydrate-every-hour --repo home
 ```
 
+Every command resolves repository context through a shared middleware, so `--repo`/`DRCTL_REPO` overrides are honoured consistently and the resolved workspace is logged automatically.
+
 Every command echoes the resolved repo and any file it touches. Example output:
 
 ```bash
@@ -119,20 +121,20 @@ Remove the link later with `npm unlink -g decision-record` (or run `npm unlink` 
 
 ## 🧱 Code Structure
 
-| Path                     | Purpose                                                                  |
-| ------------------------ | ------------------------------------------------------------------------ |
-| `src/cli/index.ts`       | Commander-based CLI entry point; forwards work to the service layer.     |
-| `src/cli/repo-format.ts` | Formats repo context information for CLI output.                         |
-| `src/cli/repo-manage.ts` | Utilities for mutating `.drctl.yaml` repo definitions.                   |
-| `src/config.ts`          | Loads `.drctl.yaml` configs (CLI/env/local/global), resolves repo roots. |
-| `src/config.test.ts`     | Vitest coverage of configuration resolution scenarios.                   |
-| `src/core/models.ts`     | Type definitions shared across the domain.                               |
-| `src/core/utils.ts`      | Helpers (`generateId`, `extractDomainFromId`).                           |
-| `src/core/repository.ts` | File-system access; saves, loads, lists Markdown decisions.              |
-| `src/core/service.ts`    | Business logic wrapping repository operations with repo context.         |
-| `src/core/versioning.ts` | Version bump helper for decision records.                                |
-| `src/types/js-yaml.d.ts` | Minimal types so `js-yaml` can be imported without errors.               |
-| `decisions-example/`     | Public sample decision records for demonstrations/tests.                 |
+| Path                     | Purpose                                                                   |
+| ------------------------ | ------------------------------------------------------------------------- |
+| `src/cli/index.ts`       | Commander-based CLI entry point; shared repo middleware + service wiring. |
+| `src/cli/repo-format.ts` | Formats repo context information for CLI output.                          |
+| `src/cli/repo-manage.ts` | Utilities for mutating `.drctl.yaml` repo definitions.                    |
+| `src/config.ts`          | Loads `.drctl.yaml` configs (CLI/env/local/global), resolves repo roots.  |
+| `src/config.test.ts`     | Vitest coverage of configuration resolution scenarios.                    |
+| `src/core/models.ts`     | Type definitions shared across the domain.                                |
+| `src/core/utils.ts`      | Helpers (`generateId`, `extractDomainFromId`).                            |
+| `src/core/repository.ts` | File-system access; saves, loads, lists Markdown decisions.               |
+| `src/core/service.ts`    | Business logic wrapping repository operations with repo context.          |
+| `src/core/versioning.ts` | Version bump helper for decision records.                                 |
+| `src/types/js-yaml.d.ts` | Minimal types so `js-yaml` can be imported without errors.                |
+| `decisions-example/`     | Public sample decision records for demonstrations/tests.                  |
 
 ## Key CLI Commands
 

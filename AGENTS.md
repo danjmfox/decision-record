@@ -83,20 +83,20 @@ For more information, refer to [meta/DR--20251029--meta--decision-policy.md](dec
 
 ### 🧱 Code Structure (Current)
 
-| Path                     | Purpose                                                           |
-| ------------------------ | ----------------------------------------------------------------- |
-| `src/cli/index.ts`       | CLI entry point; parses flags and delegates to services.          |
-| `src/cli/repo-format.ts` | Formats repo context information for display/logging.             |
-| `src/cli/repo-manage.ts` | Helpers for updating `.drctl.yaml` repo entries.                  |
-| `src/config.ts`          | Multi-layer config loader resolving repo and domain directories.  |
-| `src/config.test.ts`     | Vitest checks ensuring config resolution behaves as designed.     |
-| `src/core/models.ts`     | Shared decision record types and enums.                           |
-| `src/core/utils.ts`      | ID helpers and domain extraction utilities.                       |
-| `src/core/repository.ts` | Persistence layer writing/reading Markdown frontmatter files.     |
-| `src/core/service.ts`    | High-level actions (create/list/accept) that thread repo context. |
-| `src/core/versioning.ts` | Semantic version bump helper.                                     |
-| `src/types/js-yaml.d.ts` | Minimal type declaration for js-yaml loader.                      |
-| `decisions-example/`     | Example decision records used for demos and tests.                |
+| Path                     | Purpose                                                             |
+| ------------------------ | ------------------------------------------------------------------- |
+| `src/cli/index.ts`       | CLI entry point with shared repo middleware delegating to services. |
+| `src/cli/repo-format.ts` | Formats repo context information for display/logging.               |
+| `src/cli/repo-manage.ts` | Helpers for updating `.drctl.yaml` repo entries.                    |
+| `src/config.ts`          | Multi-layer config loader resolving repo and domain directories.    |
+| `src/config.test.ts`     | Vitest checks ensuring config resolution behaves as designed.       |
+| `src/core/models.ts`     | Shared decision record types and enums.                             |
+| `src/core/utils.ts`      | ID helpers and domain extraction utilities.                         |
+| `src/core/repository.ts` | Persistence layer writing/reading Markdown frontmatter files.       |
+| `src/core/service.ts`    | High-level actions (create/list/accept) that thread repo context.   |
+| `src/core/versioning.ts` | Semantic version bump helper.                                       |
+| `src/types/js-yaml.d.ts` | Minimal type declaration for js-yaml loader.                        |
+| `decisions-example/`     | Example decision records used for demos and tests.                  |
 
 ---
 
