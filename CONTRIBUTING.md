@@ -6,13 +6,17 @@ Thank you for investing time in improving `drctl`. This project is a collaborati
 
 1. **Fork & clone** this repository.
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
+
 3. **Run the test suite** to confirm the baseline is green:
+
    ```bash
    npm test
    ```
+
 4. **Create a branch** following the conventional format, e.g. `feat/multi-repo-sync`.
 
 ## Development Workflow
