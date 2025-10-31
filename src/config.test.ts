@@ -73,6 +73,24 @@ repos:
     expect(context.source).toBe("local-config");
   });
 
+  it("selects the only configured repo when no default is specified", () => {
+    const dir = makeTempDir();
+    const repoRoot = path.join(dir, "solo");
+    fs.mkdirSync(repoRoot, { recursive: true });
+    const config = `
+repos:
+  solo:
+    path: ./solo
+`;
+    fs.writeFileSync(path.join(dir, ".drctl.yaml"), config);
+
+    const context = resolveRepoContext({ cwd: dir });
+
+    expect(context.name).toBe("solo");
+    expect(context.root).toBe(path.resolve(repoRoot));
+    expect(context.source).toBe("local-config");
+  });
+
   it("prefers CLI path strings when provided", () => {
     const dir = makeTempDir();
     const repoPath = path.join(dir, "custom");

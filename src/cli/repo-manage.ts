@@ -26,11 +26,9 @@ export function createRepoEntry(
   const configDir = path.dirname(configPath);
 
   const config = loadConfigFile(configPath);
-  if (!config.repos || typeof config.repos !== "object") {
-    config.repos = {};
-  }
+  const repos = ensureRepoMap(config.repos);
+  config.repos = repos;
 
-  const repos = config.repos as Record<string, Record<string, unknown>>;
   const entry: Record<string, unknown> = { path: repoPath };
   if (defaultDomainDir) {
     entry.defaultDomainDir = defaultDomainDir;
@@ -59,6 +57,70 @@ function loadConfigFile(configPath: string): Record<string, unknown> {
     return {};
   }
   return { ...(parsed as Record<string, unknown>) };
+}
+
+function ensureRepoMap(
+  value: unknown,
+): Record<string, Record<string, unknown>> {
+  const normalized: Record<string, Record<string, unknown>> = {};
+  const candidate =
+    value && typeof value === "object" && !Array.isArray(value)
+      ? extractFlatRepoDefinition(value as Record<string, unknown>)
+      : null;
+
+  if (candidate) {
+    normalized[candidate.name] = candidate.entry;
+  }
+
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    for (const [key, entryValue] of Object.entries(
+      value as Record<string, unknown>,
+    )) {
+      if (
+        candidate &&
+        (key === "name" ||
+          key === "path" ||
+          key === "defaultDomainDir" ||
+          key === "domains")
+      ) {
+        continue;
+      }
+      if (entryValue && typeof entryValue === "object") {
+        normalized[key] = { ...(entryValue as Record<string, unknown>) };
+      } else if (typeof entryValue === "string") {
+        normalized[key] = { path: entryValue };
+      }
+    }
+  }
+
+  return normalized;
+}
+
+function extractFlatRepoDefinition(
+  value: Record<string, unknown>,
+): { name: string; entry: Record<string, unknown> } | null {
+  if (typeof value.name !== "string" || typeof value.path !== "string") {
+    return null;
+  }
+
+  const allowedKeys = new Set(["name", "path", "defaultDomainDir", "domains"]);
+  const extraKeys = Object.keys(value).filter((key) => !allowedKeys.has(key));
+  if (extraKeys.length > 0) {
+    return null;
+  }
+
+  const entry: Record<string, unknown> = { path: value.path };
+  if (typeof value.defaultDomainDir === "string") {
+    entry.defaultDomainDir = value.defaultDomainDir;
+  }
+  if (value.domains && typeof value.domains === "object") {
+    entry.domains = value.domains;
+  }
+
+  return {
+    name: value.name,
+    entry,
+  };
 }
 
 function findNearestConfig(startDir: string): string | undefined {

@@ -4,6 +4,7 @@ import path from "path";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { load as loadYaml } from "js-yaml";
 import { createRepoEntry } from "./repo-manage.js";
+import { resolveRepoContext } from "../config.js";
 
 const tempDirs: string[] = [];
 const restoreSpies: Array<() => void> = [];
@@ -55,6 +56,49 @@ describe("createRepoEntry", () => {
     expect(homeEntry).toBeDefined();
     expect(homeEntry.path).toBe(repoPath);
     expect(homeEntry.defaultDomainDir).toBe("domains");
+  });
+
+  it("writes repo entries as nested objects keyed by alias", () => {
+    const cwd = makeTempDir();
+    const repoPath = "./decisions";
+    createRepoEntry({
+      cwd,
+      name: "home",
+      repoPath,
+    });
+
+    const configPath = path.join(cwd, ".drctl.yaml");
+    const content = fs.readFileSync(configPath, "utf8");
+    const parsed = loadYaml(content) as Record<string, unknown>;
+    const repos = parsed.repos as Record<string, unknown>;
+
+    expect(repos).toBeTruthy();
+    expect(repos).toMatchObject({
+      home: {
+        path: repoPath,
+      },
+    });
+
+    expect(content).not.toMatch(/repos:\s*path:/);
+  });
+
+  it("produces a config that resolveRepoContext can load", () => {
+    const cwd = makeTempDir();
+    const repoDir = path.join(cwd, "test-workspace");
+    fs.mkdirSync(repoDir, { recursive: true });
+
+    createRepoEntry({
+      cwd,
+      name: "work",
+      repoPath: "./test-workspace",
+      setDefault: true,
+    });
+
+    const context = resolveRepoContext({ cwd });
+
+    expect(context.name).toBe("work");
+    expect(context.root).toBe(path.resolve(repoDir));
+    expect(context.source).toBe("local-config");
   });
 
   it("updates the nearest existing config file", () => {
