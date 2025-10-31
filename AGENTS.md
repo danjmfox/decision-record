@@ -28,7 +28,7 @@ For more information, refer to [meta/DR--20251029--meta--decision-policy.md](dec
 
 | Area               | Objective                                                                            | Status         |
 | ------------------ | ------------------------------------------------------------------------------------ | -------------- |
-| **CLI Core**       | Support full DR lifecycle (new → accept → revise → supersede → retire)               | ✅ Implemented |
+| **CLI Core**       | Support full DR lifecycle (new → draft → propose → accept → revise → retire)         | ✅ Implemented |
 | **Config System**  | Support `.drctl.yaml` with named repositories (`work`, `home`) and domain subfolders | 🔄 In progress |
 | **Repo Structure** | Separate app (`decision-record`) and data repos (`work-decisions`, `home-decisions`) | ✅ Agreed      |
 | **Examples**       | Include `decisions-example/` folder for demos and tests                              | ✅ Done        |
@@ -62,6 +62,7 @@ For more information, refer to [meta/DR--20251029--meta--decision-policy.md](dec
 | **Private data**     | `.drctl.yaml` and `decisions/` folders are `.gitignore`d; only `decisions-example/` is public.                                       |
 | **AI collaboration** | All reasoning steps remain inspectable; outputs versioned in code, not ephemeral.                                                    |
 | **CLI feedback**     | Commands echo repo context and file paths; `drctl repo` surfaces the resolved workspace on demand.                                   |
+| **Lifecycle flow**   | `drctl new` scaffolds a draft; `drctl draft`/`drctl propose` manage status updates and git commits.                                  |
 
 ---
 

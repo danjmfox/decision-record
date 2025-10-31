@@ -52,7 +52,7 @@ A Markdown file with YAML frontmatter holding:
 
 ### Lifecycle States
 
-`Proposed` → `Accepted` → (`Deprecated` | `Superseded`) → `Retired` → `Archived`
+`Draft` → `Proposed` → `Accepted` → (`Deprecated` | `Superseded` | `Rejected`) → `Retired` → `Archived`
 
 ### Change Types
 
@@ -111,7 +111,7 @@ Every command echoes the resolved repo and any file it touches. Example output:
    Config: /Users/me/.drctl.yaml
    Default domain dir: domains
    Domain overrides: none
-✅ Created DR--20251030--personal--hydrate (proposed)
+✅ Created DR--20251030--personal--hydrate (draft)
 📄 File: /Users/me/Documents/home-decisions/domains/personal/DR--20251030--personal--hydrate.md
 ```
 
@@ -138,7 +138,9 @@ Remove the link later with `npm unlink -g decision-record` (or run `npm unlink` 
 
 | Command                             | Purpose                                |
 | ----------------------------------- | -------------------------------------- |
-| `drctl new <domain> <slug>`         | Create new record                      |
+| `drctl new <domain> <slug>`         | Scaffold a new draft (no git yet)      |
+| `drctl draft <id>`                  | Commit the current draft state         |
+| `drctl propose <id>`                | Move draft to proposed + commit        |
 | `drctl list`                        | List decisions (filterable)            |
 | `drctl accept <id>`                 | Mark proposed decision accepted        |
 | `drctl repo`                        | Display the currently resolved repo    |
@@ -214,11 +216,13 @@ See [decision-record-template.md](./decisions-example/decision-record-template.m
 ## 🔁 Workflow Summary
 
 1. **Capture**: `drctl new infra "secure-docs-repo"`
-2. **Accept**: `drctl accept <id>` when it’s adopted
-3. **Revise**: `drctl revise <id> --note "Raised confidence" --confidence 0.9`
-4. **Supersede**: `drctl supersede <old_id> <new_id>` when replaced
-5. **Review**: periodically check reviewDate for updates.
-6. **Index**: auto-generate `DecisionIndex.md` for browsing.
+2. **Draft**: `drctl draft <id>` once the starter content is ready to track
+3. **Propose**: `drctl propose <id>` to circulate for review
+4. **Accept**: `drctl accept <id>` when it’s adopted
+5. **Revise**: `drctl revise <id> --note "Raised confidence" --confidence 0.9`
+6. **Supersede**: `drctl supersede <old_id> <new_id>` when replaced
+7. **Review**: periodically check reviewDate for updates.
+8. **Index**: auto-generate `DecisionIndex.md` for browsing.
 
 ## 🌱 Plan for Evolution
 
