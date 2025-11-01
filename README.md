@@ -230,6 +230,25 @@ See [decision-record-template.md](./decisions-example/decision-record-template.m
 
 8. **Index**: auto-generate `DecisionIndex.md` for browsing.
 
+### ⚙️ Configuration Overrides
+
+`drctl` looks for configuration in this order:
+
+1. CLI flag `--config <path>`
+2. Environment variable `DRCTL_CONFIG`
+3. Nearest `.drctl.yaml` walking up from the current working directory
+4. Global defaults (`~/.drctl.yaml`, `~/.config/drctl/drconfig.yaml`, etc.)
+
+The selected config then determines repo aliases, domain folders, and the default repo for commands that interact with decisions. Use the flag or env var when you want to target a shared/global config from another workspace:
+
+```bash
+# Write to a shared config kept under ~/decisions/.drctl.yaml
+npm run dev -- --config ~/decisions/.drctl.yaml repo new research ~/research-decisions --default
+
+# Equivalent using the environment variable
+DRCTL_CONFIG=~/decisions/.drctl.yaml npm run dev -- repo switch research
+```
+
 ### 🔄 Quickstart Commands
 
 Run through the full lifecycle from a blank slate:

@@ -196,6 +196,8 @@ repos:
       family: family
 ```
 
+- **Override order**: an explicit `--config <path>` flag wins, then `DRCTL_CONFIG`, then the nearest `.drctl.yaml`, then global fallbacks. Use `--config`/`DRCTL_CONFIG` when writing to shared configs from another workspace.
+
 ---
 
 ## 🧭 Communication Style
