@@ -14,6 +14,7 @@ import {
   rejectDecision,
   deprecateDecision,
   reviseDecision,
+  retireDecision,
   supersedeDecision,
 } from "./service.js";
 import * as gitModule from "./git.js";
@@ -330,6 +331,44 @@ describe("service layer", () => {
     expect(gitClient.stageAndCommit).toHaveBeenCalledWith([result.filePath], {
       cwd: context.root,
       message: `drctl: deprecate ${creation.record.id}`,
+    });
+  });
+
+  it("retires a decision and commits via git", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const creation = createDecision("meta", "retire-test", { context });
+    const filePath = creation.filePath;
+    fs.writeFileSync(
+      filePath,
+      matter.stringify("# Body\n\nPersist me", {
+        ...creation.record,
+      }),
+    );
+
+    const result = await retireDecision(creation.record.id, {
+      context,
+      gitClient,
+    });
+
+    expect(result.record.status).toBe("retired");
+    expect(result.record.changeType).toBe("retirement");
+    expect(result.record.lastEdited).toBe("2025-10-30");
+    expect(result.record.changelog?.at(-1)).toEqual({
+      date: "2025-10-30",
+      note: "Marked as retired",
+    });
+
+    const stored = matter.read(result.filePath);
+    expect(stored.data.status).toBe("retired");
+    expect(stored.data.changeType).toBe("retirement");
+    expect(stored.content).toContain("Persist me");
+
+    expect(gitClient.stageAndCommit).toHaveBeenCalledWith([result.filePath], {
+      cwd: context.root,
+      message: `drctl: retire ${creation.record.id}`,
     });
   });
 

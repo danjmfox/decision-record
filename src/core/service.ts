@@ -190,6 +190,30 @@ export async function deprecateDecision(
   return { record: rec, filePath, context };
 }
 
+export async function retireDecision(
+  id: string,
+  options: RepoOptions = {},
+): Promise<DecisionWriteResult> {
+  const context = ensureContext(options);
+  const rec = loadDecision(context, id);
+  const today = new Date().toISOString().slice(0, 10);
+  rec.status = "retired";
+  rec.lastEdited = today;
+  rec.changeType = "retirement";
+  const changelog = rec.changelog ?? [];
+  changelog.push({ date: today, note: "Marked as retired" });
+  rec.changelog = changelog;
+  const filePath = saveDecision(context, rec);
+  const gitClient = options.gitClient ?? createGitClient();
+  await stageAndCommitWithHint(
+    context,
+    gitClient,
+    [filePath],
+    `drctl: retire ${rec.id}`,
+  );
+  return { record: rec, filePath, context };
+}
+
 export async function supersedeDecision(
   oldId: string,
   newId: string,

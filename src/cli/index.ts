@@ -11,6 +11,7 @@ import {
   listAll,
   rejectDecision,
   deprecateDecision,
+  retireDecision,
   supersedeDecision,
   reviseDecision,
   resolveContext,
@@ -378,6 +379,17 @@ program
     createRepoAction(async function (repoOptions, id: string) {
       const result = await deprecateDecision(id, { ...repoOptions });
       console.log(`⚠️ ${result.record.id} marked as deprecated`);
+      console.log(`📄 File: ${result.filePath}`);
+    }),
+  );
+
+program
+  .command("retire <id>")
+  .description("Retire a decision and commit the change")
+  .action(
+    createRepoAction(async function (repoOptions, id: string) {
+      const result = await retireDecision(id, { ...repoOptions });
+      console.log(`🪦 ${result.record.id} marked as retired`);
       console.log(`📄 File: ${result.filePath}`);
     }),
   );
