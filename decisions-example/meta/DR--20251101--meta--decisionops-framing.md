@@ -2,7 +2,7 @@
 id: DR--20251101--meta--decisionops-framing
 dateCreated: "2025-11-01"
 version: 1.0.0
-status: proposed
+status: accepted
 changeType: creation
 domain: meta
 slug: decisionops-framing
@@ -16,7 +16,10 @@ changelog:
     note: Marked as draft
   - date: "2025-11-01"
     note: Marked as proposed
+  - date: "2025-11-01"
+    note: Marked as accepted
 lastEdited: "2025-11-01"
+dateAccepted: "2025-11-01"
 ---
 
 # DR--20251101--meta--decisionops-framing
