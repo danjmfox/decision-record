@@ -157,4 +157,22 @@ describe("service layer", () => {
       message: `drctl: propose ${creation.record.id}`,
     });
   });
+
+  it("suggests repo bootstrap when git repo is missing", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi
+        .fn()
+        .mockRejectedValue(
+          new Error(
+            "Git command failed: git add test\nfatal: not a git repository (or any of the parent directories): .git",
+          ),
+        ),
+    };
+    const creation = createDecision("personal", "hydrate", { context });
+
+    await expect(
+      draftDecision(creation.record.id, { context, gitClient }),
+    ).rejects.toThrow(/drctl repo bootstrap test/);
+  });
 });

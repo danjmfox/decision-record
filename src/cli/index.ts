@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "fs";
+import path from "path";
 import { Command } from "commander";
 import {
   acceptDecision,
@@ -11,10 +12,15 @@ import {
   type CreateDecisionOptions,
   type RepoOptions,
 } from "../core/service.js";
-import { diagnoseConfig, type RepoContext } from "../config.js";
+import {
+  diagnoseConfig,
+  resolveRepoContext,
+  type RepoContext,
+} from "../config.js";
 import { formatRepoContext } from "./repo-format.js";
 import { collectRepoOptions, ensureRepoFlagNotUsed } from "./options.js";
 import { createRepoEntry } from "./repo-manage.js";
+import { initGitRepo } from "../core/git.js";
 
 interface GlobalCliOptions {
   repo?: string;
@@ -25,13 +31,22 @@ program.name("drctl").description("Decision Record CLI").version("0.1.0");
 
 program.option("--repo <repo>", "target repo alias or path");
 
-const repoCommand = program
-  .command("repo")
+const repoCommand = new Command("repo")
   .description("Show or manage repository configuration")
   .action(
     handleAction(function (this: Command) {
+      this.outputHelp();
       const repoOptions = resolveRepoOptions(this);
       logRepo(repoOptions.context);
+    }),
+  );
+
+repoCommand
+  .command("show")
+  .description("Display resolved repository context")
+  .action(
+    createRepoAction(function () {
+      // Repo context already logged by middleware.
     }),
   );
 
@@ -130,6 +145,30 @@ repoCommand
     }),
   );
 
+repoCommand
+  .command("bootstrap <name>")
+  .description("Initialise git for a configured repository")
+  .action(
+    handleAction(async function (this: Command, name: string) {
+      ensureRepoFlagNotUsed(this, "repo bootstrap");
+      const context = resolveRepoContext({
+        repoFlag: name,
+        cwd: process.cwd(),
+      });
+      logRepo(context);
+      fs.mkdirSync(context.root, { recursive: true });
+      const alreadyInitialised = fs.existsSync(path.join(context.root, ".git"));
+      if (alreadyInitialised) {
+        console.log(`✅ Git already initialised at ${context.root}`);
+        return;
+      }
+      await initGitRepo(context.root);
+      console.log(`✅ Initialised git repository at ${context.root}`);
+    }),
+  );
+
+program.addCommand(repoCommand);
+
 program
   .command("new <domain> <slug>")
   .description("Create a new decision record for the given domain and slug")
@@ -211,8 +250,6 @@ program
     }),
   );
 
-program.parse();
-
 function resolveRepoOptions(
   command: Command,
 ): RepoOptions & { context: RepoContext } {
@@ -256,3 +293,5 @@ function createRepoAction<T extends unknown[]>(
     return fn.apply(this, [repoOptions, ...args]);
   });
 }
+
+await program.parseAsync();

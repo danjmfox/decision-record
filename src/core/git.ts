@@ -1,6 +1,7 @@
+import fs from "fs";
+import path from "path";
 import { execFile } from "child_process";
 import { promisify } from "util";
-import path from "path";
 
 const execFileAsync = promisify(execFile);
 
@@ -38,6 +39,24 @@ export function createGitClient(): GitClient {
       await runGit(commitArgs, options.cwd);
     },
   };
+}
+
+export async function initGitRepo(cwd: string): Promise<boolean> {
+  const gitDir = path.join(cwd, ".git");
+  if (fs.existsSync(gitDir)) {
+    return false;
+  }
+  await runGit(["init"], cwd);
+  return true;
+}
+
+export function isNotGitRepoError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("not a git repository") ||
+    (message.includes("no such file or directory") && message.includes(".git"))
+  );
 }
 
 async function runGit(args: string[], cwd: string): Promise<void> {

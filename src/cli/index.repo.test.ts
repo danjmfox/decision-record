@@ -90,4 +90,27 @@ describe("cli index commands", () => {
 
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
+
+  it("bootstraps git repos for configured alias", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
+    const repoDir = path.join(tempDir, "workspace");
+    fs.mkdirSync(repoDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(tempDir, ".drctl.yaml"),
+      `repos:\n  work:\n    path: ./workspace\n`,
+    );
+
+    process.chdir(tempDir);
+    process.argv = ["node", "drctl", "repo", "bootstrap", "work"];
+
+    await import("./index.js");
+
+    const logCalls = consoleLogSpy.mock.calls.map((call) => call[0]);
+    expect(logCalls.some((msg) => /Initialised git repository/.test(msg))).toBe(
+      true,
+    );
+    expect(fs.existsSync(path.join(repoDir, ".git"))).toBe(true);
+
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
 });

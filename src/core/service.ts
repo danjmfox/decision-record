@@ -3,7 +3,7 @@ import { saveDecision, loadDecision, listDecisions } from "./repository.js";
 import { generateId } from "./utils.js";
 import type { RepoContext, ResolveRepoOptions } from "../config.js";
 import { resolveRepoContext } from "../config.js";
-import { createGitClient, type GitClient } from "./git.js";
+import { createGitClient, isNotGitRepoError, type GitClient } from "./git.js";
 
 export interface DecisionWriteResult {
   record: DecisionRecord;
@@ -64,12 +64,13 @@ export async function draftDecision(
   changelog.push({ date: today, note: "Marked as draft" });
   record.changelog = changelog;
   const filePath = saveDecision(context, record);
-
   const gitClient = options.gitClient ?? createGitClient();
-  await gitClient.stageAndCommit([filePath], {
-    cwd: context.root,
-    message: `drctl: draft ${record.id}`,
-  });
+  await stageAndCommitWithHint(
+    context,
+    gitClient,
+    [filePath],
+    `drctl: draft ${record.id}`,
+  );
 
   return { record, filePath, context };
 }
@@ -87,12 +88,13 @@ export async function proposeDecision(
   changelog.push({ date: today, note: "Marked as proposed" });
   record.changelog = changelog;
   const filePath = saveDecision(context, record);
-
   const gitClient = options.gitClient ?? createGitClient();
-  await gitClient.stageAndCommit([filePath], {
-    cwd: context.root,
-    message: `drctl: propose ${record.id}`,
-  });
+  await stageAndCommitWithHint(
+    context,
+    gitClient,
+    [filePath],
+    `drctl: propose ${record.id}`,
+  );
 
   return { record, filePath, context };
 }
@@ -111,10 +113,12 @@ export async function acceptDecision(
   rec.changelog = changelog;
   const filePath = saveDecision(context, rec);
   const gitClient = options.gitClient ?? createGitClient();
-  await gitClient.stageAndCommit([filePath], {
-    cwd: context.root,
-    message: `drctl: accept ${rec.id}`,
-  });
+  await stageAndCommitWithHint(
+    context,
+    gitClient,
+    [filePath],
+    `drctl: accept ${rec.id}`,
+  );
   return { record: rec, filePath, context };
 }
 
@@ -189,4 +193,33 @@ function renderTemplate(record: DecisionRecord): string {
     "_Summarise notable updates, revisions, or corrections. Each should have a date and note in YAML frontmatter for traceability._",
     "",
   ].join("\n");
+}
+
+async function stageAndCommitWithHint(
+  context: RepoContext,
+  gitClient: GitClient,
+  paths: string[],
+  message: string,
+) {
+  try {
+    await gitClient.stageAndCommit(paths, {
+      cwd: context.root,
+      message,
+    });
+  } catch (error) {
+    if (isNotGitRepoError(error)) {
+      const hintTarget = context.name
+        ? `repo "${context.name}" (${context.root})`
+        : context.root;
+      const bootstrap = context.name
+        ? `drctl repo bootstrap ${context.name}`
+        : `git init`;
+      const hintMessage =
+        error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `${hintMessage}\n💡 Hint: initialise git in ${hintTarget} via "${bootstrap}" before running this command again.`,
+      );
+    }
+    throw error;
+  }
 }
