@@ -3,6 +3,9 @@ import os from "os";
 import path from "path";
 import { load as loadYaml } from "js-yaml";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { saveDecision } from "../core/repository.js";
+import type { RepoContext } from "../config.js";
+import type { DecisionRecord } from "../core/models.js";
 
 describe("cli index commands", () => {
   const originalArgv = process.argv.slice();
@@ -133,6 +136,52 @@ describe("cli index commands", () => {
       fs.readFileSync(path.join(tempDir, ".drctl.yaml"), "utf8"),
     ) as Record<string, unknown>;
     expect(parsed.defaultRepo).toBe("home");
+
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("generates an index for the default repository", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
+    const repoDir = path.join(tempDir, "workspace");
+    fs.mkdirSync(repoDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(tempDir, ".drctl.yaml"),
+      `defaultRepo: work\nrepos:\n  work:\n    path: ./workspace\n`,
+    );
+
+    const context: RepoContext = {
+      root: repoDir,
+      name: "work",
+      source: "cli",
+      domainMap: {},
+    };
+
+    const makeRecord = (domain: string, slug: string): DecisionRecord => ({
+      id: `DR--20250101--${domain}--${slug}`,
+      dateCreated: "2025-01-01",
+      version: "1.0",
+      status: "draft",
+      changeType: "creation",
+      domain,
+      slug,
+      changelog: [],
+    });
+
+    saveDecision(context, makeRecord("alpha", "first"), "# alpha first");
+    saveDecision(context, makeRecord("beta", "second"), "# beta second");
+
+    process.chdir(tempDir);
+    process.argv = ["node", "drctl", "index"];
+
+    await import("./index.js");
+
+    const logCalls = consoleLogSpy.mock.calls.map((call) => call[0]);
+    expect(logCalls.some((msg) => /Generated index/.test(msg))).toBe(true);
+    const indexPath = path.join(repoDir, "index.md");
+    expect(fs.existsSync(indexPath)).toBe(true);
+    const markdown = fs.readFileSync(indexPath, "utf8");
+    expect(markdown).toContain("## alpha");
+    expect(markdown).toContain("## beta");
 
     fs.rmSync(tempDir, { recursive: true, force: true });
   });

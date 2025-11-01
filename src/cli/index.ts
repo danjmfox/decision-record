@@ -21,6 +21,7 @@ import { formatRepoContext } from "./repo-format.js";
 import { collectRepoOptions, ensureRepoFlagNotUsed } from "./options.js";
 import { createRepoEntry, switchDefaultRepo } from "./repo-manage.js";
 import { initGitRepo } from "../core/git.js";
+import { generateIndex } from "../core/indexer.js";
 
 interface GlobalCliOptions {
   repo?: string;
@@ -187,6 +188,16 @@ repoCommand
   );
 
 program.addCommand(repoCommand);
+
+program
+  .command("index")
+  .description("Generate a markdown index for the current repository")
+  .action(
+    createRepoAction(function (repoOptions) {
+      const { filePath } = generateIndex(repoOptions.context);
+      console.log(`📑 Generated index: ${filePath}`);
+    }),
+  );
 
 program
   .command("new <domain> <slug>")
