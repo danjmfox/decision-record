@@ -9,6 +9,7 @@ import {
   proposeDecision,
   listAll,
   rejectDecision,
+  deprecateDecision,
   resolveContext,
   type CreateDecisionOptions,
   type RepoOptions,
@@ -314,6 +315,17 @@ program
     createRepoAction(async function (repoOptions, id: string) {
       const result = await rejectDecision(id, { ...repoOptions });
       console.log(`🚫 ${result.record.id} marked as rejected`);
+      console.log(`📄 File: ${result.filePath}`);
+    }),
+  );
+
+program
+  .command("deprecate <id>")
+  .description("Mark a decision as deprecated and commit the change")
+  .action(
+    createRepoAction(async function (repoOptions, id: string) {
+      const result = await deprecateDecision(id, { ...repoOptions });
+      console.log(`⚠️ ${result.record.id} marked as deprecated`);
       console.log(`📄 File: ${result.filePath}`);
     }),
   );
