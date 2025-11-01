@@ -121,6 +121,8 @@ Remove the link later with `npm unlink -g decision-record` (or run `npm unlink` 
 
 ## 🧱 Code Structure
 
+For a deeper architectural overview (layers, lifecycle automation, comparisons with adr-tools), see [ARCHITECTURE.md](./ARCHITECTURE.md).
+
 | Path                     | Purpose                                                                   |
 | ------------------------ | ------------------------------------------------------------------------- |
 | `src/cli/index.ts`       | Commander-based CLI entry point; shared repo middleware + service wiring. |

@@ -98,6 +98,8 @@ For more information, refer to [meta/DR--20251029--meta--decision-policy.md](dec
 | `src/types/js-yaml.d.ts` | Minimal type declaration for js-yaml loader.                        |
 | `decisions-example/`     | Example decision records used for demos and tests.                  |
 
+Refer to [ARCHITECTURE.md](./ARCHITECTURE.md) for the layered overview and reasoning captured in [DR--20251101--meta--architecture-overview](decisions-example/meta/DR--20251101--meta--architecture-overview.md).
+
 ---
 
 ### 🔐 Gitignore Baseline
