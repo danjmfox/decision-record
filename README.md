@@ -136,7 +136,6 @@ drctl follows the DecisionOps framing captured in `DR--20251101--meta--decisiono
 - **Domain-driven design**: repos and domains act as bounded contexts; IDs and status vocabulary form the ubiquitous language.
 - **Observability**: indexes and supersede links provide decision lineage for audits, dashboards, or knowledge graphs.
 - **Change control**: lifecycle commands create conventional commits (`drctl: <action> <id>`), giving traceability without manual checklists.
-- **Per-repo governance**: validation runs within the selected repo by default (see `DR--20251101--meta--governance-per-repo-validation`), so teams keep work/home catalogues isolated while still benefiting from automated checks.
 
 ## 🧱 Code Structure
 

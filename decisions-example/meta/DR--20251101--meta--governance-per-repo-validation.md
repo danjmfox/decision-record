@@ -2,69 +2,54 @@
 id: DR--20251101--meta--governance-per-repo-validation
 dateCreated: "2025-11-01"
 version: 1.0.0
-status: accepted
+status: draft
 changeType: creation
 domain: meta
 slug: governance-per-repo-validation
-tags:
-  - governance
-  - validation
 changelog:
   - date: "2025-11-01"
     note: Initial creation
-  - date: "2025-11-01"
-    note: Marked as draft
-  - date: "2025-11-01"
-    note: Marked as proposed
-  - date: "2025-11-01"
-    note: Marked as accepted
-lastEdited: "2025-11-01"
-dateAccepted: "2025-11-01"
 ---
 
 # DR--20251101--meta--governance-per-repo-validation
 
 ## 🧭 Context
 
-We are introducing a governance validation workflow for drctl so teams can check Decision Record integrity after manual edits or merges. A proposal suggested maintaining a global `registry.json` that tracked every DR across personal and work repositories. That approach raised concerns about privacy boundaries (keeping home vs work reasoning separate), synchronisation complexity, and storing cross-repo data by default when most teams operate within one repo at a time.
+_Describe the background and circumstances leading to this decision._
 
 ## ⚖️ Options Considered
 
-| Option                       | Description                                                     | Outcome  | Rationale                                                                                  |
-| ---------------------------- | --------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------ |
-| Do nothing                   | Rely on discipline; no automated validation                     | Rejected | Drift risk remains; humans will still edit files manually                                  |
-| Global registry (default)    | Maintain a single `registry.json` aggregating all repos         | Rejected | Breaks personal/work isolation, adds sync burden, stores unwanted data                     |
-| Per-repo validation (chosen) | Validate each repo independently; no shared registry by default | Accepted | Preserves boundaries, keeps implementation simple, still enables optional federation later |
+_List the main options or alternatives that were evaluated before making the decision, including why each was accepted or rejected._
+
+| Option | Description | Outcome  | Rationale                      |
+| ------ | ----------- | -------- | ------------------------------ |
+| A      | Do nothing  | Rejected | Insufficient long-term clarity |
+| B      |             |          |                                |
 
 ## 🧠 Decision
 
-Default governance validation operates per repository. `drctl governance validate` reads the active repo (and any explicitly supplied repos), detects metadata issues, and reports them without writing global state. Any cross-repo federation will be opt-in and explicitly invoked so users can keep personal and work catalogues isolated.
+_State the decision made clearly and succinctly._
 
 ## 🪶 Principles
 
-- **Privacy by design** — personal/workspaces stay separate unless the user chooses to merge them.
-- **Progressive disclosure** — start with the simplest useful behaviour (per-repo checks), then layer optional federation later.
-- **Human authority** — validators inform; they never write shared registries or modify DRs automatically.
+_List the guiding principles or values that influenced this decision._
 
 ## 🔁 Lifecycle
 
-Accepted 2025-11-01 with agreement that governance validation will default to per-repo scans and only opt-in federation when needed.
+_Outline the current lifecycle state and any relevant change types._
 
 ## 🧩 Reasoning
 
-- Teams already configure drctl per repo; governance validation should match that mental model.
-- Keeping data local reduces accidental leakage of private decisions and simplifies compliance discussions.
-- Developers can still produce a combined view later (e.g. via an explicit `drctl governance export`) without forcing it on every user.
-- Avoiding a background registry keeps the implementation composable for now and reduces the amount of state we must support long term.
+_Explain the rationale, trade-offs, and considerations behind the decision._
 
 ## 🔄 Next Actions
 
-- Implement the per-repo `drctl governance validate` command using the iterative plan.
-- Document how to run validation locally and in CI.
-- Explore an opt-in federation/registry pattern once per-repo validation has shipped and real demands surface.
+_Specify the immediate next steps or actions following this decision._
 
 ## 🧠 Confidence
 
-0.7 — aligns with current usage patterns and privacy expectations; revisit if multiple teams require shared registries.
+_Indicate the confidence level in this decision and any planned reviews._
 
 ## 🧾 Changelog
+
+_Summarise notable updates, revisions, or corrections. Each should have a date and note in YAML frontmatter for traceability._

@@ -1,5 +1,11 @@
+import fs from "fs";
 import type { DecisionRecord } from "./models.js";
-import { saveDecision, loadDecision, listDecisions } from "./repository.js";
+import {
+  saveDecision,
+  loadDecision,
+  listDecisions,
+  getDecisionPath,
+} from "./repository.js";
 import { generateId } from "./utils.js";
 import type { RepoContext, ResolveRepoOptions } from "../config.js";
 import { resolveRepoContext } from "../config.js";
@@ -68,6 +74,12 @@ export function createDecision(
       },
     ],
   };
+  const targetPath = getDecisionPath(context, record);
+  if (fs.existsSync(targetPath)) {
+    throw new Error(
+      `Decision record "${record.id}" already exists at ${targetPath}. Use drctl lifecycle or revision commands to update it.`,
+    );
+  }
   const filePath = saveDecision(context, record, renderTemplate(record));
   return { record, filePath, context };
 }

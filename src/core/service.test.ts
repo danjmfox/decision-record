@@ -72,6 +72,25 @@ describe("service layer", () => {
     expect(storedRecord?.status).toBe("draft");
   });
 
+  it("does not overwrite an existing decision when creating again", () => {
+    const context = makeContext();
+    const first = createDecision("meta", "duplicate-check", { context });
+
+    fs.writeFileSync(
+      first.filePath,
+      matter.stringify("# Body\n\nKeep this content", {
+        ...first.record,
+      }),
+    );
+
+    expect(() =>
+      createDecision("meta", "duplicate-check", { context }),
+    ).toThrow(/already exists/i);
+
+    const stored = fs.readFileSync(first.filePath, "utf8");
+    expect(stored).toContain("Keep this content");
+  });
+
   it("accepts an existing decision, updates changelog, and commits via git", async () => {
     const context = makeContext();
     const gitClient = {
