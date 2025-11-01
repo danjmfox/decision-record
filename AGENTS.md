@@ -138,8 +138,8 @@ home-decisions/
 
 1. **Repository Logic (Next Up)**
    - [x] Update `repository.ts` to honour per-repo domain folders from config.
-   - [ ] Auto-create domain subfolders when writing records.
-   - [ ] Add an `index` generator that aggregates across configured repos.
+   - [x] Auto-create domain subfolders when writing records.
+   - [x] Add an `index` generator that aggregates across configured repos.
    - [x] Prevent duplicate repo aliases pointing at the same filesystem path.
    - [ ] Generate repo/domain `index.md` files with linked decision records.
    - [ ] Enable hierarchical navigation between config → repo → domain → DR.
