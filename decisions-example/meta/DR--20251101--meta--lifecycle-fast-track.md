@@ -2,7 +2,7 @@
 id: DR--20251101--meta--lifecycle-fast-track
 dateCreated: "2025-11-01"
 version: "1.0"
-status: draft
+status: proposed
 changeType: creation
 domain: meta
 slug: lifecycle-fast-track
@@ -13,6 +13,8 @@ changelog:
     note: Marked as draft
   - date: "2025-11-01"
     note: Marked as draft
+  - date: "2025-11-01"
+    note: Marked as proposed
 lastEdited: "2025-11-01"
 ---
 
