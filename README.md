@@ -287,7 +287,7 @@ npm run dev -- index
 | Phase             | Goal                        | Outcome                                             |
 | ----------------- | --------------------------- | --------------------------------------------------- |
 | **Phase 1 (Now)** | CLI-only, file-based, no DB | Test friction and cognitive value                   |
-| **Phase 1 (Now)** | Harden repo management      | Prevent duplicate aliases targeting same path       |
+| **Phase 1 (Now)** | Harden repo management      | ✅ Prevent duplicate aliases targeting same path    |
 | **Phase 1 (Now)** | Add index generator         | Emit repo/domain `index.md` with linked decisions   |
 | **Phase 2**       | Hierarchical navigation     | Navigate repo ⇄ domain ⇄ decisions seamlessly       |
 | **Phase 2**       | Index enhancements          | Sorting, status roll-ups, review reminders, filters |
