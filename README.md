@@ -179,6 +179,8 @@ For a deeper architectural overview (layers, lifecycle automation, comparisons w
 | `drctl index`                       | Rebuild master index                    |
 | `drctl export`                      | Export metadata as JSON for dashboards  |
 
+> `drctl new` scaffolds a record once. Re-run lifecycle commands (`draft`, `accept`, `correction`, `revise`, etc.) to evolve a decision; calling `new` again now reports that the decision already exists.
+
 ## 🧮 File Structure Example
 
 ```bash

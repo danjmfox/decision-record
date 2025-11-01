@@ -48,6 +48,7 @@ For more information, refer to [meta/DR--20251029--meta--decision-policy.md](dec
 | **Human-AI collaboration**     | Maintain calm, reflective, evidence-based dialogue — no performative authority.              |
 | **Future-proofing**            | File-based today; API, n8n, and UI integrations tomorrow.                                    |
 | **DecisionOps framing**        | Align drctl with agile + governance practices per `DR--20251101--meta--decisionops-framing`. |
+| **Single-source scaffolding**  | `drctl new` runs once; lifecycle commands own every subsequent change.                       |
 
 ---
 
