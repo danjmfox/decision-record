@@ -231,14 +231,16 @@ See [decision-record-template.md](./decisions-example/decision-record-template.m
 
 ## 🌱 Plan for Evolution
 
-| Phase             | Goal                        | Outcome                                       |
-| ----------------- | --------------------------- | --------------------------------------------- |
-| **Phase 1 (Now)** | CLI-only, file-based, no DB | Test friction and cognitive value             |
-| **Phase 1 (Now)** | Harden repo management      | Prevent duplicate aliases targeting same path |
-| **Phase 2**       | Add index and diff commands | Trace history and lineage easily              |
-| **Phase 3**       | Add REST API adapter        | n8n, Express, or local service layer          |
-| **Phase 4**       | Vue dashboard               | Search, filter, and view reasoning visually   |
-| **Phase 5**       | Sync/export layer           | Integrate with Notion, Airtable, or TheBrain  |
+| Phase             | Goal                        | Outcome                                             |
+| ----------------- | --------------------------- | --------------------------------------------------- |
+| **Phase 1 (Now)** | CLI-only, file-based, no DB | Test friction and cognitive value                   |
+| **Phase 1 (Now)** | Harden repo management      | Prevent duplicate aliases targeting same path       |
+| **Phase 1 (Now)** | Add index generator         | Emit repo/domain `index.md` with linked decisions   |
+| **Phase 2**       | Hierarchical navigation     | Navigate repo ⇄ domain ⇄ decisions seamlessly       |
+| **Phase 2**       | Index enhancements          | Sorting, status roll-ups, review reminders, filters |
+| **Phase 3**       | Add REST API adapter        | n8n, Express, or local service layer                |
+| **Phase 4**       | Vue dashboard               | Search, filter, and view reasoning visually         |
+| **Phase 5**       | Sync/export layer           | Integrate with Notion, Airtable, or TheBrain        |
 
 ## 🧩 Design Philosophy
 

@@ -122,6 +122,8 @@ home-decisions/
    - [ ] Auto-create domain subfolders when writing records.
    - [ ] Add an `index` generator that aggregates across configured repos.
    - [ ] Prevent duplicate repo aliases pointing at the same filesystem path.
+   - [ ] Generate repo/domain `index.md` files with linked decision records.
+   - [ ] Enable hierarchical navigation between config → repo → domain → DR.
 
 2. **Examples & Documentation**
    - [ ] Add a README note clarifying `decisions-example/` as the default demo workspace.
