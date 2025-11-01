@@ -340,3 +340,7 @@ npm run dev -- index
 2. Dogfood the workflow for 2–3 weeks (real decisions only).
 3. Capture meta-observations in `DR--0001--meta--decision-policy--learnings.md`.
 4. Decide whether to pursue API integration or local dashboard first.
+
+## 📜 License
+
+This project is released under the [MIT License](./LICENSE.md) with an enhanced no-liability disclaimer. Review the licence before using or distributing the CLI.
