@@ -141,6 +141,13 @@ home-decisions/
    - [x] Example decision records relocated to `decisions-example/meta/...`.
    - [x] Community-first docs (`CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`, `SECURITY.md`, `SUPPORT.md`).
 
+5. **Lifecycle Automation (Current Focus)**
+   - [ ] Harden `drctl accept` so the git-backed status flow mirrors `draft`/`propose`.
+   - [ ] Add `drctl reject` and `drctl deprecate` with consistent changelog handling.
+   - [ ] Implement `drctl supersede`/`drctl retire`, ensuring markdown bodies persist.
+   - [ ] Add regression tests covering body preservation and changelog entries for every transition.
+   - [ ] Decide whether lifecycle commands should regenerate or remind about repository indexes.
+
 ---
 
 ### 🔄 Working Rhythm
