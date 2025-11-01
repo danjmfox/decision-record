@@ -138,25 +138,26 @@ Remove the link later with `npm unlink -g decision-record` (or run `npm unlink` 
 
 ## Key CLI Commands
 
-| Command                             | Purpose                                |
-| ----------------------------------- | -------------------------------------- |
-| `drctl new <domain> <slug>`         | Scaffold a new draft (no git yet)      |
-| `drctl draft <id>`                  | Commit the current draft state         |
-| `drctl propose <id>`                | Move draft to proposed + commit        |
-| `drctl list`                        | List decisions (filterable)            |
-| `drctl accept <id>`                 | Mark proposed decision accepted        |
-| `drctl reject <id>`                 | Mark proposed decision rejected        |
-| `drctl repo`                        | Display the currently resolved repo    |
-| `drctl repo new <name> <path>`      | Add a repo entry to the nearest config |
-| `drctl repo bootstrap <name>`       | Initialise git for a configured repo   |
-| `drctl repo switch <name>`          | Make an existing repo the default      |
-| `drctl correct <id> --note`         | Record a small correction              |
-| `drctl revise <id> --note`          | Increment version, update metadata     |
-| `drctl supersede <old_id> <new_id>` | Replace old decision                   |
-| `drctl retire <id>`                 | Retire obsolete decision               |
-| `drctl config check`                | Validate configuration files and repos |
-| `drctl index`                       | Rebuild master index                   |
-| `drctl export`                      | Export metadata as JSON for dashboards |
+| Command                             | Purpose                                 |
+| ----------------------------------- | --------------------------------------- |
+| `drctl new <domain> <slug>`         | Scaffold a new draft (no git yet)       |
+| `drctl draft <id>`                  | Commit the current draft state          |
+| `drctl propose <id>`                | Move draft to proposed + commit         |
+| `drctl list`                        | List decisions (filterable)             |
+| `drctl accept <id>`                 | Mark proposed decision accepted         |
+| `drctl reject <id>`                 | Mark proposed decision rejected         |
+| `drctl deprecate <id>`              | Mark decision deprecated (no successor) |
+| `drctl repo`                        | Display the currently resolved repo     |
+| `drctl repo new <name> <path>`      | Add a repo entry to the nearest config  |
+| `drctl repo bootstrap <name>`       | Initialise git for a configured repo    |
+| `drctl repo switch <name>`          | Make an existing repo the default       |
+| `drctl correct <id> --note`         | Record a small correction               |
+| `drctl revise <id> --note`          | Increment version, update metadata      |
+| `drctl supersede <old_id> <new_id>` | Replace old decision                    |
+| `drctl retire <id>`                 | Retire obsolete decision                |
+| `drctl config check`                | Validate configuration files and repos  |
+| `drctl index`                       | Rebuild master index                    |
+| `drctl export`                      | Export metadata as JSON for dashboards  |
 
 ## 🧮 File Structure Example
 
