@@ -145,6 +145,7 @@ Remove the link later with `npm unlink -g decision-record` (or run `npm unlink` 
 | `drctl propose <id>`                | Move draft to proposed + commit        |
 | `drctl list`                        | List decisions (filterable)            |
 | `drctl accept <id>`                 | Mark proposed decision accepted        |
+| `drctl reject <id>`                 | Mark proposed decision rejected        |
 | `drctl repo`                        | Display the currently resolved repo    |
 | `drctl repo new <name> <path>`      | Add a repo entry to the nearest config |
 | `drctl repo bootstrap <name>`       | Initialise git for a configured repo   |
