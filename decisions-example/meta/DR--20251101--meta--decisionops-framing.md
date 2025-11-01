@@ -52,7 +52,7 @@ Position drctl as a DecisionOps platform by:
 
 ## 🔁 Lifecycle
 
-Status remains `draft` while content lands in README/AGENTS. Promote to `proposed` once the documentation updates and DecisionOps messaging are ready for review.
+Accepted 2025-11-01 after README and AGENTS gained DecisionOps guidance for both agile and governance audiences.
 
 ## 🧩 Reasoning
 
@@ -65,10 +65,9 @@ Status remains `draft` while content lands in README/AGENTS. Promote to `propose
 
 ## 🔄 Next Actions
 
-- Update README with an “Agile-friendly” section highlighting flow, TDD, and CI parallels.
-- Add a companion paragraph for governance/rules-focused teams explaining validation, lifecycle enforcement, and DecisionOps benefits.
-- Cross-link AGENTS.md and relevant DRs so the collaboration agreement reflects the DecisionOps posture.
-- Explore a follow-up DR to scope governance validation enhancements (e.g. `drctl governance validate`).
+- Monitor feedback on the new README guidance; iterate if agile teams still perceive drag.
+- Extend AGENTS/README as governance validation tooling lands (e.g. `drctl governance validate`).
+- Capture a follow-up DR that scopes the governance validation engine and CI usage.
 
 ## 🧠 Confidence
 

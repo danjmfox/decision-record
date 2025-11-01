@@ -39,16 +39,19 @@ For more information, refer to [meta/DR--20251029--meta--decision-policy.md](dec
 
 ## 🧠 Design Principles
 
-| Principle                      | Description                                                                     |
-| ------------------------------ | ------------------------------------------------------------------------------- |
-| **Reasoning is code**          | Decisions are first-class, version-controlled artefacts.                        |
-| **Separation of concerns**     | App logic, configuration, and decision data live in distinct repos.             |
-| **Progressive disclosure**     | Defaults work out of the box; advanced config scales with need.                 |
-| **Trust through transparency** | Every design choice has a Decision Record (meta-governance).                    |
-| **Human-AI collaboration**     | Maintain calm, reflective, evidence-based dialogue — no performative authority. |
-| **Future-proofing**            | File-based today; API, n8n, and UI integrations tomorrow.                       |
+| Principle                      | Description                                                                                  |
+| ------------------------------ | -------------------------------------------------------------------------------------------- |
+| **Reasoning is code**          | Decisions are first-class, version-controlled artefacts.                                     |
+| **Separation of concerns**     | App logic, configuration, and decision data live in distinct repos.                          |
+| **Progressive disclosure**     | Defaults work out of the box; advanced config scales with need.                              |
+| **Trust through transparency** | Every design choice has a Decision Record (meta-governance).                                 |
+| **Human-AI collaboration**     | Maintain calm, reflective, evidence-based dialogue — no performative authority.              |
+| **Future-proofing**            | File-based today; API, n8n, and UI integrations tomorrow.                                    |
+| **DecisionOps framing**        | Align drctl with agile + governance practices per `DR--20251101--meta--decisionops-framing`. |
 
 ---
+
+We now articulate DecisionOps parallels explicitly: README highlights agile-friendly flow/TDD analogies, while governance guidance emphasises validation and lineage. This keeps both audiences aligned with the same reasoning system.
 
 ## ⚙️ Working Agreements
 

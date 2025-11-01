@@ -119,6 +119,24 @@ Every command echoes the resolved repo and any file it touches. Example output:
 
 Remove the link later with `npm unlink -g decision-record` (or run `npm unlink` inside the repo).
 
+## DecisionOps in Practice
+
+drctl follows the DecisionOps framing captured in `DR--20251101--meta--decisionops-framing`. Decisions behave like product work items: they flow through an auditable lifecycle, carry executable intent, and remain observable over time.
+
+### For agile and product teams
+
+- **User stories → Decision Records**: frontmatter + Markdown keep the “who / what / why” story structure visible.
+- **Acceptance criteria → Principles**: DR principles define quality gates; governance validation becomes the executable acceptance test.
+- **TDD / CI**: lifecycle commands (`draft → propose → accept`) mirror a pipeline, and `drctl` enforces clean working trees so commits stay focused and fast.
+- **Flow metrics**: timestamps and statuses let you track lead time, throughput, and WIP for decisions, just like delivery work.
+
+### For governance, assurance, and platform teams
+
+- **Governance as code**: schema, lifecycle rules, and lineage are version-controlled; planned validation (`drctl governance validate`) keeps them consistent.
+- **Domain-driven design**: repos and domains act as bounded contexts; IDs and status vocabulary form the ubiquitous language.
+- **Observability**: indexes and supersede links provide decision lineage for audits, dashboards, or knowledge graphs.
+- **Change control**: lifecycle commands create conventional commits (`drctl: <action> <id>`), giving traceability without manual checklists.
+
 ## 🧱 Code Structure
 
 For a deeper architectural overview (layers, lifecycle automation, comparisons with adr-tools), see [ARCHITECTURE.md](./ARCHITECTURE.md).
