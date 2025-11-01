@@ -270,7 +270,8 @@ Place this `.drctl.yaml` in the project root (or reference it via `--config`). B
 - Run lifecycle commands on a clean staging area; `drctl` stages and commits the decision files it edits.
 - Store decision records under a dedicated folder (e.g., `decisions/`) to keep histories tidy.
 - Use descriptive commit messages (the CLI defaults to `drctl: <action> <id>`).
-- A staged-files guardrail is planned; until then, run `git status` before invoking `drctl` to avoid bundling unrelated changes.
+- If your CI pipeline runs on every commit, consider configuring a skip rule for messages that start with `drctl:` (e.g., `[skip ci]` or equivalent) or run lifecycle commands in a separate branch that you squash on merge.
+- `drctl` aborts if other files are staged; run `git status` first if you expect to batch changes.
 
 ### 🔄 Quickstart Commands
 
