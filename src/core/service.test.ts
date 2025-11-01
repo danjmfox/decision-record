@@ -10,6 +10,7 @@ import {
   draftDecision,
   proposeDecision,
   listAll,
+  rejectDecision,
 } from "./service.js";
 
 const tempRoots: string[] = [];
@@ -161,6 +162,35 @@ describe("service layer", () => {
     expect(gitClient.stageAndCommit).toHaveBeenCalledWith([result.filePath], {
       cwd: context.root,
       message: `drctl: propose ${creation.record.id}`,
+    });
+  });
+
+  it("rejects a decision and commits via git", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const creation = createDecision("personal", "hydrate", { context });
+
+    const result = await rejectDecision(creation.record.id, {
+      context,
+      gitClient,
+    });
+
+    expect(result.record.status).toBe("rejected");
+    expect(result.record.lastEdited).toBe("2025-10-30");
+    expect(result.record.changelog?.at(-1)).toEqual({
+      date: "2025-10-30",
+      note: "Marked as rejected",
+    });
+
+    const stored = matter.read(result.filePath);
+    expect(stored.data.status).toBe("rejected");
+    expect(stored.content).toContain("## 🧭 Context");
+
+    expect(gitClient.stageAndCommit).toHaveBeenCalledWith([result.filePath], {
+      cwd: context.root,
+      message: `drctl: reject ${creation.record.id}`,
     });
   });
 

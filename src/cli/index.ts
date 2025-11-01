@@ -8,6 +8,7 @@ import {
   draftDecision,
   proposeDecision,
   listAll,
+  rejectDecision,
   resolveContext,
   type CreateDecisionOptions,
   type RepoOptions,
@@ -302,6 +303,17 @@ program
     createRepoAction(async function (repoOptions, id: string) {
       const result = await acceptDecision(id, { ...repoOptions });
       console.log(`✅ ${result.record.id} marked as accepted`);
+      console.log(`📄 File: ${result.filePath}`);
+    }),
+  );
+
+program
+  .command("reject <id>")
+  .description("Mark a decision as rejected and commit the change")
+  .action(
+    createRepoAction(async function (repoOptions, id: string) {
+      const result = await rejectDecision(id, { ...repoOptions });
+      console.log(`🚫 ${result.record.id} marked as rejected`);
       console.log(`📄 File: ${result.filePath}`);
     }),
   );

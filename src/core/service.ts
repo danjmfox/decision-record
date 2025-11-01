@@ -124,6 +124,29 @@ export async function acceptDecision(
   return { record: rec, filePath, context };
 }
 
+export async function rejectDecision(
+  id: string,
+  options: RepoOptions = {},
+): Promise<DecisionWriteResult> {
+  const context = ensureContext(options);
+  const rec = loadDecision(context, id);
+  const today = new Date().toISOString().slice(0, 10);
+  rec.status = "rejected";
+  rec.lastEdited = today;
+  const changelog = rec.changelog ?? [];
+  changelog.push({ date: today, note: "Marked as rejected" });
+  rec.changelog = changelog;
+  const filePath = saveDecision(context, rec);
+  const gitClient = options.gitClient ?? createGitClient();
+  await stageAndCommitWithHint(
+    context,
+    gitClient,
+    [filePath],
+    `drctl: reject ${rec.id}`,
+  );
+  return { record: rec, filePath, context };
+}
+
 export function listAll(
   status?: string,
   options: RepoOptions = {},
