@@ -127,7 +127,7 @@ Refer to [ARCHITECTURE.md](./ARCHITECTURE.md) for the layered overview and reaso
 
 Add these entries to keep personal workspaces private while collaborating publicly:
 
-```
+```bash
 # drctl workspaces
 .drctl.yaml
 .drctl.yml
@@ -163,6 +163,7 @@ home-decisions/
    - [x] `drctl config check` diagnostics.
    - [x] Example decision records relocated to `decisions-example/meta/...`.
    - [x] Community-first docs (`CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`, `SECURITY.md`, `SUPPORT.md`).
+   - [x] Per-repo governance validation command (`drctl governance validate`).
 
 5. **Lifecycle Automation (Current Focus)**
    - [x] Harden `drctl accept` so the git-backed status flow mirrors `draft`/`propose`.

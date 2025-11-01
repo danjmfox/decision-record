@@ -177,9 +177,12 @@ For a deeper architectural overview (layers, lifecycle automation, comparisons w
 | `drctl retire <id>`                 | Retire obsolete decision                |
 | `drctl config check`                | Validate configuration files and repos  |
 | `drctl index`                       | Rebuild master index                    |
+| `drctl governance validate`         | Check decision metadata integrity       |
 | `drctl export`                      | Export metadata as JSON for dashboards  |
 
 > `drctl new` scaffolds a record once. Re-run lifecycle commands (`draft`, `accept`, `correction`, `revise`, etc.) to evolve a decision; calling `new` again now reports that the decision already exists.
+
+Run `drctl governance validate` to audit the current repo’s decision records. Errors set a non-zero exit code so you can wire the command into CI; add `--json` for machine-readable diagnostics.
 
 ## 🧮 File Structure Example
 
