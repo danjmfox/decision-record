@@ -78,11 +78,16 @@ describe("service layer", () => {
     });
     expect(accepted.record.status).toBe("accepted");
     expect(accepted.record.lastEdited).toBe("2025-10-30");
+    expect(accepted.record.dateAccepted).toBe("2025-10-30");
     expect(accepted.filePath).toBe(creation.filePath);
     expect(accepted.record.changelog?.at(-1)).toEqual({
       date: "2025-10-30",
       note: "Marked as accepted",
     });
+
+    const storedFrontmatter = matter.read(creation.filePath);
+    expect(storedFrontmatter.data.status).toBe("accepted");
+    expect(storedFrontmatter.data.dateAccepted).toBe("2025-10-30");
 
     expect(gitClient.stageAndCommit).toHaveBeenCalledWith([creation.filePath], {
       cwd: context.root,

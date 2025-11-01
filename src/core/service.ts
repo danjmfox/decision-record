@@ -109,6 +109,7 @@ export async function acceptDecision(
   const today = new Date().toISOString().slice(0, 10);
   rec.status = "accepted";
   rec.lastEdited = today;
+  rec.dateAccepted = today;
   const changelog = rec.changelog ?? [];
   changelog.push({ date: today, note: "Marked as accepted" });
   rec.changelog = changelog;

@@ -24,6 +24,7 @@ export interface DecisionRecord {
   id: string;
   dateCreated: string;
   lastEdited?: string;
+  dateAccepted?: string;
   version: string;
   status: DecisionStatus;
   changeType: ChangeType;
