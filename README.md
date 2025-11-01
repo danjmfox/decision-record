@@ -253,6 +253,25 @@ npm run dev -- --config ~/decisions/.drctl.yaml repo new research ~/research-dec
 DRCTL_CONFIG=~/decisions/.drctl.yaml npm run dev -- repo switch research
 ```
 
+#### Embedded Decisions inside an Existing Project
+
+To keep decision records within an application repository, define a repo alias pointing to a subdirectory:
+
+```yaml
+repos:
+  app-decisions:
+    path: ./decisions
+    defaultDomainDir: domains
+defaultRepo: app-decisions
+```
+
+Place this `.drctl.yaml` in the project root (or reference it via `--config`). Best practices:
+
+- Run lifecycle commands on a clean staging area; `drctl` stages and commits the decision files it edits.
+- Store decision records under a dedicated folder (e.g., `decisions/`) to keep histories tidy.
+- Use descriptive commit messages (the CLI defaults to `drctl: <action> <id>`).
+- A staged-files guardrail is planned; until then, run `git status` before invoking `drctl` to avoid bundling unrelated changes.
+
 ### 🔄 Quickstart Commands
 
 Run through the full lifecycle from a blank slate:

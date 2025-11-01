@@ -100,6 +100,21 @@ For more information, refer to [meta/DR--20251029--meta--decision-policy.md](dec
 
 Refer to [ARCHITECTURE.md](./ARCHITECTURE.md) for the layered overview and reasoning captured in [DR--20251101--meta--architecture-overview](decisions-example/meta/DR--20251101--meta--architecture-overview.md).
 
+#### Embedded Decision Workflows
+
+- Teams may embed decision records inside existing repositories (e.g., `./decisions/`). Configure `.drctl.yaml` with an alias such as:
+
+  ```yaml
+  repos:
+    project-decisions:
+      path: ./decisions
+      defaultDomainDir: domains
+  defaultRepo: project-decisions
+  ```
+
+- Run lifecycle commands with a clean staging area; drctl commits the files it changes.
+- Upcoming guardrail: warn when other files are staged before committing.
+
 ---
 
 ### 🔐 Gitignore Baseline
