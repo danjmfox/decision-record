@@ -173,6 +173,23 @@ describe("createRepoEntry", () => {
     const repos = parsed.repos as Record<string, Record<string, unknown>>;
     expect(repos.demo.path).toBe("./repo");
   });
+
+  it("throws when another alias already targets the same path", () => {
+    const cwd = makeTempDir();
+    createRepoEntry({
+      cwd,
+      name: "work",
+      repoPath: "./workspace",
+    });
+
+    expect(() =>
+      createRepoEntry({
+        cwd,
+        name: "docs",
+        repoPath: "./workspace",
+      }),
+    ).toThrow(/already configured/i);
+  });
 });
 
 describe("switchDefaultRepo", () => {

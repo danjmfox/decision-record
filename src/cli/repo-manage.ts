@@ -55,6 +55,22 @@ export function createRepoEntry(
 
   const config = loadConfigFile(configPath);
   const repos = ensureRepoMap(config.repos);
+  const normalizedNewRoot = resolveRepoPath(repoPath, configDir);
+
+  for (const [alias, existing] of Object.entries(repos)) {
+    if (alias === name) continue;
+    const existingPath = getRepoPath(existing);
+    if (!existingPath) continue;
+    const normalizedExisting = resolveRepoPath(existingPath, configDir);
+    if (
+      path.normalize(normalizedExisting) === path.normalize(normalizedNewRoot)
+    ) {
+      throw new Error(
+        `Repository path "${normalizedNewRoot}" is already configured as "${alias}".`,
+      );
+    }
+  }
+
   config.repos = repos;
 
   const entry: Record<string, unknown> = { path: repoPath };
@@ -71,8 +87,7 @@ export function createRepoEntry(
   fs.mkdirSync(path.dirname(configPath), { recursive: true });
   fs.writeFileSync(configPath, yaml);
 
-  const repoRoot = resolveRepoPath(repoPath, configDir);
-  return { configPath, repoRoot };
+  return { configPath, repoRoot: normalizedNewRoot };
 }
 
 export function switchDefaultRepo(
@@ -126,6 +141,16 @@ function loadConfigFile(configPath: string): Record<string, unknown> {
     return {};
   }
   return { ...(parsed as Record<string, unknown>) };
+}
+
+function getRepoPath(entry: Record<string, unknown>): string | undefined {
+  const pathCandidates = [entry.path, entry.root, entry.directory, entry.dir];
+  for (const candidate of pathCandidates) {
+    if (typeof candidate === "string" && candidate.trim().length > 0) {
+      return candidate;
+    }
+  }
+  return undefined;
 }
 
 function ensureRepoMap(
