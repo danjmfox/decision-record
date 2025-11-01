@@ -1,9 +1,9 @@
 ---
 id: DR--20251101--meta--licensing
 dateCreated: "2025-11-01"
-version: "1.0"
+version: 1.0.1
 status: accepted
-changeType: creation
+changeType: correction
 domain: meta
 slug: licensing
 changelog:
@@ -13,6 +13,8 @@ changelog:
     note: Marked as draft
   - date: "2025-11-01"
     note: Marked as accepted
+  - date: "2025-11-01"
+    note: Removed template scaffold and updated lifecycle
 lastEdited: "2025-11-01"
 dateAccepted: "2025-11-01"
 ---
