@@ -291,6 +291,31 @@ describe("cli index commands", () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
+  it("rejects repo new when another alias already uses the same path", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
+    fs.writeFileSync(
+      path.join(tempDir, ".drctl.yaml"),
+      `repos:\n  work:\n    path: ./workspace\n`,
+    );
+    process.chdir(tempDir);
+    process.argv = ["node", "drctl", "repo", "new", "docs", "./workspace"];
+
+    await import("./index.js");
+
+    expect(process.exitCode).toBe(1);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/Use the existing alias "work"/),
+    );
+
+    const parsed = loadYaml(
+      fs.readFileSync(path.join(tempDir, ".drctl.yaml"), "utf8"),
+    ) as Record<string, unknown>;
+    const repos = parsed.repos as Record<string, Record<string, unknown>>;
+    expect(Object.keys(repos)).toEqual(["work"]);
+
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
   it("uses DRCTL_CONFIG when --config is omitted", async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
     const configPath = path.join(tempDir, "env-config.yaml");

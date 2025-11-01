@@ -66,7 +66,7 @@ export function createRepoEntry(
       path.normalize(normalizedExisting) === path.normalize(normalizedNewRoot)
     ) {
       throw new Error(
-        `Repository path "${normalizedNewRoot}" is already configured as "${alias}".`,
+        `Repository path "${normalizedNewRoot}" is already configured as "${alias}". Use the existing alias "${alias}" or remove it before creating another entry.`,
       );
     }
   }
