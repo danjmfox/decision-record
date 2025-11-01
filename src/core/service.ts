@@ -3,7 +3,12 @@ import { saveDecision, loadDecision, listDecisions } from "./repository.js";
 import { generateId } from "./utils.js";
 import type { RepoContext, ResolveRepoOptions } from "../config.js";
 import { resolveRepoContext } from "../config.js";
-import { createGitClient, isNotGitRepoError, type GitClient } from "./git.js";
+import {
+  createGitClient,
+  getStagedFiles,
+  isNotGitRepoError,
+  type GitClient,
+} from "./git.js";
 
 export interface DecisionWriteResult {
   record: DecisionRecord;
@@ -301,6 +306,13 @@ async function stageAndCommitWithHint(
   paths: string[],
   message: string,
 ) {
+  const staged = await getStagedFiles(context.root);
+  if (staged.length > 0) {
+    const list = staged.join(", ");
+    throw new Error(
+      `Staging area contains unrelated changes in ${context.root}: ${list}. Commit or reset them before running drctl.`,
+    );
+  }
   try {
     await gitClient.stageAndCommit(paths, {
       cwd: context.root,

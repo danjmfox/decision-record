@@ -59,6 +59,30 @@ export function isNotGitRepoError(error: unknown): boolean {
   );
 }
 
+export async function getStagedFiles(cwd: string): Promise<string[]> {
+  try {
+    const { stdout } = await execFileAsync("git", ["status", "--porcelain"], {
+      cwd,
+    });
+    return stdout
+      .split("\n")
+      .map((line) => line.trimEnd())
+      .filter((line) => line.length >= 3)
+      .map((line) => {
+        const status = line.slice(0, 2);
+        const path = line.slice(3).trim();
+        return { status, path };
+      })
+      .filter(({ status, path }) => path.length > 0 && status.trim().length > 0)
+      .map(({ path }) => path);
+  } catch (error) {
+    if (isNotGitRepoError(error)) {
+      return [];
+    }
+    throw error;
+  }
+}
+
 async function runGit(args: string[], cwd: string): Promise<void> {
   try {
     await execFileAsync("git", args, { cwd });
