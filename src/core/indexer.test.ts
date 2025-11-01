@@ -71,4 +71,14 @@ describe("generateIndex", () => {
 
     expect(() => generateIndex(context)).not.toThrow();
   });
+
+  it("creates the repo directory if it does not exist", () => {
+    const context = makeContext();
+    const record = makeRecord("alpha", "first");
+    saveDecision(context, record, "# body");
+    fs.rmSync(context.root, { recursive: true, force: true });
+
+    const result = generateIndex(context);
+    expect(fs.existsSync(result.filePath)).toBe(true);
+  });
 });

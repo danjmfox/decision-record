@@ -21,6 +21,7 @@ export function generateIndex(
 ): GenerateIndexResult {
   const fileName = options.outputFileName ?? "index.md";
   const filePath = path.join(context.root, fileName);
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
   const decisions = listDecisions(context);
   const markdown = buildMarkdown(context, decisions, options);
   fs.writeFileSync(filePath, markdown, "utf8");

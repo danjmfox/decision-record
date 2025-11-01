@@ -218,6 +218,68 @@ describe("cli index commands", () => {
     fs.rmSync(otherCwd, { recursive: true, force: true });
   });
 
+  it("validates governance issues and reports errors", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
+    const repoDir = path.join(tempDir, "workspace");
+    fs.mkdirSync(repoDir, { recursive: true });
+    const configPath = path.join(tempDir, ".drctl.yaml");
+    fs.writeFileSync(
+      configPath,
+      `defaultRepo: work\nrepos:\n  work:\n    path: ./workspace\n`,
+    );
+
+    const context: RepoContext = {
+      root: repoDir,
+      source: "cli",
+      name: "work",
+      domainMap: {},
+    };
+
+    const badRecord: DecisionRecord = {
+      id: "DR--20240101--meta--broken",
+      dateCreated: "2024-01-01",
+      version: "1.0.0",
+      status: "superseded",
+      changeType: "supersession",
+      domain: "meta",
+      slug: "broken",
+      changelog: [{ date: "2024-01-01", note: "Initial" }],
+    };
+    saveDecision(context, badRecord, "Body");
+
+    process.chdir(tempDir);
+    process.argv = ["node", "drctl", "governance", "validate"];
+
+    await import("./index.js");
+
+    const logs = consoleLogSpy?.mock.calls.map((call) => String(call[0])) ?? [];
+    expect(logs.join("\n")).toMatch(/Governance validation/);
+    expect(logs.join("\n")).toMatch(/missing-supersede-link/);
+    expect(process.exitCode).toBe(1);
+
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("fails governance validation when repo root is missing", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
+    fs.writeFileSync(
+      path.join(tempDir, ".drctl.yaml"),
+      `defaultRepo: ghost\nrepos:\n  ghost:\n    path: ./workspace\n`,
+    );
+
+    process.chdir(tempDir);
+    process.argv = ["node", "drctl", "governance", "validate"];
+
+    await import("./index.js");
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/does not exist/),
+    );
+    expect(process.exitCode).toBe(1);
+
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
   it("generates an index for the default repository", async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
     const repoDir = path.join(tempDir, "workspace");
@@ -260,6 +322,26 @@ describe("cli index commands", () => {
     const markdown = fs.readFileSync(indexPath, "utf8");
     expect(markdown).toContain("## alpha");
     expect(markdown).toContain("## beta");
+
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("reports missing repo root when running index", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
+    fs.writeFileSync(
+      path.join(tempDir, ".drctl.yaml"),
+      `defaultRepo: ghost\nrepos:\n  ghost:\n    path: ./workspace\n`,
+    );
+
+    process.chdir(tempDir);
+    process.argv = ["node", "drctl", "index"];
+
+    await import("./index.js");
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/does not exist/),
+    );
+    expect(process.exitCode).toBe(1);
 
     fs.rmSync(tempDir, { recursive: true, force: true });
   });

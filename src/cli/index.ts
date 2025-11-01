@@ -28,6 +28,7 @@ import { collectRepoOptions, ensureRepoFlagNotUsed } from "./options.js";
 import { createRepoEntry, switchDefaultRepo } from "./repo-manage.js";
 import { initGitRepo } from "../core/git.js";
 import { generateIndex } from "../core/indexer.js";
+import { validateRepository } from "../core/governance.js";
 
 interface GlobalCliOptions {
   repo?: string;
@@ -221,11 +222,77 @@ repoCommand
 
 program.addCommand(repoCommand);
 
+const governanceCommand = program
+  .command("governance")
+  .description("Governance utilities");
+
+governanceCommand
+  .command("validate")
+  .description("Validate decision records in the current repository")
+  .option("--json", "output diagnostics as JSON")
+  .action(
+    createRepoAction(function (repoOptions, command: { json?: boolean }) {
+      if (!fs.existsSync(repoOptions.context.root)) {
+        console.error(
+          `❌ Repo root "${repoOptions.context.root}" does not exist. Adjust your configuration or recreate the repository before running governance validation.`,
+        );
+        process.exitCode = 1;
+        return;
+      }
+      const issues = validateRepository(repoOptions.context);
+      const errorCount = issues.filter(
+        (issue) => issue.severity === "error",
+      ).length;
+      const warningCount = issues.filter(
+        (issue) => issue.severity === "warning",
+      ).length;
+
+      if (command.json) {
+        console.log(
+          JSON.stringify(
+            {
+              repo: repoOptions.context.name ?? null,
+              issues,
+            },
+            null,
+            2,
+          ),
+        );
+      } else if (issues.length === 0) {
+        console.log("✅ Governance validation passed (no issues).\n");
+      } else {
+        console.log(
+          `Governance validation: ${issues.length} issue(s) (${errorCount} error(s), ${warningCount} warning(s))`,
+        );
+        for (const issue of issues) {
+          const severityIcon = issue.severity === "error" ? "❌" : "⚠️";
+          console.log(
+            `${severityIcon} [${issue.severity.toUpperCase()}] ${issue.recordId} ${issue.code} – ${issue.message}`,
+          );
+          if (issue.filePath) {
+            console.log(`   ↳ ${issue.filePath}`);
+          }
+        }
+      }
+
+      if (errorCount > 0) {
+        process.exitCode = 1;
+      }
+    }),
+  );
+
 program
   .command("index")
   .description("Generate a markdown index for the current repository")
   .action(
     createRepoAction(function (repoOptions) {
+      if (!fs.existsSync(repoOptions.context.root)) {
+        console.error(
+          `❌ Repo root "${repoOptions.context.root}" does not exist. Adjust your configuration or recreate the repository before running this command.`,
+        );
+        process.exitCode = 1;
+        return;
+      }
       const { filePath } = generateIndex(repoOptions.context);
       console.log(`📑 Generated index: ${filePath}`);
     }),
