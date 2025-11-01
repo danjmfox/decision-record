@@ -60,24 +60,31 @@ export function loadDecision(
 export function listDecisions(context: RepoContext): DecisionRecord[] {
   if (!fs.existsSync(context.root)) return [];
   const records: DecisionRecord[] = [];
-  const stack = [context.root];
+  const stack: Array<{ dir: string; domain?: string }> = [
+    { dir: context.root },
+  ];
 
   while (stack.length > 0) {
     const current = stack.pop();
     if (!current) continue;
-    const entries = fs.readdirSync(current, { withFileTypes: true });
+    const { dir, domain } = current;
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
       if (entry.name.startsWith(".")) continue;
-      const fullPath = path.join(current, entry.name);
+      const fullPath = path.join(dir, entry.name);
       if (entry.isDirectory()) {
-        stack.push(fullPath);
+        stack.push({ dir: fullPath, domain });
         continue;
       }
       if (!entry.isFile() || !entry.name.endsWith(".md")) continue;
       try {
         const { data } = matter.read(fullPath);
         if (data && typeof data === "object") {
-          records.push(data as DecisionRecord);
+          const record = data as DecisionRecord;
+          if (!record.domain && domain) {
+            record.domain = domain;
+          }
+          records.push(record);
         }
       } catch (error) {
         // Skip files that fail to parse; they are not treated as decision records.

@@ -1,4 +1,6 @@
 import fs from "fs";
+import path from "path";
+import matter from "gray-matter";
 import type { DecisionRecord } from "./models.js";
 import {
   saveDecision,
@@ -444,4 +446,39 @@ async function stageAndCommitWithHint(
     }
     throw error;
   }
+}
+
+export interface DecisionWithSource {
+  record: DecisionRecord;
+  filePath: string;
+}
+
+export function collectDecisions(context: RepoContext): DecisionWithSource[] {
+  if (!fs.existsSync(context.root)) return [];
+  const results: DecisionWithSource[] = [];
+  const stack = [context.root];
+
+  while (stack.length > 0) {
+    const dir = stack.pop();
+    if (!dir) continue;
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.name.startsWith(".")) continue;
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        stack.push(fullPath);
+        continue;
+      }
+      if (!entry.isFile() || !entry.name.endsWith(".md")) continue;
+      try {
+        const { data } = matter.read(fullPath);
+        if (!data || typeof data !== "object") continue;
+        results.push({ record: data as DecisionRecord, filePath: fullPath });
+      } catch {
+        // ignore unreadable files
+      }
+    }
+  }
+
+  return results;
 }

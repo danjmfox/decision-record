@@ -16,6 +16,7 @@ import {
   reviseDecision,
   retireDecision,
   supersedeDecision,
+  collectDecisions,
 } from "./service.js";
 import * as gitModule from "./git.js";
 
@@ -471,5 +472,20 @@ describe("service layer", () => {
     await expect(
       draftDecision(creation.record.id, { context, gitClient }),
     ).rejects.toThrow(/drctl repo bootstrap test/);
+  });
+
+  it("collects decisions with source paths", () => {
+    const context = makeContext();
+    const first = createDecision("meta", "first", { context });
+    const second = createDecision("meta", "second", { context });
+
+    const collected = collectDecisions(context);
+    expect(collected.map((entry) => entry.record.id)).toEqual(
+      expect.arrayContaining([first.record.id, second.record.id]),
+    );
+    collected.forEach((entry) => {
+      expect(fs.existsSync(entry.filePath)).toBe(true);
+      expect(entry.record).toHaveProperty("status");
+    });
   });
 });
