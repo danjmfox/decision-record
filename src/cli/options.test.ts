@@ -1,7 +1,6 @@
 import { Command } from "commander";
 import { describe, expect, it } from "vitest";
 import { collectRepoOptions, ensureRepoFlagNotUsed } from "./options.js";
-import { describe, expect, it, vi } from "vitest";
 
 describe("collectRepoOptions", () => {
   it("pulls the global --repo option into repo options", () => {
@@ -18,6 +17,20 @@ describe("collectRepoOptions", () => {
     const options = collectRepoOptions(sub);
     expect(options.repo).toBe("home");
     expect(options.cwd).toBeDefined();
+  });
+
+  it("captures --config when provided", () => {
+    const program = new Command();
+    program.exitOverride();
+    program.option("--repo <repo>");
+    program.option("--config <config>");
+    const sub = program.command("list");
+    sub.action(() => {});
+
+    program.parse(["list", "--config", "./custom-config"], { from: "user" });
+
+    const options = collectRepoOptions(sub);
+    expect(options.configPath).toBe("./custom-config");
   });
 
   it("falls back to process.cwd when no repo provided", () => {

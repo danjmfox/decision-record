@@ -21,6 +21,7 @@ afterEach(() => {
     restore?.();
   }
   delete process.env.DECISIONS_HOME;
+  delete process.env.DRCTL_CONFIG;
 });
 
 afterAll(() => {
@@ -151,6 +152,27 @@ describe("createRepoEntry", () => {
     });
     expect(tildeResult.repoRoot).toBe(path.join(home, "tilde-repo"));
   });
+
+  it("writes to an explicit config path when provided", () => {
+    const cwd = makeTempDir();
+    const configBase = makeTempDir();
+    const configPath = path.join(configBase, "custom.yaml");
+
+    const result = createRepoEntry({
+      cwd,
+      name: "demo",
+      repoPath: "./repo",
+      configPath,
+    });
+
+    expect(result.configPath).toBe(configPath);
+    const parsed = loadYaml(fs.readFileSync(configPath, "utf8")) as Record<
+      string,
+      unknown
+    >;
+    const repos = parsed.repos as Record<string, Record<string, unknown>>;
+    expect(repos.demo.path).toBe("./repo");
+  });
 });
 
 describe("switchDefaultRepo", () => {
@@ -167,6 +189,48 @@ describe("switchDefaultRepo", () => {
     const parsed = loadYaml(
       fs.readFileSync(path.join(cwd, ".drctl.yaml"), "utf8"),
     ) as Record<string, unknown>;
+    expect(parsed.defaultRepo).toBe("home");
+  });
+
+  it("honours an explicit config path", () => {
+    const cwd = makeTempDir();
+    const configDir = makeTempDir();
+    const configPath = path.join(configDir, "shared.yaml");
+    fs.writeFileSync(
+      configPath,
+      `defaultRepo: work\nrepos:\n  work:\n    path: ./work\n  home:\n    path: ./home\n`,
+    );
+
+    const result = switchDefaultRepo({ cwd, name: "home", configPath });
+
+    expect(result.configPath).toBe(configPath);
+    expect(result.defaultRepo).toBe("home");
+    const parsed = loadYaml(fs.readFileSync(configPath, "utf8")) as Record<
+      string,
+      unknown
+    >;
+    expect(parsed.defaultRepo).toBe("home");
+  });
+
+  it("uses DRCTL_CONFIG when no explicit config path is provided", () => {
+    const cwd = makeTempDir();
+    const configDir = makeTempDir();
+    const configPath = path.join(configDir, "env-config.yaml");
+    fs.writeFileSync(
+      configPath,
+      `defaultRepo: work\nrepos:\n  work:\n    path: ./work\n  home:\n    path: ./home\n`,
+    );
+
+    process.env.DRCTL_CONFIG = configPath;
+
+    const result = switchDefaultRepo({ cwd, name: "home" });
+
+    expect(result.configPath).toBe(configPath);
+    expect(result.defaultRepo).toBe("home");
+    const parsed = loadYaml(fs.readFileSync(configPath, "utf8")) as Record<
+      string,
+      unknown
+    >;
     expect(parsed.defaultRepo).toBe("home");
   });
 

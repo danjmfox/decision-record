@@ -27,6 +27,7 @@ afterEach(() => {
   if (originalEnvRepo === undefined) {
     delete process.env.DRCTL_REPO;
   }
+  delete process.env.DRCTL_CONFIG;
   delete process.env.TEST_DECISIONS_PATH;
   while (restoreSpies.length > 0) {
     const restore = restoreSpies.pop();
@@ -43,11 +44,13 @@ afterAll(() => {
   } else {
     process.env.DRCTL_REPO = originalEnvRepo;
   }
+  delete process.env.DRCTL_CONFIG;
 });
 
 beforeEach(() => {
   process.env.DRCTL_REPO = undefined;
   delete process.env.DRCTL_REPO;
+  delete process.env.DRCTL_CONFIG;
   delete process.env.TEST_DECISIONS_PATH;
 });
 
@@ -184,6 +187,48 @@ repos:
     context = resolveRepoContext({ cwd: dir, repoFlag: "tilde" });
     expect(context.root).toBe(path.join(home, "decisions-tilde"));
     expect(context.domainMap.personal).toBe("custom/personal");
+  });
+
+  it("uses an explicit config path when provided", () => {
+    const base = makeTempDir();
+    const workspace = path.join(base, "repo");
+    fs.mkdirSync(workspace, { recursive: true });
+    const configPath = path.join(base, "custom-config.yaml");
+    fs.writeFileSync(
+      configPath,
+      `repos:
+  demo:
+    path: ./repo
+`,
+    );
+
+    const context = resolveRepoContext({ cwd: makeTempDir(), configPath });
+
+    expect(context.root).toBe(path.resolve(base, "repo"));
+    expect(context.name).toBe("demo");
+    expect(context.configPath).toBe(configPath);
+  });
+
+  it("honours DRCTL_CONFIG when no config path is supplied", () => {
+    const base = makeTempDir();
+    const workspace = path.join(base, "repo");
+    fs.mkdirSync(workspace, { recursive: true });
+    const configPath = path.join(base, "env-config.yaml");
+    fs.writeFileSync(
+      configPath,
+      `repos:
+  env:
+    path: ./repo
+`,
+    );
+
+    process.env.DRCTL_CONFIG = configPath;
+
+    const context = resolveRepoContext({ cwd: makeTempDir() });
+
+    expect(context.root).toBe(path.resolve(base, "repo"));
+    expect(context.name).toBe("env");
+    expect(context.configPath).toBe(configPath);
   });
 });
 

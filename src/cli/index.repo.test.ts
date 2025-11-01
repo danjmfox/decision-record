@@ -42,6 +42,7 @@ describe("cli index commands", () => {
     process.exitCode = 0;
     process.argv = originalArgv.slice();
     process.chdir(originalCwd);
+    delete process.env.DRCTL_CONFIG;
     vi.resetModules();
   });
 
@@ -95,6 +96,24 @@ describe("cli index commands", () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
+  it("mentions config overrides in repo help output", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
+    process.chdir(tempDir);
+    const stdoutSpy = vi
+      .spyOn(process.stdout, "write")
+      .mockImplementation(() => true);
+    process.argv = ["node", "drctl", "repo", "--help"];
+
+    await import("./index.js");
+
+    const output = stdoutSpy.mock.calls.map((call) => String(call[0])).join("");
+    expect(output).toMatch(/--config/);
+    expect(output).toMatch(/DRCTL_CONFIG/);
+
+    stdoutSpy.mockRestore();
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
   it("bootstraps git repos for configured alias", async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
     const repoDir = path.join(tempDir, "workspace");
@@ -118,6 +137,33 @@ describe("cli index commands", () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
+  it("bootstraps git repos using an explicit --config override", async () => {
+    const configDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
+    const otherCwd = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
+    const repoDir = path.join(configDir, "workspace");
+    fs.mkdirSync(repoDir, { recursive: true });
+    const configPath = path.join(configDir, "shared.yaml");
+    fs.writeFileSync(configPath, `repos:\n  shared:\n    path: ./workspace\n`);
+
+    process.chdir(otherCwd);
+    process.argv = [
+      "node",
+      "drctl",
+      "--config",
+      configPath,
+      "repo",
+      "bootstrap",
+      "shared",
+    ];
+
+    await import("./index.js");
+
+    expect(fs.existsSync(path.join(repoDir, ".git"))).toBe(true);
+
+    fs.rmSync(configDir, { recursive: true, force: true });
+    fs.rmSync(otherCwd, { recursive: true, force: true });
+  });
+
   it("switches the default repository", async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
     fs.writeFileSync(
@@ -138,6 +184,38 @@ describe("cli index commands", () => {
     expect(parsed.defaultRepo).toBe("home");
 
     fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("switches the default repository using an explicit --config override", async () => {
+    const configDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
+    const otherCwd = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
+    const configPath = path.join(configDir, "shared.yaml");
+    fs.writeFileSync(
+      configPath,
+      `defaultRepo: work\nrepos:\n  work:\n    path: ./work\n  home:\n    path: ./home\n`,
+    );
+
+    process.chdir(otherCwd);
+    process.argv = [
+      "node",
+      "drctl",
+      "--config",
+      configPath,
+      "repo",
+      "switch",
+      "home",
+    ];
+
+    await import("./index.js");
+
+    const parsed = loadYaml(fs.readFileSync(configPath, "utf8")) as Record<
+      string,
+      unknown
+    >;
+    expect(parsed.defaultRepo).toBe("home");
+
+    fs.rmSync(configDir, { recursive: true, force: true });
+    fs.rmSync(otherCwd, { recursive: true, force: true });
   });
 
   it("generates an index for the default repository", async () => {
@@ -183,6 +261,52 @@ describe("cli index commands", () => {
     expect(markdown).toContain("## alpha");
     expect(markdown).toContain("## beta");
 
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("writes repo entries to a specified config via --config", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
+    const configPath = path.join(tempDir, "custom.yaml");
+    fs.writeFileSync(configPath, "repos:\n");
+    process.chdir(tempDir);
+    process.argv = [
+      "node",
+      "drctl",
+      "--config",
+      configPath,
+      "repo",
+      "new",
+      "alias",
+      "./repo",
+    ];
+
+    await import("./index.js");
+
+    const parsed = loadYaml(fs.readFileSync(configPath, "utf8")) as Record<
+      string,
+      unknown
+    >;
+    const repos = parsed.repos as Record<string, unknown>;
+    expect(Object.keys(repos ?? {})).toContain("alias");
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("uses DRCTL_CONFIG when --config is omitted", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
+    const configPath = path.join(tempDir, "env-config.yaml");
+    fs.writeFileSync(configPath, "repos:\n");
+    process.env.DRCTL_CONFIG = configPath;
+    process.chdir(tempDir);
+    process.argv = ["node", "drctl", "repo", "new", "alias", "./repo"];
+
+    await import("./index.js");
+
+    const parsed = loadYaml(fs.readFileSync(configPath, "utf8")) as Record<
+      string,
+      unknown
+    >;
+    const repos = parsed.repos as Record<string, unknown>;
+    expect(Object.keys(repos ?? {})).toContain("alias");
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 });

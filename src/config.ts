@@ -48,6 +48,7 @@ export interface ResolveRepoOptions {
   repoFlag?: string | null;
   envRepo?: string | null;
   cwd?: string;
+  configPath?: string | null;
 }
 
 interface RawDrctlConfig {
@@ -104,8 +105,13 @@ export function resolveRepoContext(
   const cwd = options.cwd ?? process.cwd();
   const repoFlag = sanitizeString(options.repoFlag);
   const envRepo = sanitizeString(options.envRepo ?? process.env.DRCTL_REPO);
+  const explicitConfigPath = sanitizeString(options.configPath);
+  const envConfigPath = sanitizeString(process.env.DRCTL_CONFIG);
 
-  const { localConfig, globalConfig } = loadConfigLayers(cwd);
+  const { localConfig, globalConfig } = loadConfigLayers(cwd, {
+    explicitConfigPath,
+    envConfigPath,
+  });
 
   const combinedRepos = combineRepoLayers(globalConfig, localConfig);
 
@@ -176,6 +182,10 @@ export function resolveRepoContext(
     source: fallback.source,
     domainMap: {},
   };
+}
+
+export function resolveConfigPath(input: string, cwd: string): string {
+  return resolvePath(input, cwd);
 }
 
 export function diagnoseConfig(
@@ -502,18 +512,39 @@ function selectFallbackRoot(cwd: string): {
   return { root: homeDir, source: "fallback-home" };
 }
 
-function loadConfigLayers(cwd: string): {
+function loadConfigLayers(
+  cwd: string,
+  overrides: {
+    explicitConfigPath?: string | null;
+    envConfigPath?: string | null;
+  } = {},
+): {
   localConfigPath?: string;
   localConfig?: NormalizedConfigLayer;
   globalConfigPath?: string;
   globalConfig?: NormalizedConfigLayer;
 } {
-  const localConfigPath = findConfigRecursive(cwd);
-  const localConfig = localConfigPath
-    ? loadConfigLayer(localConfigPath, "local")
-    : undefined;
+  const resolvedExplicit =
+    overrides.explicitConfigPath !== undefined &&
+    overrides.explicitConfigPath !== null
+      ? resolveConfigPath(overrides.explicitConfigPath, cwd)
+      : undefined;
+  const resolvedEnv =
+    !resolvedExplicit && overrides.envConfigPath
+      ? resolveConfigPath(overrides.envConfigPath, cwd)
+      : undefined;
 
-  const globalConfigPath = findFirstExisting(GLOBAL_CONFIG_CANDIDATES);
+  const localConfigPath =
+    resolvedExplicit ?? resolvedEnv ?? findConfigRecursive(cwd);
+  const localConfig =
+    localConfigPath && fs.existsSync(localConfigPath)
+      ? loadConfigLayer(localConfigPath, "local")
+      : undefined;
+
+  const globalConfigPath =
+    resolvedExplicit || resolvedEnv
+      ? undefined
+      : findFirstExisting(GLOBAL_CONFIG_CANDIDATES);
   const globalConfig = globalConfigPath
     ? loadConfigLayer(globalConfigPath, "global")
     : undefined;

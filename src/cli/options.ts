@@ -5,11 +5,19 @@ interface RepoFlag {
   repo?: string;
 }
 
+interface ConfigFlag {
+  config?: string;
+}
+
 export function collectRepoOptions(command: Command): RepoOptions {
   const repoOptions: RepoOptions = { cwd: process.cwd() };
   const repo = findRepoFlag(command);
   if (repo) {
     repoOptions.repo = repo;
+  }
+  const config = findConfigFlag(command);
+  if (config) {
+    repoOptions.configPath = config;
   }
   return repoOptions;
 }
@@ -32,4 +40,16 @@ function findRepoFlag(command: Command | null | undefined): string | undefined {
     return repo;
   }
   return findRepoFlag(command.parent as Command | undefined);
+}
+
+function findConfigFlag(
+  command: Command | null | undefined,
+): string | undefined {
+  if (!command) return undefined;
+  const opts = typeof command.opts === "function" ? command.opts() : undefined;
+  const config = (opts as ConfigFlag | undefined)?.config;
+  if (config && typeof config === "string" && config.trim().length > 0) {
+    return config;
+  }
+  return findConfigFlag(command.parent as Command | undefined);
 }

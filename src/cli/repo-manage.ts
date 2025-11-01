@@ -2,6 +2,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { dump as dumpYaml, load as loadYaml } from "js-yaml";
+import { resolveConfigPath } from "../config.js";
 
 const CONFIG_FILENAMES = [".drctl.yaml", ".drctl.yml"];
 
@@ -11,6 +12,7 @@ export interface CreateRepoEntryOptions {
   repoPath: string;
   setDefault?: boolean;
   defaultDomainDir?: string;
+  configPath?: string;
 }
 
 export interface CreateRepoEntryResult {
@@ -21,6 +23,7 @@ export interface CreateRepoEntryResult {
 export interface SwitchDefaultRepoOptions {
   cwd: string;
   name: string;
+  configPath?: string;
 }
 
 export interface SwitchDefaultRepoResult {
@@ -32,7 +35,22 @@ export function createRepoEntry(
   options: CreateRepoEntryOptions,
 ): CreateRepoEntryResult {
   const { cwd, name, repoPath, setDefault, defaultDomainDir } = options;
-  const configPath = findNearestConfig(cwd) ?? path.join(cwd, ".drctl.yaml");
+  const explicitConfigInput = sanitizeConfigInput(options.configPath);
+  const explicitConfigPath = explicitConfigInput
+    ? resolveConfigPath(explicitConfigInput, cwd)
+    : undefined;
+  const envConfigInput =
+    explicitConfigPath === undefined
+      ? sanitizeConfigInput(process.env.DRCTL_CONFIG)
+      : undefined;
+  const resolvedEnvConfigPath = envConfigInput
+    ? resolveConfigPath(envConfigInput, cwd)
+    : undefined;
+  const configPath =
+    explicitConfigPath ??
+    resolvedEnvConfigPath ??
+    findNearestConfig(cwd) ??
+    path.join(cwd, ".drctl.yaml");
   const configDir = path.dirname(configPath);
 
   const config = loadConfigFile(configPath);
@@ -61,7 +79,19 @@ export function switchDefaultRepo(
   options: SwitchDefaultRepoOptions,
 ): SwitchDefaultRepoResult {
   const { cwd, name } = options;
-  const configPath = findNearestConfig(cwd);
+  const explicitConfigInput = sanitizeConfigInput(options.configPath);
+  const explicitConfigPath = explicitConfigInput
+    ? resolveConfigPath(explicitConfigInput, cwd)
+    : undefined;
+  const envConfigInput =
+    explicitConfigPath === undefined
+      ? sanitizeConfigInput(process.env.DRCTL_CONFIG)
+      : undefined;
+  const resolvedEnvConfigPath = envConfigInput
+    ? resolveConfigPath(envConfigInput, cwd)
+    : undefined;
+  const configPath =
+    explicitConfigPath ?? resolvedEnvConfigPath ?? findNearestConfig(cwd);
   if (!configPath) {
     throw new Error(
       "No .drctl.yaml file found. Run 'drctl repo new' to create one first.",
@@ -208,4 +238,12 @@ function expandTilde(input: string): string {
     return path.join(os.homedir(), input.slice(2));
   }
   return input;
+}
+
+function sanitizeConfigInput(
+  value: string | null | undefined,
+): string | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
 }

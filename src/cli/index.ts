@@ -31,6 +31,7 @@ const program = new Command();
 program.name("drctl").description("Decision Record CLI").version("0.1.0");
 
 program.option("--repo <repo>", "target repo alias or path");
+program.option("--config <config>", "path to drctl configuration file");
 
 const repoCommand = new Command("repo")
   .description("Show or manage repository configuration")
@@ -41,6 +42,11 @@ const repoCommand = new Command("repo")
       logRepo(repoOptions.context);
     }),
   );
+
+repoCommand.addHelpText(
+  "after",
+  "\nTip: Use --config <path> or DRCTL_CONFIG to target a specific .drctl.yaml when running repo commands.\n",
+);
 
 repoCommand
   .command("show")
@@ -130,6 +136,7 @@ repoCommand
       command: Command & { default?: boolean; domainDir?: string },
     ) {
       ensureRepoFlagNotUsed(this, "repo new");
+      const globalOptions = collectRepoOptions(this);
       const cwd = process.cwd();
       const repoOptions = {
         cwd,
@@ -137,6 +144,9 @@ repoCommand
         repoPath: root,
         setDefault: Boolean(command.default),
         ...(command.domainDir ? { defaultDomainDir: command.domainDir } : {}),
+        ...(globalOptions.configPath
+          ? { configPath: globalOptions.configPath }
+          : {}),
       } satisfies Parameters<typeof createRepoEntry>[0];
       const result = createRepoEntry(repoOptions);
       fs.mkdirSync(result.repoRoot, { recursive: true });
@@ -157,9 +167,13 @@ repoCommand
   .action(
     handleAction(async function (this: Command, name: string) {
       ensureRepoFlagNotUsed(this, "repo bootstrap");
+      const globalOptions = collectRepoOptions(this);
       const context = resolveRepoContext({
         repoFlag: name,
-        cwd: process.cwd(),
+        cwd: globalOptions.cwd,
+        ...(globalOptions.configPath
+          ? { configPath: globalOptions.configPath }
+          : {}),
       });
       logRepo(context);
       fs.mkdirSync(context.root, { recursive: true });
@@ -179,10 +193,22 @@ repoCommand
   .action(
     handleAction(function (this: Command, name: string) {
       ensureRepoFlagNotUsed(this, "repo switch");
-      const cwd = process.cwd();
-      const result = switchDefaultRepo({ cwd, name });
+      const globalOptions = collectRepoOptions(this);
+      const cwd = globalOptions.cwd;
+      const result = switchDefaultRepo({
+        cwd,
+        name,
+        ...(globalOptions.configPath
+          ? { configPath: globalOptions.configPath }
+          : {}),
+      });
       console.log(`⭐ Default repo switched to ${result.defaultRepo}`);
-      const context = resolveRepoContext({ cwd });
+      const context = resolveRepoContext({
+        cwd,
+        ...(globalOptions.configPath
+          ? { configPath: globalOptions.configPath }
+          : {}),
+      });
       logRepo(context);
     }),
   );

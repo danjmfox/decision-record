@@ -17,6 +17,7 @@ export interface RepoOptions {
   cwd?: string;
   context?: RepoContext;
   gitClient?: GitClient;
+  configPath?: string;
 }
 
 export interface CreateDecisionOptions extends RepoOptions {
@@ -139,6 +140,9 @@ function ensureContext(options: RepoOptions): RepoContext {
   };
   if (options.cwd) {
     resolveOptions.cwd = options.cwd;
+  }
+  if (options.configPath) {
+    resolveOptions.configPath = options.configPath;
   }
   return resolveRepoContext(resolveOptions);
 }
