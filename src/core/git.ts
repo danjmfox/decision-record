@@ -70,10 +70,15 @@ export async function getStagedFiles(cwd: string): Promise<string[]> {
       .filter((line) => line.length >= 3)
       .map((line) => {
         const status = line.slice(0, 2);
+        const indexStatus = status[0] ?? " ";
+        const workTreeStatus = status[1] ?? " ";
         const path = line.slice(3).trim();
-        return { status, path };
+        return { indexStatus, workTreeStatus, path };
       })
-      .filter(({ status, path }) => path.length > 0 && status.trim().length > 0)
+      .filter(
+        ({ indexStatus, path }) =>
+          path.length > 0 && indexStatus !== " " && indexStatus !== "?",
+      )
       .map(({ path }) => path);
   } catch (error) {
     if (isNotGitRepoError(error)) {
