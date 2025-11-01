@@ -204,6 +204,7 @@ describe("diagnoseConfig", () => {
     const dir = makeTempDir();
     const repoDir = path.join(dir, "workspace");
     fs.mkdirSync(repoDir, { recursive: true });
+    fs.mkdirSync(path.join(repoDir, ".git"));
     const config = `defaultRepo: work\nrepos:\n  work:\n    path: ./workspace\n`;
     fs.writeFileSync(path.join(dir, ".drctl.yaml"), config);
 
@@ -212,6 +213,7 @@ describe("diagnoseConfig", () => {
     expect(diagnostics.defaultRepoName).toBe("work");
     expect(diagnostics.repos).toHaveLength(1);
     expect(diagnostics.repos[0]?.exists).toBe(true);
+    expect(diagnostics.repos[0]?.gitInitialized).toBe(true);
     expect(diagnostics.warnings).toHaveLength(0);
   });
 
@@ -219,6 +221,7 @@ describe("diagnoseConfig", () => {
     const dir = makeTempDir();
     const config = `repos:\n  missing:\n    path: ./missing\n  other:\n    path: ./other\n`;
     fs.writeFileSync(path.join(dir, ".drctl.yaml"), config);
+    fs.mkdirSync(path.join(dir, "other"), { recursive: true });
 
     const diagnostics = diagnoseConfig({ cwd: dir });
 
@@ -228,6 +231,9 @@ describe("diagnoseConfig", () => {
     ).toBe(false);
     expect(diagnostics.warnings).toContainEqual(
       expect.stringMatching(/Repository "missing"/),
+    );
+    expect(diagnostics.warnings).toContainEqual(
+      expect.stringMatching(/Repository "other" is not a git repository/),
     );
     expect(diagnostics.warnings).toContain(
       "Multiple repositories configured but no defaultRepo specified.",

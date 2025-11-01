@@ -80,8 +80,13 @@ configCommand
             repo.definitionSource === "local"
               ? "local-config"
               : "global-config";
+          const gitLabel = repo.exists
+            ? repo.gitInitialized
+              ? "git: initialised"
+              : "git: not initialised"
+            : "git: n/a";
           console.log(
-            `   ${status} ${repo.name} → ${repo.root} (${sourceLabel})`,
+            `   ${status} ${repo.name} → ${repo.root} (${sourceLabel}, ${gitLabel})`,
           );
         }
       } else {

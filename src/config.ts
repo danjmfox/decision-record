@@ -31,6 +31,7 @@ export interface RepoDiagnostic {
   domainMap: Record<string, string>;
   defaultDomainDir?: string;
   exists: boolean;
+  gitInitialized: boolean;
 }
 
 export interface ConfigDiagnostics {
@@ -191,6 +192,9 @@ export function diagnoseConfig(
 
   const repos: RepoDiagnostic[] = [];
   for (const repo of combinedRepos.values()) {
+    const exists = fs.existsSync(repo.root);
+    const gitInitialized =
+      exists && fs.existsSync(path.join(repo.root, ".git"));
     repos.push({
       name: repo.name,
       root: repo.root,
@@ -200,7 +204,8 @@ export function diagnoseConfig(
       ...(repo.defaultDomainDir
         ? { defaultDomainDir: repo.defaultDomainDir }
         : {}),
-      exists: fs.existsSync(repo.root),
+      exists,
+      gitInitialized,
     });
   }
 
@@ -217,6 +222,10 @@ export function diagnoseConfig(
     if (!repo.exists) {
       warnings.push(
         `Repository "${repo.name}" points to missing path: ${repo.root}`,
+      );
+    } else if (!repo.gitInitialized) {
+      warnings.push(
+        `Repository "${repo.name}" is not a git repository. Run "drctl repo bootstrap ${repo.name}" to initialise git.`,
       );
     }
   }
