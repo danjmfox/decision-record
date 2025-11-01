@@ -1,13 +1,15 @@
 ---
 id: DR--20251029--meta--decision-policy
-dateCreated: 2025-10-29
-lastEdited: 2025-10-29
-version: "1.0"
+dateCreated: 2025-10-29T00:00:00.000Z
+lastEdited: "2025-11-01"
+version: 1.0.1
 status: accepted
-changeType: creation
-changelog: []
+changeType: correction
+changelog:
+  - date: "2025-11-01"
+    note: Removed trailing template scaffold
 confidence: 0.9
-reviewDate: 2026-04-29
+reviewDate: 2026-04-29T00:00:00.000Z
 domain: meta
 slug: decision-policy
 supersedes: null
