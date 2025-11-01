@@ -1,0 +1,101 @@
+import { describe, it, expect } from "vitest";
+import type { DecisionRecord } from "./models.js";
+import { validateDecisions, type ValidationIssue } from "./validation.js";
+
+const base: DecisionRecord = {
+  id: "DR--20250101--meta--base",
+  dateCreated: "2025-01-01",
+  version: "1.0.0",
+  status: "draft",
+  changeType: "creation",
+  domain: "meta",
+  slug: "base",
+  changelog: [{ date: "2025-01-01", note: "Initial creation" }],
+};
+
+function issues(records: DecisionRecord[]): ValidationIssue[] {
+  return validateDecisions(records, { scope: "repo", repoName: "demo" });
+}
+
+describe("governance validation (per-repo)", () => {
+  it("flags missing required fields", () => {
+    const invalid = { ...base, id: "", status: "" as DecisionRecord["status"] };
+    const result = issues([invalid]);
+    expect(result).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "missing-id",
+          severity: "error",
+        }),
+        expect.objectContaining({
+          code: "invalid-status",
+          severity: "error",
+        }),
+      ]),
+    );
+  });
+
+  it("flags invalid supersede linkage", () => {
+    const oldRec: DecisionRecord = {
+      ...base,
+      id: "DR--20240101--meta--old",
+      status: "superseded",
+      changeType: "supersession",
+      supersededBy: undefined,
+    };
+    const newRec: DecisionRecord = {
+      ...base,
+      id: "DR--20240102--meta--new",
+      status: "accepted",
+      changeType: "supersession",
+      supersedes: "DR--20240101--meta--old",
+    };
+    const broken = { ...newRec, supersedes: "DR--99999999--meta--missing" };
+    const result = issues([oldRec, broken]);
+    expect(result).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "missing-supersede-link",
+          recordId: "DR--20240101--meta--old",
+        }),
+        expect.objectContaining({
+          code: "dangling-supersedes",
+          recordId: "DR--20240102--meta--new",
+        }),
+      ]),
+    );
+  });
+
+  it("flags duplicate decision IDs", () => {
+    const dupA = { ...base, id: "DR--20240101--meta--dup" };
+    const dupB = { ...base, id: "DR--20240101--meta--dup" };
+    const result = issues([dupA, dupB]);
+    expect(result).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "duplicate-id",
+          severity: "error",
+          recordId: "DR--20240101--meta--dup",
+        }),
+      ]),
+    );
+  });
+
+  it("flags illegal status transitions", () => {
+    const invalid = {
+      ...base,
+      id: "DR--20240101--meta--bad-status",
+      status: "accepted",
+      changeType: "creation",
+    };
+    const result = issues([invalid]);
+    expect(result).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "invalid-change-type",
+          recordId: "DR--20240101--meta--bad-status",
+        }),
+      ]),
+    );
+  });
+});
