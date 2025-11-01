@@ -1,9 +1,9 @@
 ---
 id: DR--20251101--meta--revision-commands
 dateCreated: "2025-11-01"
-version: "1.0"
+version: 1.0.1
 status: draft
-changeType: creation
+changeType: correction
 domain: meta
 slug: revision-commands
 changelog:
@@ -11,6 +11,8 @@ changelog:
     note: Initial creation
   - date: "2025-11-01"
     note: Marked as draft
+  - date: "2025-11-01"
+    note: Removed duplicate template section
 lastEdited: "2025-11-01"
 ---
 
