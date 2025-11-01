@@ -227,7 +227,41 @@ See [decision-record-template.md](./decisions-example/decision-record-template.m
 5. **Revise**: `drctl revise <id> --note "Raised confidence" --confidence 0.9`
 6. **Supersede**: `drctl supersede <old_id> <new_id>` when replaced
 7. **Review**: periodically check reviewDate for updates.
+
 8. **Index**: auto-generate `DecisionIndex.md` for browsing.
+
+### 🔄 Quickstart Commands
+
+Run through the full lifecycle from a blank slate:
+
+```bash
+# Create a new repo entry and set it as default
+npm run dev -- repo new demo ./decisions-demo --default
+
+# Initialise git inside the repo (required for draft/propose/accept)
+npm run dev -- repo bootstrap demo
+
+# Double-check configuration
+npm run dev -- config check
+
+# Create a decision (status: draft)
+npm run dev -- new meta initial-guardrails
+
+# Grab the generated ID from this listing
+npm run dev -- list
+
+# Commit the draft to git, record changelog entry
+npm run dev -- draft <id>
+
+# Advance to proposed
+npm run dev -- propose <id>
+
+# Mark as accepted
+npm run dev -- accept <id>
+
+# Rebuild the repo index so the DR is linked under its domain
+npm run dev -- index
+```
 
 ## 🌱 Plan for Evolution
 

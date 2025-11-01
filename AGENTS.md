@@ -151,6 +151,29 @@ home-decisions/
 - Use **conventional commits** for each logical change (e.g. `feat:`, `fix:`, `test:`).
 - If a change spans multiple concerns, split into multiple TDD cycles and commits.
 
+### 🔄 Quickstart (from a new repo)
+
+```bash
+# Add a repo entry and make it default
+npm run dev -- repo new demo ./decisions-demo --default
+
+# Initialise git in the repo
+npm run dev -- repo bootstrap demo
+
+# Sanity check config
+npm run dev -- config check
+
+# Create, propose, and accept a decision (replace <id> with the generated ID)
+npm run dev -- new meta initial-guardrails
+npm run dev -- list
+npm run dev -- draft <id>
+npm run dev -- propose <id>
+npm run dev -- accept <id>
+
+# Regenerate the index
+npm run dev -- index
+```
+
 ---
 
 ### 🗂️ Sample `.drctl.yaml` Locations
