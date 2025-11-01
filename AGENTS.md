@@ -121,6 +121,7 @@ home-decisions/
    - [x] Update `repository.ts` to honour per-repo domain folders from config.
    - [ ] Auto-create domain subfolders when writing records.
    - [ ] Add an `index` generator that aggregates across configured repos.
+   - [ ] Prevent duplicate repo aliases pointing at the same filesystem path.
 
 2. **Examples & Documentation**
    - [ ] Add a README note clarifying `decisions-example/` as the default demo workspace.
