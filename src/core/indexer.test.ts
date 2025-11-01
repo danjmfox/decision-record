@@ -68,5 +68,7 @@ describe("generateIndex", () => {
     expect(content).toMatch(
       /\[DR--20250101--beta--second]\(\.\/beta\/DR--20250101--beta--second\.md\)/,
     );
+
+    expect(() => generateIndex(context)).not.toThrow();
   });
 });

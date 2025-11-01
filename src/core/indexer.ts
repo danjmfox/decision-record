@@ -37,6 +37,7 @@ function buildMarkdown(
 
   const grouped = new Map<string, DecisionRecord[]>();
   for (const record of decisions) {
+    if (!isDecisionRecord(record)) continue;
     const domain = record.domain ?? "uncategorised";
     const list = grouped.get(domain) ?? [];
     list.push(record);
@@ -90,4 +91,17 @@ function relativePath(context: RepoContext, record: DecisionRecord): string {
     .join("/");
   if (relative.startsWith(".")) return relative;
   return `./${relative}`;
+}
+
+function isDecisionRecord(record: DecisionRecord): record is DecisionRecord & {
+  id: string;
+  domain: string;
+} {
+  return (
+    typeof record === "object" &&
+    typeof record.id === "string" &&
+    record.id.startsWith("DR--") &&
+    typeof record.domain === "string" &&
+    record.domain.length > 0
+  );
 }
