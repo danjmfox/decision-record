@@ -33,8 +33,6 @@ A simple, consistent mechanism is needed to:
 
 ## ⚖️ Options Considered
 
-_List the main options or alternatives that were evaluated before making the decision, including why each was accepted or rejected._
-
 | Option                                                               | Description                                                | Outcome      | Rationale                                                        |
 | -------------------------------------------------------------------- | ---------------------------------------------------------- | ------------ | ---------------------------------------------------------------- |
 | **A. Do nothing**                                                    | Continue with implicit decisions and ad-hoc reasoning.     | Rejected     | Lacks traceability and continuity across domains.                |

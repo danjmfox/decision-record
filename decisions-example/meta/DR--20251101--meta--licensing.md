@@ -43,7 +43,7 @@ Use the MIT licence for this repository, augmented with a clearly worded “No L
 
 ## 🔁 Lifecycle
 
-Status: `draft`. Promote once the licence file is added and referenced in docs.
+Status: `accepted`. Future revisions will bump the version if licensing terms change.
 
 ## 🧩 Reasoning
 
@@ -51,9 +51,7 @@ MIT’s simplicity aligns with the project’s goals: it enables redistribution 
 
 ## 🔄 Next Actions
 
-- Add `LICENSE.md` with the MIT licence and custom disclaimer.
-- Reference the licence in README/AGENTS once added.
-- Promote this DR to `proposed`/`accepted` after review.
+- None. Monitor for future legal guidance or licence changes.
 
 ## 🧠 Confidence
 
@@ -62,46 +60,4 @@ High – MIT is a well-established default for permissive software projects.
 ## 🧾 Changelog
 
 - 2025-11-01 — Initial draft.
-
-# DR--20251101--meta--licensing
-
-## 🧭 Context
-
-_Describe the background and circumstances leading to this decision._
-
-## ⚖️ Options Considered
-
-_List the main options or alternatives that were evaluated before making the decision, including why each was accepted or rejected._
-
-| Option | Description | Outcome  | Rationale                      |
-| ------ | ----------- | -------- | ------------------------------ |
-| A      | Do nothing  | Rejected | Insufficient long-term clarity |
-| B      |             |          |                                |
-
-## 🧠 Decision
-
-_State the decision made clearly and succinctly._
-
-## 🪶 Principles
-
-_List the guiding principles or values that influenced this decision._
-
-## 🔁 Lifecycle
-
-_Outline the current lifecycle state and any relevant change types._
-
-## 🧩 Reasoning
-
-_Explain the rationale, trade-offs, and considerations behind the decision._
-
-## 🔄 Next Actions
-
-_Specify the immediate next steps or actions following this decision._
-
-## 🧠 Confidence
-
-_Indicate the confidence level in this decision and any planned reviews._
-
-## 🧾 Changelog
-
-_Summarise notable updates, revisions, or corrections. Each should have a date and note in YAML frontmatter for traceability._
+- 2025-11-01 — Accepted with MIT licence published.
