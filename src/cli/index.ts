@@ -10,6 +10,7 @@ import {
   listAll,
   rejectDecision,
   deprecateDecision,
+  supersedeDecision,
   resolveContext,
   type CreateDecisionOptions,
   type RepoOptions,
@@ -327,6 +328,26 @@ program
       const result = await deprecateDecision(id, { ...repoOptions });
       console.log(`⚠️ ${result.record.id} marked as deprecated`);
       console.log(`📄 File: ${result.filePath}`);
+    }),
+  );
+
+program
+  .command("supersede <oldId> <newId>")
+  .description("Mark an existing decision as superseded by another")
+  .action(
+    createRepoAction(async function (
+      repoOptions,
+      oldId: string,
+      newId: string,
+    ) {
+      const result = await supersedeDecision(oldId, newId, {
+        ...repoOptions,
+      });
+      console.log(
+        `🔁 ${result.record.id} superseded by ${result.newRecord.id}`,
+      );
+      console.log(`📄 Updated: ${result.filePath}`);
+      console.log(`📄 Updated: ${result.newFilePath}`);
     }),
   );
 

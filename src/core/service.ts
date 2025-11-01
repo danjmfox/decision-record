@@ -11,6 +11,11 @@ export interface DecisionWriteResult {
   context: RepoContext;
 }
 
+export interface SupersedeResult extends DecisionWriteResult {
+  newRecord: DecisionRecord;
+  newFilePath: string;
+}
+
 export interface RepoOptions {
   repo?: string;
   envRepo?: string;
@@ -168,6 +173,50 @@ export async function deprecateDecision(
     `drctl: deprecate ${rec.id}`,
   );
   return { record: rec, filePath, context };
+}
+
+export async function supersedeDecision(
+  oldId: string,
+  newId: string,
+  options: RepoOptions = {},
+): Promise<SupersedeResult> {
+  const context = ensureContext(options);
+  const oldRecord = loadDecision(context, oldId);
+  const newRecord = loadDecision(context, newId);
+  const today = new Date().toISOString().slice(0, 10);
+
+  oldRecord.status = "superseded";
+  oldRecord.lastEdited = today;
+  oldRecord.supersededBy = newId;
+  const oldChangelog = oldRecord.changelog ?? [];
+  oldChangelog.push({ date: today, note: `Superseded by ${newId}` });
+  oldRecord.changelog = oldChangelog;
+
+  newRecord.supersedes = oldId;
+  newRecord.lastEdited = today;
+  newRecord.changeType = "supersession";
+  const newChangelog = newRecord.changelog ?? [];
+  newChangelog.push({ date: today, note: `Supersedes ${oldId}` });
+  newRecord.changelog = newChangelog;
+
+  const oldFilePath = saveDecision(context, oldRecord);
+  const newFilePath = saveDecision(context, newRecord);
+
+  const gitClient = options.gitClient ?? createGitClient();
+  await stageAndCommitWithHint(
+    context,
+    gitClient,
+    [oldFilePath, newFilePath],
+    `drctl: supersede ${oldId} -> ${newId}`,
+  );
+
+  return {
+    record: oldRecord,
+    filePath: oldFilePath,
+    context,
+    newRecord,
+    newFilePath,
+  };
 }
 
 export function listAll(

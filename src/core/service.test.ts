@@ -12,6 +12,7 @@ import {
   listAll,
   rejectDecision,
   deprecateDecision,
+  supersedeDecision,
 } from "./service.js";
 
 const tempRoots: string[] = [];
@@ -222,6 +223,54 @@ describe("service layer", () => {
       cwd: context.root,
       message: `drctl: deprecate ${creation.record.id}`,
     });
+  });
+
+  it("supersedes a decision, linking the replacement, and commits via git", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const oldDecision = createDecision("meta", "old-decision", { context });
+    const newDecision = createDecision("meta", "new-direction", { context });
+
+    const result = await supersedeDecision(
+      oldDecision.record.id,
+      newDecision.record.id,
+      {
+        context,
+        gitClient,
+      },
+    );
+
+    expect(result.record.status).toBe("superseded");
+    expect(result.record.lastEdited).toBe("2025-10-30");
+    expect(result.record.supersededBy).toBe(newDecision.record.id);
+    expect(result.record.changelog?.at(-1)).toEqual({
+      date: "2025-10-30",
+      note: `Superseded by ${newDecision.record.id}`,
+    });
+
+    const storedOld = matter.read(result.filePath);
+    expect(storedOld.data.status).toBe("superseded");
+    expect(storedOld.data.supersededBy).toBe(newDecision.record.id);
+    expect(storedOld.content).toContain("## 🧭 Context");
+
+    expect(result.newRecord.supersedes).toBe(oldDecision.record.id);
+    expect(result.newRecord.changelog?.at(-1)).toEqual({
+      date: "2025-10-30",
+      note: `Supersedes ${oldDecision.record.id}`,
+    });
+
+    const storedNew = matter.read(result.newFilePath);
+    expect(storedNew.data.supersedes).toBe(oldDecision.record.id);
+
+    expect(gitClient.stageAndCommit).toHaveBeenCalledWith(
+      [result.filePath, result.newFilePath],
+      {
+        cwd: context.root,
+        message: `drctl: supersede ${oldDecision.record.id} -> ${newDecision.record.id}`,
+      },
+    );
   });
 
   it("preserves markdown body when lifecycle updates occur", async () => {
