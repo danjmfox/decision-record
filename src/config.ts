@@ -246,15 +246,22 @@ export function diagnoseConfig(
     );
   }
 
-  return {
+  const diagnostics: ConfigDiagnostics = {
     cwd,
-    localConfigPath: layers.localConfigPath,
-    globalConfigPath: layers.globalConfigPath,
-    defaultRepoName: defaultRepoName ?? undefined,
     repos,
     warnings,
     errors,
   };
+  if (layers.localConfigPath) {
+    diagnostics.localConfigPath = layers.localConfigPath;
+  }
+  if (layers.globalConfigPath) {
+    diagnostics.globalConfigPath = layers.globalConfigPath;
+  }
+  if (defaultRepoName) {
+    diagnostics.defaultRepoName = defaultRepoName;
+  }
+  return diagnostics;
 }
 
 export function resolveDomainDir(context: RepoContext, domain: string): string {
@@ -549,12 +556,27 @@ function loadConfigLayers(
     ? loadConfigLayer(globalConfigPath, "global")
     : undefined;
 
-  return {
-    localConfigPath,
-    localConfig,
-    globalConfigPath,
-    globalConfig,
-  };
+  const result: {
+    localConfigPath?: string;
+    localConfig?: NormalizedConfigLayer;
+    globalConfigPath?: string;
+    globalConfig?: NormalizedConfigLayer;
+  } = {};
+
+  if (localConfigPath) {
+    result.localConfigPath = localConfigPath;
+  }
+  if (localConfig) {
+    result.localConfig = localConfig;
+  }
+  if (globalConfigPath) {
+    result.globalConfigPath = globalConfigPath;
+  }
+  if (globalConfig) {
+    result.globalConfig = globalConfig;
+  }
+
+  return result;
 }
 
 function combineRepoLayers(

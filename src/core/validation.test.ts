@@ -41,7 +41,7 @@ describe("governance validation (per-repo)", () => {
       id: "DR--20240101--meta--old",
       status: "superseded",
       changeType: "supersession",
-      supersededBy: undefined,
+      supersededBy: null,
     };
     const newRec: DecisionRecord = {
       ...base,
@@ -50,7 +50,10 @@ describe("governance validation (per-repo)", () => {
       changeType: "supersession",
       supersedes: "DR--20240101--meta--old",
     };
-    const broken = { ...newRec, supersedes: "DR--99999999--meta--missing" };
+    const broken: DecisionRecord = {
+      ...newRec,
+      supersedes: "DR--99999999--meta--missing",
+    };
     const result = issues([oldRec, broken]);
     expect(result).toEqual(
       expect.arrayContaining([
@@ -67,8 +70,8 @@ describe("governance validation (per-repo)", () => {
   });
 
   it("flags duplicate decision IDs", () => {
-    const dupA = { ...base, id: "DR--20240101--meta--dup" };
-    const dupB = { ...base, id: "DR--20240101--meta--dup" };
+    const dupA: DecisionRecord = { ...base, id: "DR--20240101--meta--dup" };
+    const dupB: DecisionRecord = { ...base, id: "DR--20240101--meta--dup" };
     const result = issues([dupA, dupB]);
     expect(result).toEqual(
       expect.arrayContaining([
@@ -82,7 +85,7 @@ describe("governance validation (per-repo)", () => {
   });
 
   it("flags illegal status transitions", () => {
-    const invalid = {
+    const invalid: DecisionRecord = {
       ...base,
       id: "DR--20240101--meta--bad-status",
       status: "accepted",

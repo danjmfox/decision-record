@@ -73,7 +73,7 @@ export function listDecisions(context: RepoContext): DecisionRecord[] {
       if (entry.name.startsWith(".")) continue;
       const fullPath = path.join(dir, entry.name);
       if (entry.isDirectory()) {
-        stack.push({ dir: fullPath, domain });
+        stack.push(domain ? { dir: fullPath, domain } : { dir: fullPath });
         continue;
       }
       if (!entry.isFile() || !entry.name.endsWith(".md")) continue;

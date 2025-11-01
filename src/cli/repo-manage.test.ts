@@ -171,7 +171,7 @@ describe("createRepoEntry", () => {
       unknown
     >;
     const repos = parsed.repos as Record<string, Record<string, unknown>>;
-    expect(repos.demo.path).toBe("./repo");
+    expect(repos?.demo?.path).toBe("./repo");
   });
 
   it("throws when another alias already targets the same path", () => {

@@ -5,7 +5,7 @@ export function bumpVersion(version: string, bump: VersionBump): string {
   while (parts.length < 3) {
     parts.push(0);
   }
-  const [major, minor, patch] = parts;
+  const [major = 0, minor = 0, patch = 0] = parts;
 
   if ([major, minor, patch].some((num) => Number.isNaN(num))) {
     throw new Error(`Invalid semantic version supplied: "${version}"`);

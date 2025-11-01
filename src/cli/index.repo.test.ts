@@ -10,10 +10,10 @@ import type { DecisionRecord } from "../core/models.js";
 describe("cli index commands", () => {
   const originalArgv = process.argv.slice();
   const originalCwd = process.cwd();
-  let exitSpy: ReturnType<typeof vi.spyOn> | undefined;
-  let consoleErrorSpy: ReturnType<typeof vi.spyOn> | undefined;
-  let consoleWarnSpy: ReturnType<typeof vi.spyOn> | undefined;
-  let consoleLogSpy: ReturnType<typeof vi.spyOn> | undefined;
+  let exitSpy: any;
+  let consoleErrorSpy: any;
+  let consoleWarnSpy: any;
+  let consoleLogSpy: any;
 
   beforeEach(() => {
     vi.resetModules();
@@ -46,6 +46,13 @@ describe("cli index commands", () => {
     vi.resetModules();
   });
 
+  function getLogSpy(): any {
+    if (!consoleLogSpy) {
+      throw new Error("console.log spy not initialised");
+    }
+    return consoleLogSpy;
+  }
+
   it("rejects --repo flag usage", async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
     process.argv = [
@@ -61,7 +68,8 @@ describe("cli index commands", () => {
 
     await import("./index.js");
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
+    const errorSpy = consoleErrorSpy;
+    expect(errorSpy).toHaveBeenCalledWith(
       expect.stringMatching(/--repo cannot be used with repo new/),
     );
     expect(process.exitCode).toBe(1);
@@ -85,10 +93,11 @@ describe("cli index commands", () => {
 
     await import("./index.js");
 
-    expect(consoleLogSpy).toHaveBeenCalledWith(
+    const logSpy = getLogSpy();
+    expect(logSpy).toHaveBeenCalledWith(
       expect.stringMatching(/Working directory/),
     );
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
+    expect(consoleWarnSpy!).toHaveBeenCalledWith(
       expect.stringMatching(/Repository "missing"/),
     );
     expect(process.exitCode).toBe(0);
@@ -106,7 +115,9 @@ describe("cli index commands", () => {
 
     await import("./index.js");
 
-    const output = stdoutSpy.mock.calls.map((call) => String(call[0])).join("");
+    const output = stdoutSpy.mock.calls
+      .map((call: unknown[]) => String(call[0] ?? ""))
+      .join("");
     expect(output).toMatch(/--config/);
     expect(output).toMatch(/DRCTL_CONFIG/);
 
@@ -128,10 +139,12 @@ describe("cli index commands", () => {
 
     await import("./index.js");
 
-    const logCalls = consoleLogSpy.mock.calls.map((call) => call[0]);
-    expect(logCalls.some((msg) => /Initialised git repository/.test(msg))).toBe(
-      true,
-    );
+    const logMessages = getLogSpy().mock.calls.map((call: unknown[]) => {
+      return String(call[0] ?? "");
+    });
+    expect(
+      logMessages.some((msg: string) => /Initialised git repository/.test(msg)),
+    ).toBe(true);
     expect(fs.existsSync(path.join(repoDir, ".git"))).toBe(true);
 
     fs.rmSync(tempDir, { recursive: true, force: true });
@@ -176,8 +189,12 @@ describe("cli index commands", () => {
 
     await import("./index.js");
 
-    const logCalls = consoleLogSpy.mock.calls.map((call) => call[0]);
-    expect(logCalls.some((msg) => /Default repo.*home/.test(msg))).toBe(true);
+    const logMessages = getLogSpy().mock.calls.map((call: unknown[]) => {
+      return String(call[0] ?? "");
+    });
+    expect(
+      logMessages.some((msg: string) => /Default repo.*home/.test(msg)),
+    ).toBe(true);
     const parsed = loadYaml(
       fs.readFileSync(path.join(tempDir, ".drctl.yaml"), "utf8"),
     ) as Record<string, unknown>;
@@ -252,7 +269,9 @@ describe("cli index commands", () => {
 
     await import("./index.js");
 
-    const logs = consoleLogSpy?.mock.calls.map((call) => String(call[0])) ?? [];
+    const logs = getLogSpy().mock.calls.map((call: unknown[]) =>
+      String(call[0] ?? ""),
+    );
     expect(logs.join("\n")).toMatch(/Governance validation/);
     expect(logs.join("\n")).toMatch(/missing-supersede-link/);
     expect(process.exitCode).toBe(1);
@@ -272,9 +291,81 @@ describe("cli index commands", () => {
 
     await import("./index.js");
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
+    const errorSpy = consoleErrorSpy;
+    expect(errorSpy).toHaveBeenCalledWith(
       expect.stringMatching(/does not exist/),
     );
+    expect(process.exitCode).toBe(1);
+
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("prints success message when governance validation passes", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
+    const repoDir = path.join(tempDir, "workspace");
+    fs.mkdirSync(repoDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(tempDir, ".drctl.yaml"),
+      `defaultRepo: ok\nrepos:\n  ok:\n    path: ./workspace\n`,
+    );
+
+    process.chdir(tempDir);
+    process.argv = ["node", "drctl", "governance", "validate"];
+
+    await import("./index.js");
+
+    expect(getLogSpy()).toHaveBeenCalledWith(
+      expect.stringMatching(/Governance validation passed/),
+    );
+    expect(process.exitCode).toBe(0);
+
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("supports json output for governance validation", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
+    const repoDir = path.join(tempDir, "workspace");
+    fs.mkdirSync(repoDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(tempDir, ".drctl.yaml"),
+      `defaultRepo: work\nrepos:\n  work:\n    path: ./workspace\n`,
+    );
+
+    const context: RepoContext = {
+      root: repoDir,
+      source: "cli",
+      name: "work",
+      domainMap: {},
+    };
+
+    const invalid: DecisionRecord = {
+      id: "DR--20240101--meta--bad",
+      dateCreated: "2024-01-01",
+      version: "1.0.0",
+      status: "superseded",
+      changeType: "supersession",
+      domain: "meta",
+      slug: "bad",
+      changelog: [{ date: "2024-01-01", note: "Initial" }],
+    };
+    saveDecision(context, invalid, "# body");
+
+    process.chdir(tempDir);
+    process.argv = ["node", "drctl", "governance", "validate", "--json"];
+
+    await import("./index.js");
+
+    const outputCalls = getLogSpy().mock.calls.map((call: unknown[]) =>
+      String(call[0] ?? ""),
+    );
+    const jsonPayload = outputCalls.find((msg: string) =>
+      msg.trim().startsWith("{"),
+    );
+    expect(jsonPayload).toBeDefined();
+    const parsed = JSON.parse(jsonPayload ?? "{}");
+    expect(parsed.issues).toBeInstanceOf(Array);
+    expect(parsed.issues.length).toBeGreaterThan(0);
+    expect(parsed.issues[0]).toHaveProperty("code");
     expect(process.exitCode).toBe(1);
 
     fs.rmSync(tempDir, { recursive: true, force: true });
@@ -315,8 +406,12 @@ describe("cli index commands", () => {
 
     await import("./index.js");
 
-    const logCalls = consoleLogSpy.mock.calls.map((call) => call[0]);
-    expect(logCalls.some((msg) => /Generated index/.test(msg))).toBe(true);
+    const logCalls = getLogSpy().mock.calls.map((call: unknown[]) => call[0]);
+    expect(
+      logCalls.some((msg: unknown) =>
+        typeof msg === "string" ? /Generated index/.test(msg) : false,
+      ),
+    ).toBe(true);
     const indexPath = path.join(repoDir, "index.md");
     expect(fs.existsSync(indexPath)).toBe(true);
     const markdown = fs.readFileSync(indexPath, "utf8");
@@ -338,7 +433,8 @@ describe("cli index commands", () => {
 
     await import("./index.js");
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
+    const errorSpy = consoleErrorSpy;
+    expect(errorSpy).toHaveBeenCalledWith(
       expect.stringMatching(/does not exist/),
     );
     expect(process.exitCode).toBe(1);
@@ -385,7 +481,8 @@ describe("cli index commands", () => {
     await import("./index.js");
 
     expect(process.exitCode).toBe(1);
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
+    const errorSpy = consoleErrorSpy;
+    expect(errorSpy).toHaveBeenCalledWith(
       expect.stringMatching(/Use the existing alias "work"/),
     );
 

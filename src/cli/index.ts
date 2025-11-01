@@ -22,6 +22,7 @@ import {
   diagnoseConfig,
   resolveRepoContext,
   type RepoContext,
+  type ResolveRepoOptions,
 } from "../config.js";
 import { formatRepoContext } from "./repo-format.js";
 import { collectRepoOptions, ensureRepoFlagNotUsed } from "./options.js";
@@ -175,13 +176,14 @@ repoCommand
     handleAction(async function (this: Command, name: string) {
       ensureRepoFlagNotUsed(this, "repo bootstrap");
       const globalOptions = collectRepoOptions(this);
-      const context = resolveRepoContext({
+      const resolveOptions: ResolveRepoOptions = {
         repoFlag: name,
-        cwd: globalOptions.cwd,
-        ...(globalOptions.configPath
-          ? { configPath: globalOptions.configPath }
-          : {}),
-      });
+        ...(globalOptions.cwd ? { cwd: globalOptions.cwd } : {}),
+      };
+      if (globalOptions.configPath !== undefined) {
+        resolveOptions.configPath = globalOptions.configPath;
+      }
+      const context = resolveRepoContext(resolveOptions);
       logRepo(context);
       fs.mkdirSync(context.root, { recursive: true });
       const alreadyInitialised = fs.existsSync(path.join(context.root, ".git"));
@@ -201,7 +203,7 @@ repoCommand
     handleAction(function (this: Command, name: string) {
       ensureRepoFlagNotUsed(this, "repo switch");
       const globalOptions = collectRepoOptions(this);
-      const cwd = globalOptions.cwd;
+      const cwd = globalOptions.cwd ?? process.cwd();
       const result = switchDefaultRepo({
         cwd,
         name,
@@ -211,10 +213,10 @@ repoCommand
       });
       console.log(`⭐ Default repo switched to ${result.defaultRepo}`);
       const context = resolveRepoContext({
-        cwd,
         ...(globalOptions.configPath
           ? { configPath: globalOptions.configPath }
           : {}),
+        cwd,
       });
       logRepo(context);
     }),
