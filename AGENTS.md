@@ -140,6 +140,16 @@ home-decisions/
 
 ---
 
+### 🔄 Working Rhythm
+
+- Default to **test-first TDD**: add or update a failing test before implementing behaviour, then make the smallest change to go green, refactor, and commit.
+- Keep the tree green: run the relevant `npm test` scope before every commit.
+- Follow **trunk-based development**: ship incremental, focused changes; avoid long-lived branches.
+- Use **conventional commits** for each logical change (e.g. `feat:`, `fix:`, `test:`).
+- If a change spans multiple concerns, split into multiple TDD cycles and commits.
+
+---
+
 ### 🗂️ Sample `.drctl.yaml` Locations
 
 - **Local project override**: place a `.drctl.yaml` at the repo root (`./.drctl.yaml`) to define project-specific repo aliases.

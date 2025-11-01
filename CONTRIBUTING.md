@@ -21,6 +21,9 @@ Thank you for investing time in improving `drctl`. This project is a collaborati
 
 ## Development Workflow
 
+- Start each change with a **failing test** (or missing coverage) and iterate red → green → refactor.
+- Keep commits **small and incremental**; avoid batching unrelated changes.
+- run `npm test` (or the targeted suite) before every commit to keep `main` green.
 - Follow a **test-driven mindset**. Add or update unit tests (Vitest) before implementing behaviour when practical.
 - Keep changes **small and focused**. Prefer multiple logical commits over a single large one.
 - Use **conventional commits** for each changeset:
