@@ -19,7 +19,7 @@ import {
 } from "../config.js";
 import { formatRepoContext } from "./repo-format.js";
 import { collectRepoOptions, ensureRepoFlagNotUsed } from "./options.js";
-import { createRepoEntry } from "./repo-manage.js";
+import { createRepoEntry, switchDefaultRepo } from "./repo-manage.js";
 import { initGitRepo } from "../core/git.js";
 
 interface GlobalCliOptions {
@@ -169,6 +169,20 @@ repoCommand
       }
       await initGitRepo(context.root);
       console.log(`✅ Initialised git repository at ${context.root}`);
+    }),
+  );
+
+repoCommand
+  .command("switch <name>")
+  .description("Set the default repository alias")
+  .action(
+    handleAction(function (this: Command, name: string) {
+      ensureRepoFlagNotUsed(this, "repo switch");
+      const cwd = process.cwd();
+      const result = switchDefaultRepo({ cwd, name });
+      console.log(`⭐ Default repo switched to ${result.defaultRepo}`);
+      const context = resolveRepoContext({ cwd });
+      logRepo(context);
     }),
   );
 

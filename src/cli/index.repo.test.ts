@@ -1,6 +1,7 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
+import { load as loadYaml } from "js-yaml";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("cli index commands", () => {
@@ -110,6 +111,28 @@ describe("cli index commands", () => {
       true,
     );
     expect(fs.existsSync(path.join(repoDir, ".git"))).toBe(true);
+
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("switches the default repository", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
+    fs.writeFileSync(
+      path.join(tempDir, ".drctl.yaml"),
+      `defaultRepo: work\nrepos:\n  work:\n    path: ./work\n  home:\n    path: ./home\n`,
+    );
+
+    process.chdir(tempDir);
+    process.argv = ["node", "drctl", "repo", "switch", "home"];
+
+    await import("./index.js");
+
+    const logCalls = consoleLogSpy.mock.calls.map((call) => call[0]);
+    expect(logCalls.some((msg) => /Default repo.*home/.test(msg))).toBe(true);
+    const parsed = loadYaml(
+      fs.readFileSync(path.join(tempDir, ".drctl.yaml"), "utf8"),
+    ) as Record<string, unknown>;
+    expect(parsed.defaultRepo).toBe("home");
 
     fs.rmSync(tempDir, { recursive: true, force: true });
   });

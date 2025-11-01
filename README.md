@@ -147,6 +147,8 @@ Remove the link later with `npm unlink -g decision-record` (or run `npm unlink` 
 | `drctl accept <id>`                 | Mark proposed decision accepted        |
 | `drctl repo`                        | Display the currently resolved repo    |
 | `drctl repo new <name> <path>`      | Add a repo entry to the nearest config |
+| `drctl repo bootstrap <name>`       | Initialise git for a configured repo   |
+| `drctl repo switch <name>`          | Make an existing repo the default      |
 | `drctl correct <id> --note`         | Record a small correction              |
 | `drctl revise <id> --note`          | Increment version, update metadata     |
 | `drctl supersede <old_id> <new_id>` | Replace old decision                   |

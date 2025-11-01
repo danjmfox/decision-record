@@ -3,7 +3,7 @@ import os from "os";
 import path from "path";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { load as loadYaml } from "js-yaml";
-import { createRepoEntry } from "./repo-manage.js";
+import { createRepoEntry, switchDefaultRepo } from "./repo-manage.js";
 import { resolveRepoContext } from "../config.js";
 
 const tempDirs: string[] = [];
@@ -150,5 +150,42 @@ describe("createRepoEntry", () => {
       repoPath: "~/tilde-repo",
     });
     expect(tildeResult.repoRoot).toBe(path.join(home, "tilde-repo"));
+  });
+});
+
+describe("switchDefaultRepo", () => {
+  it("updates defaultRepo when alias exists", () => {
+    const cwd = makeTempDir();
+    fs.writeFileSync(
+      path.join(cwd, ".drctl.yaml"),
+      `defaultRepo: work\nrepos:\n  work:\n    path: ./work\n  home:\n    path: ./home\n`,
+    );
+
+    const result = switchDefaultRepo({ cwd, name: "home" });
+
+    expect(result.defaultRepo).toBe("home");
+    const parsed = loadYaml(
+      fs.readFileSync(path.join(cwd, ".drctl.yaml"), "utf8"),
+    ) as Record<string, unknown>;
+    expect(parsed.defaultRepo).toBe("home");
+  });
+
+  it("throws when alias is missing", () => {
+    const cwd = makeTempDir();
+    fs.writeFileSync(
+      path.join(cwd, ".drctl.yaml"),
+      `repos:\n  work:\n    path: ./work\n`,
+    );
+
+    expect(() => switchDefaultRepo({ cwd, name: "missing" })).toThrow(
+      /not found/i,
+    );
+  });
+
+  it("throws when no config file is found", () => {
+    const cwd = makeTempDir();
+    expect(() => switchDefaultRepo({ cwd, name: "any" })).toThrow(
+      /No \.drctl\.yaml file found/i,
+    );
   });
 });

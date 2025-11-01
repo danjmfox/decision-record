@@ -18,6 +18,16 @@ export interface CreateRepoEntryResult {
   repoRoot: string;
 }
 
+export interface SwitchDefaultRepoOptions {
+  cwd: string;
+  name: string;
+}
+
+export interface SwitchDefaultRepoResult {
+  configPath: string;
+  defaultRepo: string;
+}
+
 export function createRepoEntry(
   options: CreateRepoEntryOptions,
 ): CreateRepoEntryResult {
@@ -45,6 +55,35 @@ export function createRepoEntry(
 
   const repoRoot = resolveRepoPath(repoPath, configDir);
   return { configPath, repoRoot };
+}
+
+export function switchDefaultRepo(
+  options: SwitchDefaultRepoOptions,
+): SwitchDefaultRepoResult {
+  const { cwd, name } = options;
+  const configPath = findNearestConfig(cwd);
+  if (!configPath) {
+    throw new Error(
+      "No .drctl.yaml file found. Run 'drctl repo new' to create one first.",
+    );
+  }
+  const config = loadConfigFile(configPath);
+  const repos = ensureRepoMap(config.repos);
+  config.repos = repos;
+
+  if (!repos[name]) {
+    const available = Object.keys(repos);
+    const hint = available.length > 0 ? available.join(", ") : "(none)";
+    throw new Error(
+      `Repository "${name}" not found. Available repos: ${hint}.`,
+    );
+  }
+
+  config.defaultRepo = name;
+  const yaml = dumpYaml(config, { noRefs: true, lineWidth: 100 });
+  fs.writeFileSync(configPath, yaml);
+
+  return { configPath, defaultRepo: name };
 }
 
 function loadConfigFile(configPath: string): Record<string, unknown> {
