@@ -187,6 +187,25 @@ describe("service layer", () => {
     stagedSpy.mockRestore();
   });
 
+  it("fails to accept when unrelated files are staged", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const creation = createDecision("meta", "accept-staging-warning", {
+      context,
+    });
+    const stagedSpy = vi
+      .spyOn(gitModule, "getStagedFiles")
+      .mockResolvedValue(["docs.md"]);
+
+    await expect(
+      acceptDecision(creation.record.id, { context, gitClient }),
+    ).rejects.toThrow(/Staging area contains unrelated changes/);
+    expect(gitClient.stageAndCommit).not.toHaveBeenCalled();
+    stagedSpy.mockRestore();
+  });
+
   it("rejects a decision and commits via git", async () => {
     const context = makeContext();
     const gitClient = {
