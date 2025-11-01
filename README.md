@@ -340,7 +340,7 @@ npm run dev -- index
 
 ### 🔜 Lifecycle Automation Priorities
 
-1. Extend `drctl accept` so the git-backed flow mirrors `draft`/`propose` (status update, changelog entry, commit).
+1. ✅ Extend `drctl accept` so the git-backed flow mirrors `draft`/`propose` (status update, changelog entry, commit).
 2. Introduce `drctl reject` / `drctl deprecate` with the same frontmatter-only updates. ✅
 3. Implement `drctl supersede` / `drctl retire`, preserving markdown bodies while adjusting metadata.
 4. Add regression tests that verify changelog consistency and body preservation across every transition.
