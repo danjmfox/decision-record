@@ -1,6 +1,7 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
+import matter from "gray-matter";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { RepoContext } from "../config.js";
 import {
@@ -156,6 +157,22 @@ describe("service layer", () => {
       cwd: context.root,
       message: `drctl: propose ${creation.record.id}`,
     });
+  });
+
+  it("preserves markdown body when lifecycle updates occur", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const creation = createDecision("meta", "keep-body", { context });
+    const before = matter.read(creation.filePath);
+    expect(before.content).toContain("## 🧭 Context");
+
+    await draftDecision(creation.record.id, { context, gitClient });
+
+    const after = matter.read(creation.filePath);
+    expect(after.content).toContain("## 🧭 Context");
+    expect(after.data.status).toBe("draft");
   });
 
   it("suggests repo bootstrap when git repo is missing", async () => {

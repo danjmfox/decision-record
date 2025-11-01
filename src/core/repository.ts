@@ -17,12 +17,20 @@ export function getDecisionPath(
 export function saveDecision(
   context: RepoContext,
   record: DecisionRecord,
-  content = "",
+  content?: string,
 ): string {
   const domainDir = resolveDomainDir(context, record.domain);
   fs.mkdirSync(domainDir, { recursive: true });
   const filePath = getDecisionPath(context, record);
-  const md = matter.stringify(content, record);
+  let body = content;
+  if (body === undefined && fs.existsSync(filePath)) {
+    const existing = matter.read(filePath);
+    body = existing.content;
+  }
+  if (body === undefined) {
+    body = "";
+  }
+  const md = matter.stringify(body, record);
   fs.writeFileSync(filePath, md);
   return filePath;
 }
