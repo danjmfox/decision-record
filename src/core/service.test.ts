@@ -6,12 +6,14 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { RepoContext } from "../config.js";
 import {
   acceptDecision,
+  correctionDecision,
   createDecision,
   draftDecision,
   proposeDecision,
   listAll,
   rejectDecision,
   deprecateDecision,
+  reviseDecision,
   supersedeDecision,
 } from "./service.js";
 import * as gitModule from "./git.js";
@@ -211,6 +213,75 @@ describe("service layer", () => {
     expect(gitClient.stageAndCommit).toHaveBeenCalledWith([result.filePath], {
       cwd: context.root,
       message: `drctl: reject ${creation.record.id}`,
+    });
+  });
+
+  it("applies a correction with a patch version bump", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const creation = createDecision("meta", "typo-fix", { context });
+
+    const corrected = await correctionDecision(creation.record.id, {
+      context,
+      gitClient,
+      note: "Fixed typo in principles",
+    });
+
+    expect(corrected.record.version).toBe("1.0.1");
+    expect(corrected.record.lastEdited).toBe("2025-10-30");
+    expect(corrected.record.changeType).toBe("correction");
+    expect(corrected.record.changelog?.at(-1)).toEqual({
+      date: "2025-10-30",
+      note: "Fixed typo in principles",
+    });
+
+    const frontmatter = matter.read(corrected.filePath);
+    expect(frontmatter.data.version).toBe("1.0.1");
+
+    expect(gitClient.stageAndCommit).toHaveBeenCalledWith(
+      [corrected.filePath],
+      {
+        cwd: context.root,
+        message: `drctl: correction ${creation.record.id}`,
+      },
+    );
+  });
+
+  it("applies a revision with a minor version bump and metadata update", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const creation = createDecision("meta", "confidence-update", {
+      context,
+      confidence: 0.4,
+    });
+
+    const revised = await reviseDecision(creation.record.id, {
+      context,
+      gitClient,
+      note: "Raised confidence after adoption",
+      confidence: 0.7,
+    });
+
+    expect(revised.record.version).toBe("1.1.0");
+    expect(revised.record.lastEdited).toBe("2025-10-30");
+    expect(revised.record.changeType).toBe("revision");
+    expect(revised.record.confidence).toBe(0.7);
+    expect(revised.record.changelog?.at(-1)).toEqual({
+      date: "2025-10-30",
+      note: "Raised confidence after adoption",
+    });
+
+    const frontmatter = matter.read(revised.filePath);
+    expect(frontmatter.data.version).toBe("1.1.0");
+    expect(frontmatter.data.confidence).toBe(0.7);
+
+    expect(gitClient.stageAndCommit).toHaveBeenCalledWith([revised.filePath], {
+      cwd: context.root,
+      message: `drctl: revise ${creation.record.id}`,
     });
   });
 

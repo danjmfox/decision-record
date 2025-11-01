@@ -115,6 +115,7 @@ Refer to [ARCHITECTURE.md](./ARCHITECTURE.md) for the layered overview and reaso
 - Run lifecycle commands with a clean staging area; drctl commits the files it changes.
 - drctl aborts when other files are staged, so contributors should check `git status` before running commands if they expect to batch changes.
 - Communicate with delivery teams about CI behaviour—pipelines can ignore commits whose messages start with `drctl:` if desired.
+- Prefer `drctl correction` / `drctl revise` / lifecycle commands over manual `git add`/`git commit` when touching decision records so metadata stays in sync.
 
 ---
 

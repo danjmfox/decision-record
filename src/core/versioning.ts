@@ -1,11 +1,23 @@
-export function bumpVersion(version: string, major = false): string {
-  const [majorPart, minorPart] = version.split(".");
-  const maj = Number.parseInt(majorPart ?? "0", 10);
-  const min = Number.parseInt(minorPart ?? "0", 10);
+export type VersionBump = "patch" | "minor" | "major";
 
-  if (Number.isNaN(maj) || Number.isNaN(min)) {
+export function bumpVersion(version: string, bump: VersionBump): string {
+  const parts = version.split(".").map((part) => Number.parseInt(part, 10));
+  while (parts.length < 3) {
+    parts.push(0);
+  }
+  const [major, minor, patch] = parts;
+
+  if ([major, minor, patch].some((num) => Number.isNaN(num))) {
     throw new Error(`Invalid semantic version supplied: "${version}"`);
   }
 
-  return major ? `${maj + 1}.0` : `${maj}.${min + 1}`;
+  switch (bump) {
+    case "major":
+      return `${major + 1}.0.0`;
+    case "minor":
+      return `${major}.${minor + 1}.0`;
+    case "patch":
+    default:
+      return `${major}.${minor}.${patch + 1}`;
+  }
 }

@@ -4,6 +4,7 @@ import path from "path";
 import { Command } from "commander";
 import {
   acceptDecision,
+  correctionDecision,
   createDecision,
   draftDecision,
   proposeDecision,
@@ -11,6 +12,7 @@ import {
   rejectDecision,
   deprecateDecision,
   supersedeDecision,
+  reviseDecision,
   resolveContext,
   type CreateDecisionOptions,
   type RepoOptions,
@@ -252,6 +254,55 @@ program
       }
       const result = createDecision(domain, slug, options);
       console.log(`✅ Created ${result.record.id} (${result.record.status})`);
+      console.log(`📄 File: ${result.filePath}`);
+    }),
+  );
+
+program
+  .command("correction <id>")
+  .description("Apply a minor correction (patch version) to a decision")
+  .option("--note <note>", "changelog note to record")
+  .action(
+    createRepoAction(async function (
+      repoOptions,
+      id: string,
+      command: { note?: string },
+    ) {
+      const result = await correctionDecision(id, {
+        ...repoOptions,
+        ...(command.note ? { note: command.note } : {}),
+      });
+      console.log(
+        `🛠️ ${result.record.id} corrected (v${result.record.version})`,
+      );
+      console.log(`📄 File: ${result.filePath}`);
+    }),
+  );
+
+program
+  .command("revise <id>")
+  .description("Apply a revision (minor version) to a decision")
+  .option("--note <note>", "changelog note to record")
+  .option("--confidence <value>", "update confidence", (value) =>
+    Number.parseFloat(value),
+  )
+  .action(
+    createRepoAction(async function (
+      repoOptions,
+      id: string,
+      command: { note?: string; confidence?: number },
+    ) {
+      const confidenceOption =
+        typeof command.confidence === "number" &&
+        Number.isFinite(command.confidence)
+          ? { confidence: command.confidence }
+          : {};
+      const result = await reviseDecision(id, {
+        ...repoOptions,
+        ...(command.note ? { note: command.note } : {}),
+        ...confidenceOption,
+      });
+      console.log(`📝 ${result.record.id} revised (v${result.record.version})`);
       console.log(`📄 File: ${result.filePath}`);
     }),
   );

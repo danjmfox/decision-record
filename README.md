@@ -272,6 +272,7 @@ Place this `.drctl.yaml` in the project root (or reference it via `--config`). B
 - Use descriptive commit messages (the CLI defaults to `drctl: <action> <id>`).
 - If your CI pipeline runs on every commit, consider configuring a skip rule for messages that start with `drctl:` (e.g., `[skip ci]` or equivalent) or run lifecycle commands in a separate branch that you squash on merge.
 - `drctl` aborts if other files are staged; run `git status` first if you expect to batch changes.
+- Avoid `git add`/`git commit` directly on decision records—use `drctl correction`, `drctl revise`, or lifecycle commands so versions and changelog entries remain consistent.
 
 ### 🔄 Quickstart Commands
 
@@ -344,3 +345,18 @@ npm run dev -- index
 ## 📜 License
 
 This project is released under the [MIT License](./LICENSE.md) with an enhanced no-liability disclaimer. Review the licence before using or distributing the CLI.
+
+### 🔧 Optional Git Hook
+
+Teams embedding decisions in application repos can add a local git hook to remind contributors to use `drctl` commands when committing decision records:
+
+```sh
+# .git/hooks/post-commit (make executable)
+if git diff --cached --name-only | grep -E '^decisions/'; then
+  if ! git log -1 --pretty=%B | grep -q '^drctl:'; then
+    echo "⚠️  Consider using drctl correction/revise/lifecycle commands for decision records." >&2
+  fi
+fi
+```
+
+Adapt the path or hook (e.g., pre-commit) to match your repository structure.
