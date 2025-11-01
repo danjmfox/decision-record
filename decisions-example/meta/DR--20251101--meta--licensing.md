@@ -2,7 +2,7 @@
 id: DR--20251101--meta--licensing
 dateCreated: "2025-11-01"
 version: "1.0"
-status: draft
+status: accepted
 changeType: creation
 domain: meta
 slug: licensing
@@ -11,7 +11,10 @@ changelog:
     note: Initial creation
   - date: "2025-11-01"
     note: Marked as draft
+  - date: "2025-11-01"
+    note: Marked as accepted
 lastEdited: "2025-11-01"
+dateAccepted: "2025-11-01"
 ---
 
 # DR--20251101--meta--licensing
