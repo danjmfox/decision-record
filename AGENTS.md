@@ -39,15 +39,16 @@ For more information, refer to [meta/DR--20251029--meta--decision-policy.md](dec
 
 ## 🧠 Design Principles
 
-| Principle                      | Description                                                                                  |
-| ------------------------------ | -------------------------------------------------------------------------------------------- |
-| **Reasoning is code**          | Decisions are first-class, version-controlled artefacts.                                     |
-| **Separation of concerns**     | App logic, configuration, and decision data live in distinct repos.                          |
-| **Progressive disclosure**     | Defaults work out of the box; advanced config scales with need.                              |
-| **Trust through transparency** | Every design choice has a Decision Record (meta-governance).                                 |
-| **Human-AI collaboration**     | Maintain calm, reflective, evidence-based dialogue — no performative authority.              |
-| **Future-proofing**            | File-based today; API, n8n, and UI integrations tomorrow.                                    |
-| **DecisionOps framing**        | Align drctl with agile + governance practices per `DR--20251101--meta--decisionops-framing`. |
+| Principle                      | Description                                                                                    |
+| ------------------------------ | ---------------------------------------------------------------------------------------------- |
+| **Reasoning is code**          | Decisions are first-class, version-controlled artefacts.                                       |
+| **Separation of concerns**     | App logic, configuration, and decision data live in distinct repos.                            |
+| **Progressive disclosure**     | Defaults work out of the box; advanced config scales with need.                                |
+| **Trust through transparency** | Every design choice has a Decision Record (meta-governance).                                   |
+| **Human-AI collaboration**     | Maintain calm, reflective, evidence-based dialogue — no performative authority.                |
+| **Future-proofing**            | File-based today; API, n8n, and UI integrations tomorrow.                                      |
+| **DecisionOps framing**        | Align drctl with agile + governance practices per `DR--20251101--meta--decisionops-framing`.   |
+| **Per-repo governance**        | Validation scopes to the active repo per `DR--20251101--meta--governance-per-repo-validation`. |
 
 ---
 

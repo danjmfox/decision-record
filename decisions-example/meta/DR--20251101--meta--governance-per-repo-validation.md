@@ -48,7 +48,7 @@ Default governance validation operates per repository. `drctl governance validat
 
 ## 🔁 Lifecycle
 
-Status remains `draft` while validation tooling is still in design. Promote to `proposed` once the CLI prototype and documentation reflect the per-repo scope.
+Accepted 2025-11-01 with agreement that governance validation will default to per-repo scans and only opt-in federation when needed.
 
 ## 🧩 Reasoning
 
