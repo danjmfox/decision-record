@@ -56,17 +56,18 @@ We now articulate DecisionOps parallels explicitly: README highlights agile-frie
 
 ## ⚙️ Working Agreements
 
-| Topic                | Agreement                                                                                                                            |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| **Source control**   | `decision-record` (public GitHub) contains code and examples; actual DRs live in private repos (`work-decisions`, `home-decisions`). |
-| **Configuration**    | `.drctl.yaml` supports multiple named repos and optional domain mappings.                                                            |
-| **Development**      | Use `tsx` + `Commander.js` for CLI; logic separated from CLI interface for future API/UI reuse.                                      |
-| **Decision records** | Each architectural choice (for this app) is captured in a `DR--YYYYMMDD--meta--*.md`.                                                |
-| **File conventions** | Use `DR--YYYYMMDD--domain--slug.md` IDs; domain as folder; markdown + YAML frontmatter.                                              |
-| **Private data**     | `.drctl.yaml` and `decisions/` folders are `.gitignore`d; only `decisions-example/` is public.                                       |
-| **AI collaboration** | All reasoning steps remain inspectable; outputs versioned in code, not ephemeral.                                                    |
-| **CLI feedback**     | Commands echo repo context and file paths; `drctl repo` surfaces the resolved workspace on demand.                                   |
-| **Lifecycle flow**   | `drctl new` scaffolds a draft; `drctl draft`/`drctl propose` manage status updates and git commits.                                  |
+| Topic                | Agreement                                                                                                                                                                                    |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Source control**   | `decision-record` (public GitHub) contains code and examples; actual DRs live in private repos (`work-decisions`, `home-decisions`).                                                         |
+| **Configuration**    | `.drctl.yaml` supports multiple named repos and optional domain mappings.                                                                                                                    |
+| **Development**      | Use `tsx` + `Commander.js` for CLI; logic separated from CLI interface for future API/UI reuse.                                                                                              |
+| **Decision records** | Each architectural choice (for this app) is captured in a `DR--YYYYMMDD--meta--*.md`.                                                                                                        |
+| **File conventions** | Use `DR--YYYYMMDD--domain--slug.md` IDs; domain as folder; markdown + YAML frontmatter.                                                                                                      |
+| **Private data**     | `.drctl.yaml` and `decisions/` folders are `.gitignore`d; only `decisions-example/` is public.                                                                                               |
+| **AI collaboration** | All reasoning steps remain inspectable; outputs versioned in code, not ephemeral.                                                                                                            |
+| **CLI feedback**     | Commands echo repo context and file paths; `drctl repo` surfaces the resolved workspace on demand.                                                                                           |
+| **Lifecycle flow**   | `drctl new` scaffolds a draft; `drctl draft`/`drctl propose` manage status updates and git commits.                                                                                          |
+| **Build artefacts**  | `dist/` is git-ignored; package via `npm run build` + `npm pack` per [DR--20251102--meta--build-artifacts-strategy](decisions-example/meta/DR--20251102--meta--build-artifacts-strategy.md). |
 
 ---
 
@@ -149,7 +150,8 @@ home-decisions/
    - [ ] Enable hierarchical navigation between config → repo → domain → DR.
 
 2. **Examples & Documentation**
-   - [ ] Add a README note clarifying `decisions-example/` as the default demo workspace.
+   - [x] Add a README note clarifying `decisions-example/` as the default demo workspace.
+   - [x] Document build artefact strategy and packaging workflow (README, AGENTS, DR--20251102--meta--build-artifacts-strategy).
    - [ ] Capture the multi-repo config design in `DR--20251030--meta--multi-repo-config.md`.
    - [ ] Continue treating `AGENTS.md` as the canonical collaboration record (update as decisions land).
 
@@ -254,11 +256,12 @@ repos:
 
 Please maintain this to ensure we have a good record of major changes:
 
-| Date           | Event                                                                           |
-| -------------- | ------------------------------------------------------------------------------- |
-| **2025-10-29** | Initial Decision Record Policy (`DR--20251029--meta--decision-policy`) created. |
-| **2025-10-30** | Multi-repo `.drctl.yaml` config pattern agreed.                                 |
-| **2025-10-31** | AGENTS.md introduced as meta-collaboration record.                              |
+| Date           | Event                                                                             |
+| -------------- | --------------------------------------------------------------------------------- |
+| **2025-10-29** | Initial Decision Record Policy (`DR--20251029--meta--decision-policy`) created.   |
+| **2025-10-30** | Multi-repo `.drctl.yaml` config pattern agreed.                                   |
+| **2025-10-31** | AGENTS.md introduced as meta-collaboration record.                                |
+| **2025-11-02** | Build artefact strategy adopted (`DR--20251102--meta--build-artifacts-strategy`). |
 
 ---
 
