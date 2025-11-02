@@ -84,6 +84,8 @@ npm run test:coverage # coverage report
 
 Vitest is configured to pick up `*.test.ts` files inside `src/`, keeping tests close to the code they exercise.
 
+> This repository includes `decisions-example/` as the default demo workspace. The walkthroughs below assume commands run against that folder unless you pass `--repo` to target another workspace.
+
 ### CLI Usage
 
 During development you can invoke the CLI via tsx without building:
@@ -329,6 +331,16 @@ npm run dev -- accept <id>
 # Rebuild the repo index so the DR is linked under its domain
 npm run dev -- index
 ```
+
+### 📦 Packaging & Distribution
+
+Publishing relies on the policy captured in [DR--20251102--meta--build-artifacts-strategy](./decisions-example/meta/DR--20251102--meta--build-artifacts-strategy.md):
+
+- `dist/` is git-ignored; generate compiled output with `npm run build` when linking locally.
+- `npm pack` (and `npm publish`) trigger the `prepack` hook, rebuilding `dist/` with the production compiler config so the `drctl` binary matches the latest source.
+- Inspect the publish artefact locally via `npm pack`; the resulting `.tgz` is the exact payload that would ship to npm.
+- The build uses `tsconfig.build.json`, which excludes test suites so the published tarball contains only runtime code and type declarations.
+- Package metadata (`repository`, `bugs`, `homepage`, `keywords`, `engines`) is ready for npm; adjust the URLs if you publish under a different GitHub organisation (current origin: `danjmfox/decision-record`).
 
 ## 🌱 Plan for Evolution
 

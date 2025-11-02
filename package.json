@@ -1,9 +1,25 @@
 {
   "name": "decision-record",
-  "version": "0.0.0",
-  "description": "",
-  "license": "ISC",
-  "author": "",
+  "version": "0.1.0",
+  "description": "drctl — a DecisionOps-friendly CLI for managing decision records with lifecycle automation.",
+  "license": "MIT",
+  "author": "Daniel Osborne",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/danjmfox/decision-record.git"
+  },
+  "homepage": "https://github.com/danjmfox/decision-record#readme",
+  "bugs": {
+    "url": "https://github.com/danjmfox/decision-record/issues"
+  },
+  "keywords": [
+    "drctl",
+    "decision records",
+    "adr",
+    "decisionops",
+    "governance",
+    "cli"
+  ],
   "type": "module",
   "main": "index.js",
   "bin": {
@@ -11,13 +27,19 @@
   },
   "scripts": {
     "dev": "tsx src/cli/index.ts",
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "start": "node dist/cli/index.js",
     "test": "vitest run",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
-    "commit": "cz"
+    "commit": "cz",
+    "prepack": "npm run build"
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE.md"
+  ],
   "devDependencies": {
     "@commitlint/cli": "^20.1.0",
     "@commitlint/config-conventional": "^20.0.0",
@@ -33,6 +55,10 @@
     "commitizen": {
       "path": "./node_modules/cz-conventional-changelog"
     }
+  },
+  "engines": {
+    "node": ">=18.17",
+    "npm": ">=9"
   },
   "dependencies": {
     "commander": "^14.0.2",
