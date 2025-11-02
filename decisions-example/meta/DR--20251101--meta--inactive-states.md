@@ -1,9 +1,9 @@
 ---
 id: DR--20251101--meta--inactive-states
 dateCreated: "2025-11-01"
-version: "1.0"
+version: 1.0.1
 status: accepted
-changeType: creation
+changeType: correction
 domain: meta
 slug: inactive-states
 changelog:
@@ -13,7 +13,9 @@ changelog:
     note: Marked as draft
   - date: "2025-11-01"
     note: Marked as accepted
-lastEdited: "2025-11-01"
+  - date: "2025-11-02"
+    note: Aligned lifecycle status narrative
+lastEdited: "2025-11-02"
 dateAccepted: "2025-11-01"
 ---
 
@@ -49,7 +51,7 @@ Status vocabulary therefore becomes `draft → proposed → accepted → (deprec
 
 ## 🔁 Lifecycle
 
-Status: `draft`. We’ll move to `proposed` once the documentation is updated to describe the new commands.
+Status: `accepted`. Documentation updates about the new commands remain on the backlog and will trigger revisions when delivered.
 
 ## 🧩 Reasoning
 
