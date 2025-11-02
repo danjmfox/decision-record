@@ -342,6 +342,14 @@ Publishing relies on the policy captured in [DR--20251102--meta--build-artifacts
 - The build uses `tsconfig.build.json`, which excludes test suites so the published tarball contains only runtime code and type declarations.
 - Package metadata (`repository`, `bugs`, `homepage`, `keywords`, `engines`) is ready for npm; adjust the URLs if you publish under a different GitHub organisation (current origin: `danjmfox/decision-record`).
 
+### 🤖 Continuous Integration
+
+A GitHub Actions workflow (`.github/workflows/ci.yml`) keeps the main branch green:
+
+- Triggers on pushes to `main` and on pull requests.
+- Runs against Node.js 20.x (matching the minimum engine requirement).
+- Executes `npm ci`, `npm run build`, and `npm test`, ensuring the publish artefact builds before review/merge.
+
 ## 🌱 Plan for Evolution
 
 | Phase             | Goal                        | Outcome                                             |

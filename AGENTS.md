@@ -156,6 +156,7 @@ home-decisions/
    - [ ] Continue treating `AGENTS.md` as the canonical collaboration record (update as decisions land).
 
 3. **Automation & Integrations (Future)**
+   - [x] Establish CI pipeline (GitHub Actions build + test).
    - [ ] Add REST API and dashboard layer.
    - [ ] Support remote DR syncing via `git` or API calls.
    - [ ] Explore n8n automation for scheduled reviews.
@@ -261,6 +262,7 @@ Please maintain this to ensure we have a good record of major changes:
 | **2025-10-29** | Initial Decision Record Policy (`DR--20251029--meta--decision-policy`) created.   |
 | **2025-10-30** | Multi-repo `.drctl.yaml` config pattern agreed.                                   |
 | **2025-10-31** | AGENTS.md introduced as meta-collaboration record.                                |
+| **2025-11-02** | Continuous integration pipeline added (`.github/workflows/ci.yml`).               |
 | **2025-11-02** | Build artefact strategy adopted (`DR--20251102--meta--build-artifacts-strategy`). |
 
 ---
