@@ -15,6 +15,12 @@
   "npm": {
     "publish": false
   },
+  "github": {
+    "release": true,
+    "releaseName": "drctl ${version}",
+    "draft": false,
+    "tokenRef": "GITHUB_TOKEN"
+  },
   "hooks": {
     "before:init": ["npm run build", "npm test"]
   }

@@ -362,7 +362,7 @@ A GitHub Actions workflow (`.github/workflows/ci.yml`) keeps the main branch gre
    - bump the version, commit, and tag (`chore: release <version>`).
 4. Publish manually with `npm publish` once you are happy with the artefact (`npm pack` mirrors what will ship).
 
-`release-it` is configured to require a clean working tree, run on the `main` branch, and skip npm publishing so you stay in control of when the package is released.
+GitHub releases are created automatically (set `GITHUB_TOKEN=<your PAT>` in the environment before running `npm run release`). `release-it` still requires a clean working tree, runs on the `main` branch, and skips npm publishing so you stay in control of when the package hits npm.
 
 ## 🌱 Plan for Evolution
 

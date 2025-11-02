@@ -68,6 +68,7 @@ We now articulate DecisionOps parallels explicitly: README highlights agile-frie
 | **CLI feedback**     | Commands echo repo context and file paths; `drctl repo` surfaces the resolved workspace on demand.                                                                                           |
 | **Lifecycle flow**   | `drctl new` scaffolds a draft; `drctl draft`/`drctl propose` manage status updates and git commits.                                                                                          |
 | **Build artefacts**  | `dist/` is git-ignored; package via `npm run build` + `npm pack` per [DR--20251102--meta--build-artifacts-strategy](decisions-example/meta/DR--20251102--meta--build-artifacts-strategy.md). |
+| **Releases**         | `npm run release` (release-it) drives version bumps + GitHub releases; export `GITHUB_TOKEN` locally, publish to npm manually when ready.                                                    |
 
 ---
 
@@ -157,7 +158,7 @@ home-decisions/
 
 3. **Automation & Integrations (Future)**
    - [x] Establish CI pipeline (GitHub Actions build + test).
-   - [x] Trial automated release tooling (`release-it` with conventional changelog).
+   - [x] Trial automated release tooling (`release-it` with conventional changelog + GitHub releases).
    - [ ] Add REST API and dashboard layer.
    - [ ] Support remote DR syncing via `git` or API calls.
    - [ ] Explore n8n automation for scheduled reviews.
