@@ -1,9 +1,9 @@
 ---
 id: DR--20251101--meta--repository-indexing
 dateCreated: "2025-11-01"
-version: "1.0"
+version: 1.0.1
 status: accepted
-changeType: creation
+changeType: correction
 domain: meta
 slug: repository-indexing
 changelog:
@@ -13,7 +13,9 @@ changelog:
     note: Marked as draft
   - date: "2025-11-01"
     note: Marked as accepted
-lastEdited: "2025-11-01"
+  - date: "2025-11-02"
+    note: Aligned lifecycle status narrative
+lastEdited: "2025-11-02"
 dateAccepted: "2025-11-01"
 ---
 
@@ -49,7 +51,7 @@ The command reports the generated path so scripts or humans can chain further ac
 
 ## 🔁 Lifecycle
 
-Status: `draft`. We’ll move to `proposed` once domain-level indices and status filters are scoped.
+Status: `accepted`. Follow-up work (domain-level indices, status filters) will be captured in future revisions or new DRs.
 
 ## 🧩 Reasoning
 
