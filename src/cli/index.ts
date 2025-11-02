@@ -2,6 +2,7 @@
 import fs from "fs";
 import path from "path";
 import { Command } from "commander";
+import packageJson from "../../package.json" with { type: "json" };
 import {
   acceptDecision,
   correctionDecision,
@@ -35,8 +36,14 @@ interface GlobalCliOptions {
   repo?: string;
 }
 
+const packageVersion =
+  typeof packageJson.version === "string" ? packageJson.version : "0.0.0";
+
 const program = new Command();
-program.name("drctl").description("Decision Record CLI").version("0.1.0");
+program
+  .name("drctl")
+  .description("Decision Record CLI")
+  .version(packageVersion);
 
 program.option("--repo <repo>", "target repo alias or path");
 program.option("--config <config>", "path to drctl configuration file");
