@@ -56,19 +56,20 @@ We now articulate DecisionOps parallels explicitly: README highlights agile-frie
 
 ## ⚙️ Working Agreements
 
-| Topic                | Agreement                                                                                                                                                                                    |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Source control**   | `decision-record` (public GitHub) contains code and examples; actual DRs live in private repos (`work-decisions`, `home-decisions`).                                                         |
-| **Configuration**    | `.drctl.yaml` supports multiple named repos and optional domain mappings.                                                                                                                    |
-| **Development**      | Use `tsx` + `Commander.js` for CLI; logic separated from CLI interface for future API/UI reuse.                                                                                              |
-| **Decision records** | Each architectural choice (for this app) is captured in a `DR--YYYYMMDD--meta--*.md`.                                                                                                        |
-| **File conventions** | Use `DR--YYYYMMDD--domain--slug.md` IDs; domain as folder; markdown + YAML frontmatter.                                                                                                      |
-| **Private data**     | `.drctl.yaml` and `decisions/` folders are `.gitignore`d; only `decisions-example/` is public.                                                                                               |
-| **AI collaboration** | All reasoning steps remain inspectable; outputs versioned in code, not ephemeral.                                                                                                            |
-| **CLI feedback**     | Commands echo repo context and file paths; `drctl repo` surfaces the resolved workspace on demand.                                                                                           |
-| **Lifecycle flow**   | `drctl new` scaffolds a draft; `drctl draft`/`drctl propose` manage status updates and git commits.                                                                                          |
-| **Build artefacts**  | `dist/` is git-ignored; package via `npm run build` + `npm pack` per [DR--20251102--meta--build-artifacts-strategy](decisions-example/meta/DR--20251102--meta--build-artifacts-strategy.md). |
-| **Releases**         | `npm run release` (release-it) drives version bumps + GitHub releases; export `GITHUB_TOKEN` locally, publish to npm manually when ready.                                                    |
+| Topic                  | Agreement                                                                                                                                                                                    |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Source control**     | `decision-record` (public GitHub) contains code and examples; actual DRs live in private repos (`work-decisions`, `home-decisions`).                                                         |
+| **Configuration**      | `.drctl.yaml` supports multiple named repos and optional domain mappings.                                                                                                                    |
+| **Development**        | Use `tsx` + `Commander.js` for CLI; logic separated from CLI interface for future API/UI reuse.                                                                                              |
+| **Decision records**   | Each architectural choice (for this app) is captured in a `DR--YYYYMMDD--meta--*.md`.                                                                                                        |
+| **Example DR hygiene** | Files under `decisions-example/` are updated exclusively via the appropriate `drctl` lifecycle command (e.g., `drctl correction`, `drctl revise`) so the automation stays exercised.         |
+| **File conventions**   | Use `DR--YYYYMMDD--domain--slug.md` IDs; domain as folder; markdown + YAML frontmatter.                                                                                                      |
+| **Private data**       | `.drctl.yaml` and `decisions/` folders are `.gitignore`d; only `decisions-example/` is public.                                                                                               |
+| **AI collaboration**   | All reasoning steps remain inspectable; outputs versioned in code, not ephemeral.                                                                                                            |
+| **CLI feedback**       | Commands echo repo context and file paths; `drctl repo` surfaces the resolved workspace on demand.                                                                                           |
+| **Lifecycle flow**     | `drctl new` scaffolds a draft; `drctl draft`/`drctl propose` manage status updates and git commits.                                                                                          |
+| **Build artefacts**    | `dist/` is git-ignored; package via `npm run build` + `npm pack` per [DR--20251102--meta--build-artifacts-strategy](decisions-example/meta/DR--20251102--meta--build-artifacts-strategy.md). |
+| **Releases**           | `npm run release` (release-it) drives version bumps + GitHub releases; export `GITHUB_TOKEN` locally, publish to npm manually when ready.                                                    |
 
 ---
 
