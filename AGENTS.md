@@ -157,6 +157,7 @@ home-decisions/
 
 3. **Automation & Integrations (Future)**
    - [x] Establish CI pipeline (GitHub Actions build + test).
+   - [x] Trial automated release tooling (`release-it` with conventional changelog).
    - [ ] Add REST API and dashboard layer.
    - [ ] Support remote DR syncing via `git` or API calls.
    - [ ] Explore n8n automation for scheduled reviews.
@@ -264,6 +265,7 @@ Please maintain this to ensure we have a good record of major changes:
 | **2025-10-31** | AGENTS.md introduced as meta-collaboration record.                                |
 | **2025-11-02** | Continuous integration pipeline added (`.github/workflows/ci.yml`).               |
 | **2025-11-02** | Build artefact strategy adopted (`DR--20251102--meta--build-artifacts-strategy`). |
+| **2025-11-02** | `release-it` introduced for conventional changelog-driven releases.               |
 
 ---
 

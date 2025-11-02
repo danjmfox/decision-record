@@ -1,0 +1,21 @@
+{
+  "$schema": "https://raw.githubusercontent.com/release-it/release-it/main/conf/release-it.schema.json",
+  "plugins": {
+    "@release-it/conventional-changelog": {
+      "preset": "conventionalcommits",
+      "infile": "CHANGELOG.md"
+    }
+  },
+  "git": {
+    "commitMessage": "chore: release ${version}",
+    "tagName": "v${version}",
+    "requireBranch": "main",
+    "requireCleanWorkingDir": true
+  },
+  "npm": {
+    "publish": false
+  },
+  "hooks": {
+    "before:init": ["npm run build", "npm test"]
+  }
+}

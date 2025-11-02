@@ -33,7 +33,8 @@
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
     "commit": "cz",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "release": "release-it"
   },
   "files": [
     "dist",
@@ -43,10 +44,12 @@
   "devDependencies": {
     "@commitlint/cli": "^20.1.0",
     "@commitlint/config-conventional": "^20.0.0",
+    "@release-it/conventional-changelog": "^10.0.1",
     "@types/node": "^24.9.2",
     "@vitest/coverage-v8": "^4.0.5",
     "commitizen": "^4.3.1",
     "cz-conventional-changelog": "^3.3.0",
+    "release-it": "^19.0.5",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "vitest": "^4.0.5"

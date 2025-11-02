@@ -350,6 +350,20 @@ A GitHub Actions workflow (`.github/workflows/ci.yml`) keeps the main branch gre
 - Runs against Node.js 20.x (matching the minimum engine requirement).
 - Executes `npm ci`, `npm run build`, and `npm test`, ensuring the publish artefact builds before review/merge.
 
+### 🚀 Release Workflow
+
+`release-it` handles changelog generation and tagging from conventional commits:
+
+1. Ensure `main` is clean and green (`npm run build`, `npm test`).
+2. Preview the next release notes with `npm run release -- --dry-run`.
+3. When ready, run `npm run release` to:
+   - run build + tests,
+   - update `CHANGELOG.md`,
+   - bump the version, commit, and tag (`chore: release <version>`).
+4. Publish manually with `npm publish` once you are happy with the artefact (`npm pack` mirrors what will ship).
+
+`release-it` is configured to require a clean working tree, run on the `main` branch, and skip npm publishing so you stay in control of when the package is released.
+
 ## 🌱 Plan for Evolution
 
 | Phase             | Goal                        | Outcome                                             |
