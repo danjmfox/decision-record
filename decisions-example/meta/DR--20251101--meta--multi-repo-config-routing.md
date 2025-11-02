@@ -1,9 +1,9 @@
 ---
 id: DR--20251101--meta--multi-repo-config-routing
 dateCreated: "2025-11-01"
-version: "1.0"
+version: 1.0.1
 status: accepted
-changeType: creation
+changeType: correction
 domain: meta
 slug: multi-repo-config-routing
 changelog:
@@ -13,7 +13,9 @@ changelog:
     note: Marked as draft
   - date: "2025-11-01"
     note: Marked as accepted
-lastEdited: "2025-11-01"
+  - date: "2025-11-02"
+    note: Aligned lifecycle status narrative
+lastEdited: "2025-11-02"
 dateAccepted: "2025-11-01"
 ---
 
@@ -58,7 +60,7 @@ Repo metadata (alias, path, domain overrides, default repo) is stored in YAML, s
 
 ## 🔁 Lifecycle
 
-Status remains `draft` until we add a dedicated config DR and backfill documentation evidence.
+Status: `accepted`. Remaining documentation tasks (e.g., dedicated config DR, diagnostics surfacing) will trigger future revisions or new decisions as needed.
 
 ## 🧩 Reasoning
 
