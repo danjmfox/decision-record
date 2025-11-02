@@ -1,9 +1,9 @@
 ---
 id: DR--20251101--meta--architecture-overview
 dateCreated: "2025-11-01"
-version: "1.0"
+version: 1.0.2
 status: accepted
-changeType: creation
+changeType: correction
 domain: meta
 slug: architecture-overview
 changelog:
@@ -13,7 +13,11 @@ changelog:
     note: Marked as draft
   - date: "2025-11-01"
     note: Marked as accepted
-lastEdited: "2025-11-01"
+  - date: "2025-11-02"
+    note: Aligned lifecycle status narrative
+  - date: "2025-11-02"
+    note: Aligned lifecycle status narrative
+lastEdited: "2025-11-02"
 dateAccepted: "2025-11-01"
 ---
 
@@ -49,7 +53,7 @@ Adopt a layered architecture:
 
 ## 🔁 Lifecycle
 
-Status: `draft` pending publication of `ARCHITECTURE.md` and peer review.
+Status: `accepted`. We will revisit once API/UI adapters ship to confirm the layering still holds and capture any refinements in a revision.
 
 ## 🧩 Reasoning
 
