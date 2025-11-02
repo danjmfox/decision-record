@@ -1,6 +1,6 @@
 {
   "name": "decision-record",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "drctl — a DecisionOps-friendly CLI for managing decision records with lifecycle automation.",
   "license": "MIT",
   "author": "Daniel Osborne",
