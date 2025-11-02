@@ -1,9 +1,9 @@
 ---
 id: DR--20251101--meta--lifecycle-fast-track
 dateCreated: "2025-11-01"
-version: "1.0"
+version: 1.0.1
 status: proposed
-changeType: creation
+changeType: correction
 domain: meta
 slug: lifecycle-fast-track
 changelog:
@@ -15,7 +15,9 @@ changelog:
     note: Marked as draft
   - date: "2025-11-01"
     note: Marked as proposed
-lastEdited: "2025-11-01"
+  - date: "2025-11-02"
+    note: Aligned lifecycle status narrative
+lastEdited: "2025-11-02"
 ---
 
 # DR--20251101--meta--lifecycle-fast-track
@@ -44,7 +46,7 @@ Allow lifecycle commands (`accept`, `reject`, etc.) to run on `draft` records di
 
 ## 🔁 Lifecycle
 
-Status: `draft`. Update documentation to clarify the behaviour, then promote to `proposed`/`accepted` after review.
+Status: `proposed`. Documentation updates and further review will determine when we promote to `accepted`.
 
 ## 🧩 Reasoning
 
