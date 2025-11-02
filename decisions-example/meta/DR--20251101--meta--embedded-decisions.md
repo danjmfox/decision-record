@@ -1,9 +1,9 @@
 ---
 id: DR--20251101--meta--embedded-decisions
 dateCreated: "2025-11-01"
-version: "1.0"
+version: 1.0.1
 status: accepted
-changeType: creation
+changeType: correction
 domain: meta
 slug: embedded-decisions
 changelog:
@@ -13,7 +13,9 @@ changelog:
     note: Marked as draft
   - date: "2025-11-01"
     note: Marked as accepted
-lastEdited: "2025-11-01"
+  - date: "2025-11-02"
+    note: Aligned lifecycle status narrative
+lastEdited: "2025-11-02"
 dateAccepted: "2025-11-01"
 ---
 
@@ -47,7 +49,7 @@ Recognise embedded decisions as a supported workflow by:
 
 ## 🔁 Lifecycle
 
-Status: `draft` pending documentation updates and implementation of the staged-files warning.
+Status: `accepted`. Remaining doc updates (e.g. staging guidance) will appear in future revisions.
 
 ## 🧩 Reasoning
 
