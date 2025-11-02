@@ -1,9 +1,9 @@
 ---
 id: DR--20251101--meta--git-backed-lifecycle
 dateCreated: "2025-11-01"
-version: "1.0"
+version: 1.0.1
 status: accepted
-changeType: creation
+changeType: correction
 domain: meta
 slug: git-backed-lifecycle
 changelog:
@@ -13,7 +13,9 @@ changelog:
     note: Marked as draft
   - date: "2025-11-01"
     note: Marked as accepted
-lastEdited: "2025-11-01"
+  - date: "2025-11-02"
+    note: Aligned lifecycle status narrative
+lastEdited: "2025-11-02"
 dateAccepted: "2025-11-01"
 ---
 
@@ -53,7 +55,7 @@ Wrap every lifecycle command (`draft`, `propose`, `accept`, `reject`, `deprecate
 
 ## 🔁 Lifecycle
 
-Status: `draft`. The behaviour is implemented; we’ll mark this DR `proposed` once reader-facing docs capture the workflow, then `accepted` after community review.
+Status: `accepted`. Documentation and community review are ongoing, with any refinements tracked through future revisions.
 
 ## 🧩 Reasoning
 
