@@ -1,5 +1,9 @@
 # 🧭 Decision Record System - Overview & Plan
 
+![CI](https://github.com/danjmfox/decision-record/actions/workflows/ci.yml/badge.svg)
+![CodeQL](https://github.com/danjmfox/decision-record/actions/workflows/codeql.yml/badge.svg)
+![Coverage ≥80%](https://img.shields.io/badge/coverage-%E2%89%A580%25-blue)
+
 ## 🎯 Purpose
 
 A lightweight, human-readable system for recording, tracking, and evolving key decisions across projects - technical, organisational, or personal:

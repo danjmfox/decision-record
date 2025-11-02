@@ -24,11 +24,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Run Trunk checks
+        run: npx --yes trunk@1.25.0 check --ci
+
       - name: TypeScript build
         run: npm run build
 
-      - name: Test
-        run: npm test
+      - name: Test with coverage
+        run: npm run test:coverage
 
       - name: Verify packaging
         run: |
