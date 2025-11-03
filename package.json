@@ -76,5 +76,12 @@
     "commander": "^14.0.2",
     "gray-matter": "^4.0.3",
     "js-yaml": "^4.1.0"
+  },
+  "overrides": {
+    "@conventional-changelog/git-client": "^2.5.1",
+    "git-raw-commits": "^5.0.0",
+    "git-semver-tags": "^8.0.0",
+    "tmp": "^0.2.4",
+    "inquirer": "^9.3.8"
   }
 }

@@ -73,6 +73,10 @@ We now articulate DecisionOps parallels explicitly: README highlights agile-frie
 
 ---
 
+### 🔐 Supply-chain Notes
+
+- Track advisory-driven overrides (e.g. `@conventional-changelog/git-client` 2.5.1+, `tmp` 0.2.4+) in `package.json` so Scorecard’s Vulnerabilities check stays green until upstream deps release patched majors.
+
 ### 🧪 Testing Strategy
 
 - Prefer colocated test files (`*.test.ts`) alongside the modules they cover.
