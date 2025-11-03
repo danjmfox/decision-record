@@ -91,6 +91,8 @@ npx trunk check      # lint, formatting, and supply-chain scans
 
 Vitest is configured to pick up `*.test.ts` files inside `src/`, keeping tests close to the code they exercise.
 
+GitHub Actions runs three pipelines on `main`: the core build/test workflow, CodeQL analysis, and an OpenSSF Scorecard scan that publishes supply-chain results for the badge above.
+
 > This repository includes `decisions-example/` as the default demo workspace. The walkthroughs below assume commands run against that folder unless you pass `--repo` to target another workspace.
 
 ### CLI Usage

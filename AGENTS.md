@@ -162,6 +162,7 @@ home-decisions/
 3. **Automation & Integrations (Future)**
    - [x] Establish CI pipeline (GitHub Actions build + test).
    - [x] Trial automated release tooling (`release-it` with conventional changelog + GitHub releases).
+   - [x] Add OpenSSF Scorecard workflow to surface supply-chain health.
    - [ ] Implement `drctl export` JSON metadata command.
    - [ ] Add REST API and dashboard layer.
    - [ ] Support remote DR syncing via `git` or API calls.
