@@ -60,6 +60,8 @@ lib-cov
 # Coverage directory used by tools like istanbul
 coverage
 *.lcov
+test-results.junit.xml
+
 
 # nyc test coverage
 .nyc_output
@@ -204,3 +206,6 @@ dist
 decisions/
 work-decisions/
 home-decisions/
+
+# CI artifacts
+test-results.junit.xml
