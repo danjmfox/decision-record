@@ -17,13 +17,20 @@ Thank you for investing time in improving `drctl`. This project is a collaborati
    npm test
    ```
 
-4. **Create a branch** following the conventional format, e.g. `feat/multi-repo-sync`.
+4. **Run Trunk checks** for formatting, linting, and supply-chain scans:
+
+   ```bash
+   npx trunk check
+   ```
+
+5. **Create a branch** following the conventional format, e.g. `feat/multi-repo-sync`.
 
 ## Development Workflow
 
 - Start each change with a **failing test** (or missing coverage) and iterate red → green → refactor.
 - Keep commits **small and incremental**; avoid batching unrelated changes.
 - run `npm test` (or the targeted suite) before every commit to keep `main` green.
+- Run `npx trunk check` (or `npx trunk fmt` / `npx trunk lint`) before pushing to ensure formatting, lint, and security scans are clean.
 - Follow a **test-driven mindset**. Add or update unit tests (Vitest) before implementing behaviour when practical.
 - Keep changes **small and focused**. Prefer multiple logical commits over a single large one.
 - Use **conventional commits** for each changeset:

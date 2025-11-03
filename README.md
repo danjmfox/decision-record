@@ -1,8 +1,10 @@
 # 🧭 Decision Record System - Overview & Plan
 
 ![CI](https://github.com/danjmfox/decision-record/actions/workflows/ci.yml/badge.svg)
-![CodeQL](https://github.com/danjmfox/decision-record/actions/workflows/codeql.yml/badge.svg)
-![Coverage ≥80%](https://img.shields.io/badge/coverage-%E2%89%A580%25-blue)
+[![CodeQL](https://github.com/danjmfox/decision-record/actions/workflows/codeql.yml/badge.svg)](https://github.com/danjmfox/decision-record/actions/workflows/codeql.yml)
+[![codecov](https://codecov.io/gh/danjmfox/decision-record/branch/main/graph/badge.svg?token=dbd18aca-0a06-448b-a2e3-fa346995b240)](https://codecov.io/gh/danjmfox/decision-record)
+[![Security Contact](https://img.shields.io/badge/security-contact-blueviolet)](SECURITY.md)
+[![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/danjmfox/decision-record?label=OpenSSF%20Scorecard)](https://securityscorecards.dev/viewer/?uri=github.com/danjmfox/decision-record)
 
 ## 🎯 Purpose
 
@@ -84,6 +86,7 @@ A Markdown file with YAML frontmatter holding:
 npm test             # run vitest
 npm run test:watch   # watch mode
 npm run test:coverage # coverage report
+npx trunk check      # lint, formatting, and supply-chain scans
 ```
 
 Vitest is configured to pick up `*.test.ts` files inside `src/`, keeping tests close to the code they exercise.
@@ -147,44 +150,47 @@ drctl follows the DecisionOps framing captured in `DR--20251101--meta--decisiono
 
 For a deeper architectural overview (layers, lifecycle automation, comparisons with adr-tools), see [ARCHITECTURE.md](./ARCHITECTURE.md).
 
-| Path                     | Purpose                                                                   |
-| ------------------------ | ------------------------------------------------------------------------- |
-| `src/cli/index.ts`       | Commander-based CLI entry point; shared repo middleware + service wiring. |
-| `src/cli/repo-format.ts` | Formats repo context information for CLI output.                          |
-| `src/cli/repo-manage.ts` | Utilities for mutating `.drctl.yaml` repo definitions.                    |
-| `src/config.ts`          | Loads `.drctl.yaml` configs (CLI/env/local/global), resolves repo roots.  |
-| `src/config.test.ts`     | Vitest coverage of configuration resolution scenarios.                    |
-| `src/core/models.ts`     | Type definitions shared across the domain.                                |
-| `src/core/utils.ts`      | Helpers (`generateId`, `extractDomainFromId`).                            |
-| `src/core/repository.ts` | File-system access; saves, loads, lists Markdown decisions.               |
-| `src/core/service.ts`    | Business logic wrapping repository operations with repo context.          |
-| `src/core/versioning.ts` | Version bump helper for decision records.                                 |
-| `src/types/js-yaml.d.ts` | Minimal types so `js-yaml` can be imported without errors.                |
-| `decisions-example/`     | Public sample decision records for demonstrations/tests.                  |
+| Path                      | Purpose                                                                   |
+| ------------------------- | ------------------------------------------------------------------------- |
+| `src/cli/index.ts`        | Commander entry point, command wiring, shared repo middleware.            |
+| `src/cli/options.ts`      | Extracts global `--repo` / `--config` flags for subcommands.              |
+| `src/cli/repo-format.ts`  | Formats repo context information for CLI output.                          |
+| `src/cli/repo-manage.ts`  | Utilities for mutating `.drctl.yaml` repo definitions.                    |
+| `src/config.ts`           | Loads `.drctl.yaml` configs (CLI/env/local/global), resolves repo roots.  |
+| `src/core/repository.ts`  | File-system access; saves, loads, and enumerates Markdown decision files. |
+| `src/core/indexer.ts`     | Generates deterministic Markdown indexes grouped by domain.               |
+| `src/core/service.ts`     | Decision lifecycle logic, version bumps, git integration hooks.           |
+| `src/core/governance.ts`  | Repository validation rules for status/lineage hygiene.                   |
+| `src/core/git.ts`         | Minimal git client used by lifecycle commands.                            |
+| `src/core/validation.ts`  | Schema and record validation helpers shared across governance routines.   |
+| `src/core/versioning.ts`  | Semantic version bump helper for decision records.                        |
+| `src/types/js-yaml.d.ts`  | Minimal types so `js-yaml` can be imported without errors.                |
+| `decisions-example/`      | Public sample decision records for demonstrations/tests.                  |
+| `decisions-example/meta/` | Accepted Decision Records that govern `drctl` itself.                     |
 
 ## Key CLI Commands
 
-| Command                             | Purpose                                 |
-| ----------------------------------- | --------------------------------------- |
-| `drctl new <domain> <slug>`         | Scaffold a new draft (no git yet)       |
-| `drctl draft <id>`                  | Commit the current draft state          |
-| `drctl propose <id>`                | Move draft to proposed + commit         |
-| `drctl list`                        | List decisions (filterable)             |
-| `drctl accept <id>`                 | Mark proposed decision accepted         |
-| `drctl reject <id>`                 | Mark proposed decision rejected         |
-| `drctl deprecate <id>`              | Mark decision deprecated (no successor) |
-| `drctl repo`                        | Display the currently resolved repo     |
-| `drctl repo new <name> <path>`      | Add a repo entry to the nearest config  |
-| `drctl repo bootstrap <name>`       | Initialise git for a configured repo    |
-| `drctl repo switch <name>`          | Make an existing repo the default       |
-| `drctl correct <id> --note`         | Record a small correction               |
-| `drctl revise <id> --note`          | Increment version, update metadata      |
-| `drctl supersede <old_id> <new_id>` | Replace old decision                    |
-| `drctl retire <id>`                 | Retire obsolete decision                |
-| `drctl config check`                | Validate configuration files and repos  |
-| `drctl index`                       | Rebuild master index                    |
-| `drctl governance validate`         | Check decision metadata integrity       |
-| `drctl export`                      | Export metadata as JSON for dashboards  |
+| Command                                                      | Purpose                                 |
+| ------------------------------------------------------------ | --------------------------------------- |
+| `drctl new <domain> <slug>`                                  | Scaffold a new draft (no git yet)       |
+| `drctl draft <id>`                                           | Commit the current draft state          |
+| `drctl propose <id>`                                         | Move draft to proposed + commit         |
+| `drctl list`                                                 | List decisions (filterable)             |
+| `drctl accept <id>`                                          | Mark proposed decision accepted         |
+| `drctl reject <id>`                                          | Mark proposed decision rejected         |
+| `drctl deprecate <id>`                                       | Mark decision deprecated (no successor) |
+| `drctl repo`                                                 | Display the currently resolved repo     |
+| `drctl repo new <name> <path>`                               | Add a repo entry to the nearest config  |
+| `drctl repo bootstrap <name>`                                | Initialise git for a configured repo    |
+| `drctl repo switch <name>`                                   | Make an existing repo the default       |
+| `drctl correction <id> --note` / `drctl correct <id> --note` | Record a small correction               |
+| `drctl revise <id> --note`                                   | Increment version, update metadata      |
+| `drctl supersede <old_id> <new_id>`                          | Replace old decision                    |
+| `drctl retire <id>`                                          | Retire obsolete decision                |
+| `drctl config check`                                         | Validate configuration files and repos  |
+| `drctl index`                                                | Rebuild master index                    |
+| `drctl governance validate`                                  | Check decision metadata integrity       |
+| `drctl export` _(planned)_                                   | Export metadata as JSON for dashboards  |
 
 > `drctl new` scaffolds a record once. Re-run lifecycle commands (`draft`, `accept`, `correction`, `revise`, etc.) to evolve a decision; calling `new` again now reports that the decision already exists.
 

@@ -60,7 +60,7 @@ We now articulate DecisionOps parallels explicitly: README highlights agile-frie
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Source control**     | `decision-record` (public GitHub) contains code and examples; actual DRs live in private repos (`work-decisions`, `home-decisions`).                                                         |
 | **Configuration**      | `.drctl.yaml` supports multiple named repos and optional domain mappings.                                                                                                                    |
-| **Development**        | Use `tsx` + `Commander.js` for CLI; logic separated from CLI interface for future API/UI reuse.                                                                                              |
+| **Development**        | Use `tsx` + `Commander.js` for CLI; logic separated from CLI interface for future API/UI reuse; run `npx trunk check` for linting, formatting, and supply-chain scans.                       |
 | **Decision records**   | Each architectural choice (for this app) is captured in a `DR--YYYYMMDD--meta--*.md`.                                                                                                        |
 | **Example DR hygiene** | Files under `decisions-example/` are updated exclusively via the appropriate `drctl` lifecycle command (e.g., `drctl correction`, `drctl revise`) so the automation stays exercised.         |
 | **File conventions**   | Use `DR--YYYYMMDD--domain--slug.md` IDs; domain as folder; markdown + YAML frontmatter.                                                                                                      |
@@ -93,14 +93,16 @@ We now articulate DecisionOps parallels explicitly: README highlights agile-frie
 | Path                     | Purpose                                                             |
 | ------------------------ | ------------------------------------------------------------------- |
 | `src/cli/index.ts`       | CLI entry point with shared repo middleware delegating to services. |
+| `src/cli/options.ts`     | Normalises global flags (`--repo`, `--config`) for subcommands.     |
 | `src/cli/repo-format.ts` | Formats repo context information for display/logging.               |
 | `src/cli/repo-manage.ts` | Helpers for updating `.drctl.yaml` repo entries.                    |
 | `src/config.ts`          | Multi-layer config loader resolving repo and domain directories.    |
-| `src/config.test.ts`     | Vitest checks ensuring config resolution behaves as designed.       |
-| `src/core/models.ts`     | Shared decision record types and enums.                             |
-| `src/core/utils.ts`      | ID helpers and domain extraction utilities.                         |
 | `src/core/repository.ts` | Persistence layer writing/reading Markdown frontmatter files.       |
+| `src/core/indexer.ts`    | Markdown index generation grouped by domain.                        |
 | `src/core/service.ts`    | High-level actions (create/list/accept) that thread repo context.   |
+| `src/core/governance.ts` | Repository validation and hygiene checks.                           |
+| `src/core/git.ts`        | Thin git client for staging/committing lifecycle changes.           |
+| `src/core/validation.ts` | Shared schema/record validation helpers.                            |
 | `src/core/versioning.ts` | Semantic version bump helper.                                       |
 | `src/types/js-yaml.d.ts` | Minimal type declaration for js-yaml loader.                        |
 | `decisions-example/`     | Example decision records used for demos and tests.                  |
@@ -160,6 +162,7 @@ home-decisions/
 3. **Automation & Integrations (Future)**
    - [x] Establish CI pipeline (GitHub Actions build + test).
    - [x] Trial automated release tooling (`release-it` with conventional changelog + GitHub releases).
+   - [ ] Implement `drctl export` JSON metadata command.
    - [ ] Add REST API and dashboard layer.
    - [ ] Support remote DR syncing via `git` or API calls.
    - [ ] Explore n8n automation for scheduled reviews.

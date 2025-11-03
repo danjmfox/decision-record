@@ -59,7 +59,7 @@ Git interactions are stubbed in tests, while error paths urge users to bootstrap
 - **CLI Framework:** Commander, offering composable middleware and structured help output.
 - **Frontmatter Parsing:** `gray-matter` to keep Markdown bodies intact.
 - **Testing:** Vitest for fast, ESM-friendly unit tests.
-- **Formatting/Linting:** Project CI runs formatting checks prior to commits (see Husky configuration).
+- **Formatting/Linting:** Trunk coordinates Prettier, Markdownlint, Checkov, osv-scanner, and friends locally and in CI via `npx trunk check`.
 
 ## Relationship to ADR Tools
 
