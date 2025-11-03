@@ -337,6 +337,7 @@ program
 
 program
   .command("correction <id>")
+  .alias("correct")
   .description("Apply a minor correction (patch version) to a decision")
   .option("--note <note>", "changelog note to record")
   .action(
