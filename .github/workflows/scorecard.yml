@@ -29,31 +29,34 @@ jobs:
       # Uncomment if running in a private repo.
       # contents: read
       # actions: read
+steps:
+  - name: Harden the runner (Audit all outbound calls)
+    uses: step-security/harden-runner@f4a75cfd619ee5ce8d5b864b0d183aff3c69b55a # v2.13.1
+    with:
+      egress-policy: audit
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          persist-credentials: false
+  - name: Checkout repository
+    uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+    with:
+      persist-credentials: false
 
-      - name: Run OpenSSF Scorecard
-        uses: ossf/scorecard-action@f49aabe0b5af0936a0987cfb85d86b75731b0186 # v2.4.1
-        with:
-          results_file: results.sarif
-          results_format: sarif
-          publish_results: true
-          # To enable the Branch-Protection check on public repos or
-          # run against private repos, provide a fine-grained PAT:
-          # repo_token: ${{ secrets.SCORECARD_TOKEN }}
+  - name: Run OpenSSF Scorecard
+    uses: ossf/scorecard-action@f49aabe0b5af0936a0987cfb85d86b75731b0186 # v2.4.1
+    with:
+      results_file: results.sarif
+      results_format: sarif
+      publish_results: ${{ github.event_name == 'push' && github.ref_name == github.event.repository.default_branch }}
+      # repo_token: ${{ secrets.SCORECARD_TOKEN }}
 
-      - name: Upload Scorecard results artifact
-        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
-        with:
-          name: scorecard-results
-          path: results.sarif
-          retention-days: 5
+  - name: Upload Scorecard results artifact
+    uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+    with:
+      name: scorecard-results
+      path: results.sarif
+      retention-days: 5
 
-      - name: Upload to code scanning
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: results.sarif
+  - name: Upload to code scanning
+    uses: github/codeql-action/upload-sarif@5d5cd550d3e189c569da8f16ea8de2d821c9bf7a # v3.31.2
+    with:
+      sarif_file: results.sarif
+    
