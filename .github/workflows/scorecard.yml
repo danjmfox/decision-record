@@ -13,6 +13,9 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
 
 # Default to read-only permissions.
 permissions: read-all
