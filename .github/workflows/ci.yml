@@ -28,7 +28,7 @@ jobs:
       - name: Trunk Check
         uses: trunk-io/trunk-action@v1
         with:
-          post-annotations: false # only for fork PRs
+          post-annotations: false
 
       - name: TypeScript build
         run: npm run build
@@ -48,6 +48,7 @@ jobs:
           path: |
             coverage/lcov.info
             coverage/coverage-summary.json
+            test-results.junit.xml
           if-no-files-found: error
 
       - name: Upload coverage to Codecov
@@ -59,6 +60,13 @@ jobs:
           files: coverage/lcov.info
           disable_search: true
           verbose: false
+
+      - name: Upload test results to Codecov
+        if: env.CODECOV_TOKEN != '' && success()
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: test-results.junit.xml
 
   cli-integration:
     name: CLI Integration Smoke Test
