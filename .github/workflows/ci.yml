@@ -28,7 +28,7 @@ jobs:
       - name: Trunk Check
         uses: trunk-io/trunk-action@v1
         with:
-          post-annotations: true # only for fork PRs
+          post-annotations: false # only for fork PRs
 
       - name: TypeScript build
         run: npm run build
