@@ -27,6 +27,7 @@ Thank you for investing time in improving `drctl`. This project is a collaborati
 
 ## Development Workflow
 
+- Always branch off `main` (e.g. `git checkout -b feat/my-change`), push the branch, and merge via PR; main is protected and blocks direct pushes.
 - Start each change with a **failing test** (or missing coverage) and iterate red → green → refactor.
 - Keep commits **small and incremental**; avoid batching unrelated changes.
 - run `npm test` (or the targeted suite) before every commit to keep `main` green.

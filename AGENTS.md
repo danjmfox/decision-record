@@ -68,12 +68,15 @@ We now articulate DecisionOps parallels explicitly: README highlights agile-frie
 | **AI collaboration**   | All reasoning steps remain inspectable; outputs versioned in code, not ephemeral.                                                                                                            |
 | **CLI feedback**       | Commands echo repo context and file paths; `drctl repo` surfaces the resolved workspace on demand.                                                                                           |
 | **Lifecycle flow**     | `drctl new` scaffolds a draft; `drctl draft`/`drctl propose` manage status updates and git commits.                                                                                          |
+| **Branch protection**  | All work lands through feature branches + PRs; main is protected (reviews + CI/CodeQL/Scorecard/dependency-review required; no direct pushes or force-pushes).                               |
 | **Build artefacts**    | `dist/` is git-ignored; package via `npm run build` + `npm pack` per [DR--20251102--meta--build-artifacts-strategy](decisions-example/meta/DR--20251102--meta--build-artifacts-strategy.md). |
 | **Releases**           | `npm run release` (release-it) drives version bumps + GitHub releases; export `GITHUB_TOKEN` locally, publish to npm manually when ready.                                                    |
 
 ---
 
 ### 🔐 Supply-chain Notes
+
+- GitHub dependency-review workflow blocks PRs that introduce known vulnerable dependencies.
 
 - Track advisory-driven overrides (e.g. `@conventional-changelog/git-client` 2.5.1+, `tmp` 0.2.4+) in `package.json` so Scorecard’s Vulnerabilities check stays green until upstream deps release patched majors.
 
@@ -191,10 +194,20 @@ home-decisions/
 ### 🔄 Working Rhythm
 
 - Default to **test-first TDD**: add or update a failing test before implementing behaviour, then make the smallest change to go green, refactor, and commit.
+- Start every change on a fresh branch (e.g. `feat/...`), capture DRs/tests/docs, and open a PR; main stays clean via branch protection + squash merges.
 - Keep the tree green: run the relevant `npm test` scope before every commit.
 - Follow **trunk-based development**: ship incremental, focused changes; avoid long-lived branches.
 - Use **conventional commits** for each logical change (e.g. `feat:`, `fix:`, `test:`).
 - If a change spans multiple concerns, split into multiple TDD cycles and commits.
+
+**Branch + PR loop**
+
+1. Branch from `main` (`git checkout -b feat/...`).
+2. Capture any new Decision Record (if the change warrants it) before coding.
+3. TDD the behaviour (add failing test → code → refactor).
+4. Update docs/AGENTS/DRs as part of the same branch.
+5. Commit with conventional messages; push the branch.
+6. Open a PR; wait for CI + dependency review + CodeQL + Scorecard + approvals, then merge and delete the branch.
 
 ### 🔄 Quickstart (from a new repo)
 

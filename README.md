@@ -92,7 +92,11 @@ npx trunk check      # lint, formatting, and supply-chain scans
 > Maintainers: `npm install` respects the overrides in `package.json` that force patched versions of `@conventional-changelog/git-client`, `git-raw-commits`, `git-semver-tags`, `tmp`, and `inquirer` until upstream release tools ship fixes.
 > Vitest is configured to pick up `*.test.ts` files inside `src/`, keeping tests close to the code they exercise.
 
+On pull requests, a dependency-review workflow now scans for vulnerable or deprecated package bumps before merges complete.
+
 GitHub Actions runs three pipelines on `main`: the core build/test workflow, CodeQL analysis, and an OpenSSF Scorecard scan that publishes supply-chain results for the badge above.
+
+Branch protection means all work happens on feature branches + pull requests. Push your branch, let CI + dependency review + Scorecard run, and merge via PR—direct pushes to `main` are blocked.
 
 > This repository includes `decisions-example/` as the default demo workspace. The walkthroughs below assume commands run against that folder unless you pass `--repo` to target another workspace.
 
