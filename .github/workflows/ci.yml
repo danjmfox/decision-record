@@ -1,4 +1,5 @@
 name: CI
+permissions: read-all
 
 on:
   push:
@@ -37,3 +38,51 @@ jobs:
         run: |
           npm pack --json
           rm -f *.tgz
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: |
+            coverage/lcov.info
+            coverage/coverage-summary.json
+          if-no-files-found: error
+
+      - name: Upload coverage to Codecov
+        if: env.CODECOV_TOKEN != ''
+        uses: codecov/codecov-action@v5
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          files: coverage/lcov.info
+          disable_search: true
+          verbose: false
+
+  cli-integration:
+    name: CLI Integration Smoke Test
+    runs-on: ubuntu-latest
+    needs: build-and-test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Run CLI smoke test
+        run: |
+          mkdir -p "$RUNNER_TEMP/decisions-smoke"
+          printf 'repos:\n  smoke:\n    path: %s\n' "$RUNNER_TEMP/decisions-smoke" > "$RUNNER_TEMP/.drctl.yaml"
+          node dist/cli/index.js new meta integration-smoke --config "$RUNNER_TEMP/.drctl.yaml" --repo smoke --confidence 0.5
+          EXPECTED_ID="DR--$(date -u +%Y%m%d)--meta--integration-smoke.md"
+          test -f "$RUNNER_TEMP/decisions-smoke/meta/$EXPECTED_ID" || (echo "Decision record not generated"; ls -R "$RUNNER_TEMP/decisions-smoke"; exit 1)
