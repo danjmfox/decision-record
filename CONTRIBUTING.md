@@ -27,11 +27,13 @@ Thank you for investing time in improving `drctl`. This project is a collaborati
 
 ## Development Workflow
 
+- Always branch off `main` (e.g. `git checkout -b feat/my-change`), push the branch, and merge via PR; main is protected and blocks direct pushes.
 - Start each change with a **failing test** (or missing coverage) and iterate red → green → refactor.
 - Keep commits **small and incremental**; avoid batching unrelated changes.
 - run `npm test` (or the targeted suite) before every commit to keep `main` green.
 - Run `npx trunk check` (or `npx trunk fmt` / `npx trunk lint`) before pushing to ensure formatting, lint, and security scans are clean.
 - Follow a **test-driven mindset**. Add or update unit tests (Vitest) before implementing behaviour when practical.
+- Lifecycle shortcuts still record every state: e.g. `drctl accept` will auto-run the missing `draft`/`propose` steps (with their own commits) so changelogs stay truthful.
 - Keep changes **small and focused**. Prefer multiple logical commits over a single large one.
 - Use **conventional commits** for each changeset:
   - `feat:` for new functionality

@@ -4,6 +4,7 @@ import path from "path";
 import matter from "gray-matter";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { RepoContext } from "../config.js";
+import * as configModule from "../config.js";
 import {
   acceptDecision,
   correctionDecision,
@@ -17,6 +18,7 @@ import {
   retireDecision,
   supersedeDecision,
   collectDecisions,
+  resolveContext,
 } from "./service.js";
 import * as gitModule from "./git.js";
 
@@ -107,25 +109,115 @@ describe("service layer", () => {
     expect(accepted.record.lastEdited).toBe("2025-10-30");
     expect(accepted.record.dateAccepted).toBe("2025-10-30");
     expect(accepted.filePath).toBe(creation.filePath);
-    expect(accepted.record.changelog?.at(-1)).toEqual({
-      date: "2025-10-30",
-      note: "Marked as accepted",
-    });
+    expect(accepted.record.changelog).toEqual(
+      expect.arrayContaining([
+        {
+          date: "2025-10-30",
+          note: "Marked as draft",
+        },
+        {
+          date: "2025-10-30",
+          note: "Marked as proposed",
+        },
+        {
+          date: "2025-10-30",
+          note: "Marked as accepted",
+        },
+      ]),
+    );
 
     const storedFrontmatter = matter.read(creation.filePath);
     expect(storedFrontmatter.data.status).toBe("accepted");
     expect(storedFrontmatter.data.dateAccepted).toBe("2025-10-30");
 
-    expect(gitClient.stageAndCommit).toHaveBeenCalledWith([creation.filePath], {
-      cwd: context.root,
-      message: `drctl: accept ${creation.record.id}`,
-    });
+    expect(gitClient.stageAndCommit).toHaveBeenNthCalledWith(
+      1,
+      [creation.filePath],
+      {
+        cwd: context.root,
+        message: `drctl: draft ${creation.record.id}`,
+      },
+    );
+    expect(gitClient.stageAndCommit).toHaveBeenNthCalledWith(
+      2,
+      [creation.filePath],
+      {
+        cwd: context.root,
+        message: `drctl: propose ${creation.record.id}`,
+      },
+    );
+    expect(gitClient.stageAndCommit).toHaveBeenNthCalledWith(
+      3,
+      [creation.filePath],
+      {
+        cwd: context.root,
+        message: `drctl: accept ${creation.record.id}`,
+      },
+    );
 
     const acceptedRecords = listAll("accepted", { context });
     expect(acceptedRecords).toHaveLength(1);
     const acceptedRecord = acceptedRecords[0];
     expect(acceptedRecord).toBeDefined();
     expect(acceptedRecord?.status).toBe("accepted");
+  });
+
+  it("accepts a proposed decision without replaying earlier transitions", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const creation = createDecision("personal", "hydrate-2", { context });
+    await proposeDecision(creation.record.id, { context, gitClient });
+    gitClient.stageAndCommit.mockClear();
+
+    const accepted = await acceptDecision(creation.record.id, {
+      context,
+      gitClient,
+    });
+
+    expect(accepted.record.status).toBe("accepted");
+    expect(gitClient.stageAndCommit).toHaveBeenCalledTimes(1);
+    expect(gitClient.stageAndCommit).toHaveBeenCalledWith([creation.filePath], {
+      cwd: context.root,
+      message: `drctl: accept ${creation.record.id}`,
+    });
+  });
+
+  it("fails when attempting to accept an incompatible status", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const creation = createDecision("personal", "reject-then-accept", {
+      context,
+    });
+    await rejectDecision(creation.record.id, { context, gitClient });
+
+    await expect(
+      acceptDecision(creation.record.id, { context, gitClient }),
+    ).rejects.toThrow(/Cannot accept decision/);
+  });
+
+  it("returns early when the decision is already accepted", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const creation = createDecision("personal", "hydrate-repeat", {
+      context,
+    });
+
+    await acceptDecision(creation.record.id, { context, gitClient });
+    gitClient.stageAndCommit.mockClear();
+
+    const result = await acceptDecision(creation.record.id, {
+      context,
+      gitClient,
+    });
+
+    expect(result.record.status).toBe("accepted");
+    expect(gitClient.stageAndCommit).not.toHaveBeenCalled();
   });
 
   it("uses the full template when creating a record", () => {
@@ -166,7 +258,7 @@ describe("service layer", () => {
     });
   });
 
-  it("marks a decision as proposed and commits via git", async () => {
+  it("marks a decision as proposed", async () => {
     const context = makeContext();
     const gitClient = {
       stageAndCommit: vi.fn().mockResolvedValue(undefined),
@@ -180,15 +272,114 @@ describe("service layer", () => {
 
     expect(result.record.status).toBe("proposed");
     expect(result.record.lastEdited).toBe("2025-10-30");
-    expect(result.record.changelog?.at(-1)).toEqual({
-      date: "2025-10-30",
-      note: "Marked as proposed",
-    });
+    expect(result.record.changelog).toEqual(
+      expect.arrayContaining([
+        { date: "2025-10-30", note: "Marked as draft" },
+        { date: "2025-10-30", note: "Marked as proposed" },
+      ]),
+    );
 
     expect(gitClient.stageAndCommit).toHaveBeenCalledWith([result.filePath], {
       cwd: context.root,
       message: `drctl: propose ${creation.record.id}`,
     });
+  });
+
+  it("returns early when the decision is already proposed", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const creation = createDecision("personal", "hydrate-proposed", {
+      context,
+    });
+
+    await proposeDecision(creation.record.id, { context, gitClient });
+    gitClient.stageAndCommit.mockClear();
+
+    const result = await proposeDecision(creation.record.id, {
+      context,
+      gitClient,
+    });
+
+    expect(result.record.status).toBe("proposed");
+    expect(gitClient.stageAndCommit).not.toHaveBeenCalled();
+  });
+
+  it("backfills the draft state before proposing when the note is missing", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const creation = createDecision("personal", "hydrate-missing", { context });
+
+    const parsed = matter.read(creation.filePath);
+    parsed.data.changelog = (parsed.data.changelog ?? []).filter(
+      (entry: { note?: string }) => entry.note !== "Marked as draft",
+    );
+    fs.writeFileSync(
+      creation.filePath,
+      matter.stringify(parsed.content, parsed.data),
+    );
+
+    const result = await proposeDecision(creation.record.id, {
+      context,
+      gitClient,
+    });
+
+    expect(result.record.status).toBe("proposed");
+    expect(gitClient.stageAndCommit).toHaveBeenNthCalledWith(
+      1,
+      [creation.filePath],
+      {
+        cwd: context.root,
+        message: `drctl: draft ${creation.record.id}`,
+      },
+    );
+    expect(gitClient.stageAndCommit).toHaveBeenNthCalledWith(
+      2,
+      [creation.filePath],
+      {
+        cwd: context.root,
+        message: `drctl: propose ${creation.record.id}`,
+      },
+    );
+  });
+  it("does not replay draft when it already exists", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const creation = createDecision("personal", "hydrate-draft", { context });
+    await draftDecision(creation.record.id, { context, gitClient });
+    gitClient.stageAndCommit.mockClear();
+
+    const result = await proposeDecision(creation.record.id, {
+      context,
+      gitClient,
+    });
+
+    expect(result.record.status).toBe("proposed");
+    expect(gitClient.stageAndCommit).toHaveBeenCalledTimes(1);
+    expect(gitClient.stageAndCommit).toHaveBeenCalledWith([result.filePath], {
+      cwd: context.root,
+      message: `drctl: propose ${creation.record.id}`,
+    });
+  });
+
+  it("fails to propose when status is incompatible", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const creation = createDecision("personal", "reject-before-propose", {
+      context,
+    });
+    await rejectDecision(creation.record.id, { context, gitClient });
+
+    await expect(
+      proposeDecision(creation.record.id, { context, gitClient }),
+    ).rejects.toThrow(/Cannot propose/);
   });
 
   it("fails when unrelated files are staged", async () => {
@@ -472,6 +663,36 @@ describe("service layer", () => {
     await expect(
       draftDecision(creation.record.id, { context, gitClient }),
     ).rejects.toThrow(/drctl repo bootstrap test/);
+  });
+
+  it("rethrows unexpected git errors from lifecycle commands", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi
+        .fn()
+        .mockRejectedValue(new Error("Git command failed: git add foo\nboom")),
+    };
+    const creation = createDecision("meta", "draft-error", { context });
+
+    await expect(
+      draftDecision(creation.record.id, { context, gitClient }),
+    ).rejects.toThrow(/boom/);
+  });
+
+  it("resolves context using provided configPath", () => {
+    const spy = vi.spyOn(configModule, "resolveRepoContext").mockReturnValue({
+      root: "/tmp/mock",
+      domainMap: {},
+      source: "cli",
+    } as RepoContext);
+
+    const context = resolveContext({ configPath: "/tmp/test-config" });
+
+    expect(spy).toHaveBeenCalledWith(
+      expect.objectContaining({ configPath: "/tmp/test-config" }),
+    );
+    expect(context.root).toBe("/tmp/mock");
+    spy.mockRestore();
   });
 
   it("collects decisions with source paths", () => {
