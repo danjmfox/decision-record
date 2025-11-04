@@ -13,6 +13,8 @@ export function formatRepoContext(context: RepoContext): string[] {
 
   const defaultDomain = context.defaultDomainDir ?? "<domain>";
   lines.push(`   Default domain dir: ${defaultDomain}`);
+  const defaultTemplate = context.defaultTemplate ?? "(internal default)";
+  lines.push(`   Default template: ${defaultTemplate}`);
 
   const domains = Object.entries(context.domainMap);
   if (domains.length === 0) {

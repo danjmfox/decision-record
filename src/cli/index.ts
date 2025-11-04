@@ -110,6 +110,12 @@ configCommand
           console.log(
             `   ${status} ${repo.name} → ${repo.root} (${sourceLabel}, ${gitLabel})`,
           );
+          if (repo.defaultDomainDir) {
+            console.log(`      Domain root: ${repo.defaultDomainDir}`);
+          }
+          if (repo.defaultTemplate) {
+            console.log(`      Template: ${repo.defaultTemplate}`);
+          }
         }
       } else {
         console.log("📚 Repositories: none");
@@ -313,12 +319,16 @@ program
   .option("--confidence <n>", "initial confidence", (value) =>
     Number.parseFloat(value),
   )
+  .option(
+    "--template <path>",
+    "path to a markdown template (overrides config/env defaults)",
+  )
   .action(
     createRepoAction(function (
       repoOptions,
       domain: string,
       slug: string,
-      commandOptions: { confidence?: number },
+      commandOptions: { confidence?: number; template?: string },
     ) {
       const confidence =
         typeof commandOptions.confidence === "number" &&
@@ -329,9 +339,22 @@ program
       if (confidence !== undefined) {
         options.confidence = confidence;
       }
+      if (
+        typeof commandOptions.template === "string" &&
+        commandOptions.template.trim().length > 0
+      ) {
+        options.templatePath = commandOptions.template;
+      }
+      const envTemplate = process.env.DRCTL_TEMPLATE;
+      if (typeof envTemplate === "string" && envTemplate.trim().length > 0) {
+        options.envTemplate = envTemplate;
+      }
       const result = createDecision(domain, slug, options);
       console.log(`✅ Created ${result.record.id} (${result.record.status})`);
       console.log(`📄 File: ${result.filePath}`);
+      if (result.record.templateUsed) {
+        console.log(`🧩 Template: ${result.record.templateUsed}`);
+      }
     }),
   );
 
@@ -419,9 +442,13 @@ program
   .description("Mark a decision as proposed and commit the changes")
   .action(
     createRepoAction(async function (repoOptions, id: string) {
-      const result = await proposeDecision(id, {
+      const options = {
         ...repoOptions,
-      });
+        onTemplateWarning:
+          repoOptions.onTemplateWarning ??
+          ((message: string) => console.warn(message)),
+      };
+      const result = await proposeDecision(id, options);
       console.log(`📤 ${result.record.id} proposed`);
       console.log(`📄 File: ${result.filePath}`);
     }),
@@ -432,7 +459,13 @@ program
   .description("Mark a decision as accepted and update its changelog")
   .action(
     createRepoAction(async function (repoOptions, id: string) {
-      const result = await acceptDecision(id, { ...repoOptions });
+      const options = {
+        ...repoOptions,
+        onTemplateWarning:
+          repoOptions.onTemplateWarning ??
+          ((message: string) => console.warn(message)),
+      };
+      const result = await acceptDecision(id, options);
       console.log(`✅ ${result.record.id} marked as accepted`);
       console.log(`📄 File: ${result.filePath}`);
     }),

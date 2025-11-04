@@ -55,6 +55,7 @@ A Markdown file with YAML frontmatter holding:
 - **reasoning** (context, decision, reasoning, confidence)
 - **lineage** (supersedes, supersededBy)
 - **revision log** (changelog — timestamped list of notable updates stored in YAML)
+- **template provenance** (`templateUsed` records which scaffold created the record)
 
 ### Lifecycle States
 
@@ -134,6 +135,16 @@ Every command echoes the resolved repo and any file it touches. Example output:
 ```
 
 Remove the link later with `npm unlink -g decision-record` (or run `npm unlink` inside the repo).
+
+### Custom Templates
+
+`drctl new` honours a cascading template override so teams can tailor their scaffolds without losing automation:
+
+- `drctl new --template <path>` uses the provided Markdown file (relative to the repo root or absolute) instead of the built-in template.
+- Set `DRCTL_TEMPLATE=/path/to/template.md` to establish a workspace-wide default when the flag is not supplied.
+- Add `template: templates/meta.md` inside `.drctl.yaml` repo entries to pin long-lived defaults per repository.
+- External templates are copied into `<repo>/templates/` and the relative path is captured in frontmatter as `templateUsed` for provenance.
+- `drctl config check` warns if a configured template is missing or lives outside the repo root, and `drctl propose`/`drctl accept` surface placeholder text before advancing the lifecycle.
 
 ## DecisionOps in Practice
 
@@ -228,6 +239,7 @@ version: "1.2"
 status: accepted
 changeType: revision
 confidence: 0.9
+templateUsed: templates/meta.md
 changelog:
   - date: 2025-11-05
     note: Increased confidence after successful backups
@@ -306,6 +318,7 @@ repos:
   app-decisions:
     path: ./decisions
     defaultDomainDir: domains
+    template: templates/meta.md
 defaultRepo: app-decisions
 ```
 

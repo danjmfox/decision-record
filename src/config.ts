@@ -21,6 +21,7 @@ export interface RepoContext {
   configPath?: string;
   domainMap: Record<string, string>;
   defaultDomainDir?: string;
+  defaultTemplate?: string;
 }
 
 export interface RepoDiagnostic {
@@ -30,6 +31,7 @@ export interface RepoDiagnostic {
   configPath: string;
   domainMap: Record<string, string>;
   defaultDomainDir?: string;
+  defaultTemplate?: string;
   exists: boolean;
   gitInitialized: boolean;
 }
@@ -64,6 +66,7 @@ interface RawRepoConfig {
   domains?: Record<string, unknown>;
   defaultDomainDir?: unknown;
   domainRoot?: unknown;
+  template?: unknown;
 }
 
 interface RawDomainConfig {
@@ -77,6 +80,7 @@ interface NormalizedRepo {
   root: string;
   domainMap: Record<string, string>;
   defaultDomainDir?: string;
+  defaultTemplate?: string;
   definitionSource: RepoDefinitionSource;
   configPath: string;
 }
@@ -200,11 +204,21 @@ export function diagnoseConfig(
   const defaultRepoName =
     layers.localConfig?.defaultRepo ?? layers.globalConfig?.defaultRepo;
 
+  const warnings: string[] = [];
+  const errors: string[] = [];
   const repos: RepoDiagnostic[] = [];
   for (const repo of combinedRepos.values()) {
     const exists = fs.existsSync(repo.root);
     const gitInitialized =
       exists && fs.existsSync(path.join(repo.root, ".git"));
+    const templateAbsolute =
+      repo.defaultTemplate && exists
+        ? resolveTemplatePath(repo.root, repo.defaultTemplate)
+        : undefined;
+    const templateRelative =
+      templateAbsolute !== undefined
+        ? path.relative(repo.root, templateAbsolute)
+        : undefined;
     repos.push({
       name: repo.name,
       root: repo.root,
@@ -214,13 +228,27 @@ export function diagnoseConfig(
       ...(repo.defaultDomainDir
         ? { defaultDomainDir: repo.defaultDomainDir }
         : {}),
+      ...(repo.defaultTemplate
+        ? { defaultTemplate: repo.defaultTemplate }
+        : {}),
       exists,
       gitInitialized,
     });
+    if (repo.defaultTemplate && exists) {
+      if (!templateAbsolute || !fs.existsSync(templateAbsolute)) {
+        warnings.push(
+          `Template "${repo.defaultTemplate}" not found for repository "${repo.name}".`,
+        );
+      } else if (
+        templateRelative &&
+        (templateRelative.startsWith("..") || path.isAbsolute(templateRelative))
+      ) {
+        warnings.push(
+          `Template "${repo.defaultTemplate}" for repository "${repo.name}" is outside the repo root (${templateAbsolute}).`,
+        );
+      }
+    }
   }
-
-  const warnings: string[] = [];
-  const errors: string[] = [];
 
   if (repos.length === 0) {
     warnings.push(
@@ -293,6 +321,9 @@ function buildContext(
   };
   if (repo.defaultDomainDir) {
     context.defaultDomainDir = repo.defaultDomainDir;
+  }
+  if (repo.defaultTemplate) {
+    context.defaultTemplate = repo.defaultTemplate;
   }
   return context;
 }
@@ -426,6 +457,7 @@ function normalizeRepoConfig(
 
   const defaultDomainDir =
     firstString(raw.defaultDomainDir) ?? firstString(raw.domainRoot);
+  const defaultTemplate = firstString(raw.template);
 
   const normalized: NormalizedRepo = {
     name,
@@ -436,6 +468,9 @@ function normalizeRepoConfig(
   };
   if (defaultDomainDir) {
     normalized.defaultDomainDir = defaultDomainDir;
+  }
+  if (defaultTemplate) {
+    normalized.defaultTemplate = defaultTemplate;
   }
   return normalized;
 }
@@ -481,6 +516,14 @@ function expandEnvVars(input: string): string {
       return process.env[key] ?? "";
     },
   );
+}
+
+function resolveTemplatePath(repoRoot: string, templatePath: string): string {
+  const expanded = expandTilde(expandEnvVars(templatePath));
+  if (path.isAbsolute(expanded)) {
+    return path.normalize(expanded);
+  }
+  return path.resolve(repoRoot, expanded);
 }
 
 function expandTilde(input: string): string {
