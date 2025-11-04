@@ -25,6 +25,15 @@ function makeContext(root: string): RepoContext {
   };
 }
 
+function createTempContext(prefix: string): {
+  tempDir: string;
+  context: RepoContext;
+} {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+  registerTemp(tempDir);
+  return { tempDir, context: makeContext(tempDir) };
+}
+
 function buildDecisionResult(context: RepoContext, id: string) {
   const filePath = path.join(
     context.root,
@@ -47,6 +56,26 @@ function buildDecisionResult(context: RepoContext, id: string) {
   };
 }
 
+async function runCli(tempDir: string, args: string[]): Promise<void> {
+  process.chdir(tempDir);
+  process.argv = ["node", "drctl", ...args];
+  await import("./index.js");
+}
+
+function spyConsole() {
+  const log = vi.spyOn(console, "log").mockImplementation(() => {});
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  return { log, warn, error };
+}
+
+type ConsoleSpy = ReturnType<typeof spyConsole>["log"];
+
+function collectOutput(spy: ConsoleSpy): string[] {
+  const calls = spy.mock.calls as Array<[unknown, ...unknown[]]>;
+  return calls.map(([first]) => String(first ?? ""));
+}
+
 beforeEach(() => {
   vi.resetModules();
 });
@@ -65,8 +94,20 @@ afterEach(() => {
   }
 });
 
-function mockResolveContext(context: RepoContext) {
-  vi.doMock("../core/service.js", () => ({
+function mockService(
+  context: RepoContext,
+  overrides: Partial<
+    Record<keyof ReturnType<typeof buildDefaultServiceMocks>, unknown>
+  > = {},
+) {
+  const mocks = buildDefaultServiceMocks(context);
+  Object.assign(mocks, overrides);
+  vi.doMock("../core/service.js", () => mocks);
+  return mocks;
+}
+
+function buildDefaultServiceMocks(context: RepoContext) {
+  return {
     createDecision: vi.fn(),
     correctionDecision: vi.fn(),
     draftDecision: vi.fn(),
@@ -79,14 +120,12 @@ function mockResolveContext(context: RepoContext) {
     reviseDecision: vi.fn(),
     listAll: vi.fn().mockReturnValue([]),
     resolveContext: vi.fn().mockReturnValue(context),
-  }));
+  };
 }
 
 describe("cli template-aware flows", () => {
   it("passes template options to createDecision and reports template provenance", async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-new-"));
-    registerTemp(tempDir);
-    const context = makeContext(tempDir);
+    const { tempDir, context } = createTempContext("drctl-cli-new-");
 
     const createDecision = vi.fn().mockReturnValue({
       ...buildDecisionResult(context, "DR--20250101--meta--custom"),
@@ -103,29 +142,12 @@ describe("cli template-aware flows", () => {
       },
     });
 
-    vi.doMock("../core/service.js", () => ({
-      createDecision,
-      correctionDecision: vi.fn(),
-      draftDecision: vi.fn(),
-      proposeDecision: vi.fn(),
-      acceptDecision: vi.fn(),
-      rejectDecision: vi.fn(),
-      deprecateDecision: vi.fn(),
-      retireDecision: vi.fn(),
-      supersedeDecision: vi.fn(),
-      reviseDecision: vi.fn(),
-      listAll: vi.fn().mockReturnValue([]),
-      resolveContext: vi.fn().mockReturnValue(context),
-    }));
+    mockService(context, { createDecision });
 
-    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { log: logSpy, warn: warnSpy } = spyConsole();
 
-    process.chdir(tempDir);
     process.env.DRCTL_TEMPLATE = " env-template.md ";
-    process.argv = [
-      "node",
-      "drctl",
+    await runCli(tempDir, [
       "new",
       "meta",
       "custom",
@@ -133,9 +155,7 @@ describe("cli template-aware flows", () => {
       "custom.md",
       "--confidence",
       "0.7",
-    ];
-
-    await import("./index.js");
+    ]);
 
     expect(createDecision).toHaveBeenCalledTimes(1);
     const [, , options] = createDecision.mock.calls[0] ?? [];
@@ -144,7 +164,7 @@ describe("cli template-aware flows", () => {
       envTemplate: " env-template.md ",
       confidence: 0.7,
     });
-    const logMessages = logSpy.mock.calls.map((call) => String(call[0] ?? ""));
+    const logMessages = collectOutput(logSpy);
     expect(
       logMessages.some((message) => message.includes("🧩 Template:")),
     ).toBe(true);
@@ -152,21 +172,15 @@ describe("cli template-aware flows", () => {
   });
 
   it("logs the resolved repo including default template when running template-aware commands", async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-index-"));
-    registerTemp(tempDir);
-    const context = makeContext(tempDir);
+    const { tempDir, context } = createTempContext("drctl-cli-index-");
 
-    mockResolveContext(context);
+    mockService(context);
 
-    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { log: logSpy, warn: warnSpy } = spyConsole();
 
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "index"];
+    await runCli(tempDir, ["index"]);
 
-    await import("./index.js");
-
-    const output = logSpy.mock.calls.map((call) => String(call[0] ?? ""));
+    const output = collectOutput(logSpy);
     expect(
       output.some((line) =>
         line.includes("Default template: templates/meta.md"),
@@ -176,21 +190,9 @@ describe("cli template-aware flows", () => {
   });
 
   it("lists decisions with formatted output", async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-list-"));
-    registerTemp(tempDir);
-    const context = makeContext(tempDir);
+    const { tempDir, context } = createTempContext("drctl-cli-list-");
 
-    vi.doMock("../core/service.js", () => ({
-      createDecision: vi.fn(),
-      correctionDecision: vi.fn(),
-      draftDecision: vi.fn(),
-      proposeDecision: vi.fn(),
-      acceptDecision: vi.fn(),
-      rejectDecision: vi.fn(),
-      deprecateDecision: vi.fn(),
-      retireDecision: vi.fn(),
-      supersedeDecision: vi.fn(),
-      reviseDecision: vi.fn(),
+    mockService(context, {
       listAll: vi.fn().mockReturnValue([
         {
           id: "DR--20250101--meta--list",
@@ -198,17 +200,13 @@ describe("cli template-aware flows", () => {
           domain: "meta",
         },
       ]),
-      resolveContext: vi.fn().mockReturnValue(context),
-    }));
+    });
 
-    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const { log: logSpy } = spyConsole();
 
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "list"];
+    await runCli(tempDir, ["list"]);
 
-    await import("./index.js");
-
-    const output = logSpy.mock.calls.map((call) => String(call[0] ?? ""));
+    const output = collectOutput(logSpy);
     expect(
       output.some(
         (line) =>
@@ -218,11 +216,7 @@ describe("cli template-aware flows", () => {
   });
 
   it("surfaces template hygiene warnings during proposal", async () => {
-    const tempDir = fs.mkdtempSync(
-      path.join(os.tmpdir(), "drctl-cli-propose-"),
-    );
-    registerTemp(tempDir);
-    const context = makeContext(tempDir);
+    const { tempDir, context } = createTempContext("drctl-cli-propose-");
 
     const proposeDecision = vi
       .fn()
@@ -248,51 +242,25 @@ describe("cli template-aware flows", () => {
         },
       );
 
-    vi.doMock("../core/service.js", () => ({
-      createDecision: vi.fn(),
-      correctionDecision: vi.fn(),
-      draftDecision: vi.fn(),
-      proposeDecision,
-      acceptDecision: vi.fn(),
-      rejectDecision: vi.fn(),
-      deprecateDecision: vi.fn(),
-      retireDecision: vi.fn(),
-      supersedeDecision: vi.fn(),
-      reviseDecision: vi.fn(),
-      listAll: vi.fn().mockReturnValue([]),
-      resolveContext: vi.fn().mockReturnValue(context),
-    }));
+    mockService(context, { proposeDecision });
 
-    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { log: logSpy, warn: warnSpy } = spyConsole();
 
-    process.chdir(tempDir);
-    process.argv = [
-      "node",
-      "drctl",
-      "propose",
-      "DR--20250101--meta--placeholder",
-    ];
-
-    await import("./index.js");
+    await runCli(tempDir, ["propose", "DR--20250101--meta--placeholder"]);
 
     expect(proposeDecision).toHaveBeenCalledTimes(1);
     expect(
-      warnSpy.mock.calls.some((call) =>
-        String(call[0]).includes("Template hygiene"),
+      collectOutput(warnSpy).some((message) =>
+        message.includes("Template hygiene"),
       ),
     ).toBe(true);
     expect(
-      logSpy.mock.calls.some((call) =>
-        String(call[0] ?? "").includes("proposed"),
-      ),
+      collectOutput(logSpy).some((message) => message.includes("proposed")),
     ).toBe(true);
   });
 
   it("reuses existing onTemplateWarning handlers during acceptance", async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-accept-"));
-    registerTemp(tempDir);
-    const context = makeContext(tempDir);
+    const { tempDir, context } = createTempContext("drctl-cli-accept-");
     const handler = vi.fn();
 
     vi.doMock("./options.js", async () => {
@@ -331,35 +299,18 @@ describe("cli template-aware flows", () => {
         },
       );
 
-    vi.doMock("../core/service.js", () => ({
-      createDecision: vi.fn(),
-      correctionDecision: vi.fn(),
-      draftDecision: vi.fn(),
-      proposeDecision: vi.fn(),
-      acceptDecision,
-      rejectDecision: vi.fn(),
-      deprecateDecision: vi.fn(),
-      retireDecision: vi.fn(),
-      supersedeDecision: vi.fn(),
-      reviseDecision: vi.fn(),
-      listAll: vi.fn().mockReturnValue([]),
-      resolveContext: vi.fn().mockReturnValue(context),
-    }));
+    mockService(context, { acceptDecision });
 
-    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { log: logSpy, warn: warnSpy } = spyConsole();
 
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "accept", "DR--20250101--meta--approved"];
-
-    await import("./index.js");
+    await runCli(tempDir, ["accept", "DR--20250101--meta--approved"]);
 
     expect(acceptDecision).toHaveBeenCalledTimes(1);
     expect(handler).toHaveBeenCalledWith("Handled by repo options");
     expect(warnSpy).not.toHaveBeenCalled();
     expect(
-      logSpy.mock.calls.some((call) =>
-        String(call[0] ?? "").includes("marked as accepted"),
+      collectOutput(logSpy).some((message) =>
+        message.includes("marked as accepted"),
       ),
     ).toBe(true);
   });
@@ -369,34 +320,20 @@ describe("cli template-aware flows", () => {
     const context = makeContext(missingRoot);
     const generateIndex = vi.fn();
 
-    vi.doMock("../core/service.js", () => ({
-      createDecision: vi.fn(),
-      correctionDecision: vi.fn(),
-      draftDecision: vi.fn(),
-      proposeDecision: vi.fn(),
-      acceptDecision: vi.fn(),
-      rejectDecision: vi.fn(),
-      deprecateDecision: vi.fn(),
-      retireDecision: vi.fn(),
-      supersedeDecision: vi.fn(),
-      reviseDecision: vi.fn(),
-      listAll: vi.fn().mockReturnValue([]),
-      resolveContext: vi.fn().mockReturnValue(context),
-    }));
+    mockService(context);
 
     vi.doMock("../core/indexer.js", () => ({
       generateIndex,
     }));
 
-    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { log: logSpy, error: errorSpy } = spyConsole();
 
-    process.argv = ["node", "drctl", "index"];
+    await runCli(process.cwd(), ["index"]);
 
-    await import("./index.js");
-
-    expect(errorSpy).toHaveBeenCalledWith(
-      expect.stringContaining(`Repo root "${context.root}" does not exist`),
+    expect(collectOutput(errorSpy)).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(`Repo root "${context.root}" does not exist`),
+      ]),
     );
     expect(generateIndex).not.toHaveBeenCalled();
     expect(process.exitCode).toBe(1);
