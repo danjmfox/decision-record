@@ -67,7 +67,7 @@ We now articulate DecisionOps parallels explicitly: README highlights agile-frie
 | **Private data**       | `.drctl.yaml` and `decisions/` folders are `.gitignore`d; only `decisions-example/` is public.                                                                                               |
 | **AI collaboration**   | All reasoning steps remain inspectable; outputs versioned in code, not ephemeral.                                                                                                            |
 | **CLI feedback**       | Commands echo repo context and file paths; `drctl repo` surfaces the resolved workspace on demand.                                                                                           |
-| **Lifecycle flow**     | `drctl new` scaffolds a draft; `drctl draft`/`drctl propose` manage status updates and git commits.                                                                                          |
+| **Lifecycle flow**     | `drctl new` scaffolds a draft; lifecycle commands (`draft` → `propose` → `accept`) now auto-progress missing states so changelogs capture every transition.                                  |
 | **Branch protection**  | All work lands through feature branches + PRs; main is protected (reviews + CI/CodeQL/Scorecard/dependency-review required; no direct pushes or force-pushes).                               |
 | **Build artefacts**    | `dist/` is git-ignored; package via `npm run build` + `npm pack` per [DR--20251102--meta--build-artifacts-strategy](decisions-example/meta/DR--20251102--meta--build-artifacts-strategy.md). |
 | **Releases**           | `npm run release` (release-it) drives version bumps + GitHub releases; export `GITHUB_TOKEN` locally, publish to npm manually when ready.                                                    |
@@ -200,7 +200,7 @@ home-decisions/
 - Use **conventional commits** for each logical change (e.g. `feat:`, `fix:`, `test:`).
 - If a change spans multiple concerns, split into multiple TDD cycles and commits.
 
-**Branch + PR loop**
+#### Branch + PR loop
 
 1. Branch from `main` (`git checkout -b feat/...`).
 2. Capture any new Decision Record (if the change warrants it) before coding.

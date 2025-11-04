@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
-import type { DecisionRecord } from "./models.js";
+import type { DecisionRecord, DecisionStatus } from "./models.js";
 import {
   saveDecision,
   loadDecision,
@@ -115,7 +115,29 @@ export async function proposeDecision(
   options: RepoOptions = {},
 ): Promise<DecisionWriteResult> {
   const context = ensureContext(options);
-  const record = loadDecision(context, id);
+  const gitClient = options.gitClient ?? createGitClient();
+  const sharedOptions: RepoOptions = { ...options, context, gitClient };
+  let record = loadDecision(context, id);
+
+  if (!isProposableStatus(record.status)) {
+    throw new Error(
+      `Cannot propose decision "${id}" from status "${record.status}". Use the appropriate lifecycle command first.`,
+    );
+  }
+
+  if (
+    record.status === "draft" &&
+    !hasChangelogNote(record, "Marked as draft")
+  ) {
+    await draftDecision(id, sharedOptions);
+    record = loadDecision(context, id);
+  }
+
+  if (record.status === "proposed") {
+    const filePath = getDecisionPath(context, record);
+    return { record, filePath, context };
+  }
+
   const today = new Date().toISOString().slice(0, 10);
   record.status = "proposed";
   record.lastEdited = today;
@@ -123,7 +145,6 @@ export async function proposeDecision(
   changelog.push({ date: today, note: "Marked as proposed" });
   record.changelog = changelog;
   const filePath = saveDecision(context, record);
-  const gitClient = options.gitClient ?? createGitClient();
   await stageAndCommitWithHint(
     context,
     gitClient,
@@ -139,7 +160,31 @@ export async function acceptDecision(
   options: RepoOptions = {},
 ): Promise<DecisionWriteResult> {
   const context = ensureContext(options);
-  const rec = loadDecision(context, id);
+  const gitClient = options.gitClient ?? createGitClient();
+  const sharedOptions: RepoOptions = { ...options, context, gitClient };
+  let rec = loadDecision(context, id);
+
+  if (!isAcceptableStatus(rec.status)) {
+    throw new Error(
+      `Cannot accept decision "${id}" from status "${rec.status}". Use the appropriate lifecycle command first.`,
+    );
+  }
+
+  if (rec.status === "draft" && !hasChangelogNote(rec, "Marked as draft")) {
+    await draftDecision(id, sharedOptions);
+    rec = loadDecision(context, id);
+  }
+
+  if (rec.status === "draft") {
+    await proposeDecision(id, sharedOptions);
+    rec = loadDecision(context, id);
+  }
+
+  if (rec.status === "accepted") {
+    const filePath = getDecisionPath(context, rec);
+    return { record: rec, filePath, context };
+  }
+
   const today = new Date().toISOString().slice(0, 10);
   rec.status = "accepted";
   rec.lastEdited = today;
@@ -148,7 +193,6 @@ export async function acceptDecision(
   changelog.push({ date: today, note: "Marked as accepted" });
   rec.changelog = changelog;
   const filePath = saveDecision(context, rec);
-  const gitClient = options.gitClient ?? createGitClient();
   await stageAndCommitWithHint(
     context,
     gitClient,
@@ -446,6 +490,18 @@ async function stageAndCommitWithHint(
     }
     throw error;
   }
+}
+
+function hasChangelogNote(record: DecisionRecord, note: string): boolean {
+  return (record.changelog ?? []).some((entry) => entry.note === note);
+}
+
+function isAcceptableStatus(status: DecisionStatus): boolean {
+  return status === "draft" || status === "proposed" || status === "accepted";
+}
+
+function isProposableStatus(status: DecisionStatus): boolean {
+  return status === "draft" || status === "proposed";
 }
 
 export interface DecisionWithSource {
