@@ -1,5 +1,23 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+type ExecCallback = (
+  err: Error | null,
+  stdout?: string,
+  stderr?: string,
+) => void;
+
+function mockExecFailure(message: string): void {
+  const execMock = vi.fn((...args: unknown[]) => {
+    const callback = args[args.length - 1] as unknown;
+    if (typeof callback === "function") {
+      (callback as ExecCallback)(new Error(message), "", "");
+    }
+  });
+  vi.doMock("node:child_process", () => ({
+    execFile: execMock,
+  }));
+}
+
 describe("git error handling", () => {
   afterEach(() => {
     vi.resetModules();
@@ -8,22 +26,7 @@ describe("git error handling", () => {
   });
 
   it("wraps git command failures with contextual messages", async () => {
-    const execMock = vi.fn((...args: unknown[]) => {
-      const callback = args[args.length - 1] as unknown;
-      if (typeof callback === "function") {
-        (
-          callback as (
-            err: Error | null,
-            stdout?: string,
-            stderr?: string,
-          ) => void
-        )(new Error("fatal: boom"), "", "");
-      }
-    });
-    vi.doMock("node:child_process", () => ({
-      execFile: execMock,
-    }));
-
+    mockExecFailure("fatal: boom");
     const { createGitClient } = await import("./git.js");
     const client = createGitClient();
 
@@ -36,22 +39,7 @@ describe("git error handling", () => {
   });
 
   it("rethrows unexpected status errors from git", async () => {
-    const execMock = vi.fn((...args: unknown[]) => {
-      const callback = args[args.length - 1] as unknown;
-      if (typeof callback === "function") {
-        (
-          callback as (
-            err: Error | null,
-            stdout?: string,
-            stderr?: string,
-          ) => void
-        )(new Error("fatal: meltdown"), "", "");
-      }
-    });
-    vi.doMock("node:child_process", () => ({
-      execFile: execMock,
-    }));
-
+    mockExecFailure("fatal: meltdown");
     const { getStagedFiles } = await import("./git.js");
     await expect(getStagedFiles("/repo")).rejects.toThrow(/meltdown/);
   });

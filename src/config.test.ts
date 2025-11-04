@@ -26,6 +26,66 @@ function makeTempDir(): string {
   return dir;
 }
 
+async function withGlobalConfigSetup(
+  run: (
+    modules: {
+      diagnoseConfig: typeof diagnoseConfig;
+      resolveRepoContext: typeof resolveRepoContext;
+    },
+    context: {
+      cwd: string;
+      home: string;
+      repo: string;
+      globalConfigPath: string;
+    },
+  ) => Promise<void>,
+): Promise<void> {
+  const cwd = makeTempDir();
+  const home = makeTempDir();
+  const repo = path.join(home, "global-decisions");
+  fs.mkdirSync(repo, { recursive: true });
+  const configDir = path.join(home, ".config", "drctl");
+  fs.mkdirSync(configDir, { recursive: true });
+  const globalConfigPath = path.join(configDir, "config.yaml");
+  fs.writeFileSync(
+    globalConfigPath,
+    `defaultRepo: global
+repos:
+  global:
+    path: ${repo}
+`,
+  );
+
+  const originalHome = process.env.HOME;
+  const originalUserProfile = process.env.USERPROFILE;
+  process.env.HOME = home;
+  process.env.USERPROFILE = home;
+
+  vi.resetModules();
+  try {
+    const modules = await import("./config.js");
+    await run(
+      {
+        diagnoseConfig: modules.diagnoseConfig,
+        resolveRepoContext: modules.resolveRepoContext,
+      },
+      { cwd, home, repo, globalConfigPath },
+    );
+  } finally {
+    if (originalHome === undefined) {
+      delete process.env.HOME;
+    } else {
+      process.env.HOME = originalHome;
+    }
+    if (originalUserProfile === undefined) {
+      delete process.env.USERPROFILE;
+    } else {
+      process.env.USERPROFILE = originalUserProfile;
+    }
+    vi.resetModules();
+  }
+}
+
 afterEach(() => {
   process.env.DRCTL_REPO = undefined;
   if (originalEnvRepo === undefined) {
@@ -254,50 +314,22 @@ repos:
 
 describe("diagnoseConfig", () => {
   it("loads repositories defined in the global config when local config is absent", async () => {
-    const cwd = makeTempDir();
-    const home = makeTempDir();
-    const repo = path.join(home, "global-decisions");
-    fs.mkdirSync(repo, { recursive: true });
-    const configDir = path.join(home, ".config", "drctl");
-    fs.mkdirSync(configDir, { recursive: true });
-    const globalConfigPath = path.join(configDir, "config.yaml");
-    fs.writeFileSync(
-      globalConfigPath,
-      `defaultRepo: global
-repos:
-  global:
-    path: ${repo}
-`,
+    await withGlobalConfigSetup(
+      async (
+        { diagnoseConfig: freshDiagnose, resolveRepoContext: freshResolve },
+        { cwd, repo, globalConfigPath },
+      ) => {
+        const diagnostics = freshDiagnose({ cwd });
+        expect(diagnostics.globalConfigPath).toBe(globalConfigPath);
+        expect(diagnostics.defaultRepoName).toBe("global");
+        expect(diagnostics.repos).toHaveLength(1);
+
+        const context = freshResolve({ cwd });
+        expect(context.root).toBe(repo);
+        expect(context.source).toBe("global-config");
+        expect(context.configPath).toBe(globalConfigPath);
+      },
     );
-
-    const originalHome = process.env.HOME;
-    const originalUserProfile = process.env.USERPROFILE;
-    process.env.HOME = home;
-    process.env.USERPROFILE = home;
-
-    vi.resetModules();
-    const { diagnoseConfig: freshDiagnose, resolveRepoContext: freshResolve } =
-      await import("./config.js");
-
-    try {
-      const diagnostics = freshDiagnose({ cwd });
-      expect(diagnostics.globalConfigPath).toBe(globalConfigPath);
-      expect(diagnostics.defaultRepoName).toBe("global");
-      expect(diagnostics.repos).toHaveLength(1);
-
-      const context = freshResolve({ cwd });
-      expect(context.root).toBe(repo);
-      expect(context.source).toBe("global-config");
-      expect(context.configPath).toBe(globalConfigPath);
-    } finally {
-      process.env.HOME = originalHome;
-      if (originalUserProfile === undefined) {
-        delete process.env.USERPROFILE;
-      } else {
-        process.env.USERPROFILE = originalUserProfile;
-      }
-      vi.resetModules();
-    }
   });
 
   it("warns when no repositories are configured", () => {
