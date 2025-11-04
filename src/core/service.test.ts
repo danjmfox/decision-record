@@ -225,6 +225,90 @@ describe("service layer", () => {
     );
   });
 
+  it("expands home directories when resolving template candidates", () => {
+    const context = makeContext();
+    const homeDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-home-"));
+    const homedirSpy = vi.spyOn(os, "homedir").mockReturnValue(homeDir);
+
+    const homeTemplate = path.join(homeDir, "home-template.md");
+    fs.writeFileSync(homeTemplate, "# Home Template", "utf8");
+
+    process.env.DRCTL_TEMPLATE = "~/home-template.md";
+
+    const result = createDecision("meta", "home-template", {
+      context,
+    });
+
+    const parsed = matter.read(result.filePath);
+    expect(parsed.data.templateUsed).toBe(
+      toPosix(
+        path.relative(
+          context.root,
+          path.join(context.root, "templates", "home-template.md"),
+        ),
+      ),
+    );
+    homedirSpy.mockRestore();
+  });
+
+  it("skips home-directory candidates that are directories", () => {
+    const context = makeContext();
+    const homeDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-home-dir-"));
+    const homedirSpy = vi.spyOn(os, "homedir").mockReturnValue(homeDir);
+
+    context.defaultTemplate = "templates/fallback.md";
+    const fallbackPath = path.join(context.root, context.defaultTemplate);
+    fs.mkdirSync(path.dirname(fallbackPath), { recursive: true });
+    fs.writeFileSync(fallbackPath, "# Fallback Template", "utf8");
+
+    process.env.DRCTL_TEMPLATE = "~";
+
+    const result = createDecision("meta", "home-dir", {
+      context,
+    });
+
+    const parsed = matter.read(result.filePath);
+    expect(parsed.data.templateUsed).toBe(
+      toPosix(path.relative(context.root, fallbackPath)),
+    );
+    homedirSpy.mockRestore();
+  });
+
+  it("reuses existing copied templates when external content is unchanged", () => {
+    const context = makeContext();
+    const externalTemplate = path.join(os.tmpdir(), "reused-template.md");
+    fs.writeFileSync(externalTemplate, "# Reused Template\n", "utf8");
+
+    const first = createDecision("meta", "reused-template-a", {
+      context,
+      templatePath: externalTemplate,
+    });
+    const firstParsed = matter.read(first.filePath);
+    const expectedRelative = toPosix(
+      path.relative(
+        context.root,
+        path.join(context.root, "templates", path.basename(externalTemplate)),
+      ),
+    );
+    expect(firstParsed.data.templateUsed).toBe(expectedRelative);
+
+    // Write the same content again to leave the file unchanged.
+    fs.writeFileSync(externalTemplate, "# Reused Template\n", "utf8");
+
+    const second = createDecision("meta", "reused-template-b", {
+      context,
+      templatePath: externalTemplate,
+    });
+    const secondParsed = matter.read(second.filePath);
+    expect(secondParsed.data.templateUsed).toBe(expectedRelative);
+    // Ensure no duplicate copies were created.
+    const templatesDir = path.join(context.root, "templates");
+    const files = fs
+      .readdirSync(templatesDir)
+      .filter((name) => name.startsWith("reused-template"));
+    expect(files).toEqual([path.basename(externalTemplate)]);
+  });
+
   it("skips template candidates that are directories before selecting the next option", () => {
     const context = makeContext();
     const dirTemplate = path.join(context.root, "templates", "dir-template");
@@ -567,6 +651,82 @@ describe("service layer", () => {
         message.includes("Missing default template heading"),
       ),
     ).toBe(true);
+  });
+
+  it("does not warn about headings when a custom template is used", async () => {
+    const context = makeContext();
+    const externalTemplate = path.join(os.tmpdir(), "custom-minimal.md");
+    fs.writeFileSync(externalTemplate, "# Custom Template\nBody", "utf8");
+
+    const creation = createDecision("meta", "custom-template", {
+      context,
+      templatePath: externalTemplate,
+    });
+    const warnings: string[] = [];
+
+    await proposeDecision(creation.record.id, {
+      context,
+      gitClient: {
+        stageAndCommit: vi.fn().mockResolvedValue(undefined),
+      },
+      onTemplateWarning: (message) => warnings.push(message),
+    });
+
+    expect(warnings).toHaveLength(0);
+  });
+
+  it("detects placeholder rows in the options table", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const creation = createDecision("meta", "placeholder-table", { context });
+    const parsed = matter.read(creation.filePath);
+    const withoutGuidance = parsed.content.replace(/^_.*_$/gm, "");
+    const contentWithPlaceholder = `${withoutGuidance}\n| B |     |     |     |`;
+    fs.writeFileSync(
+      creation.filePath,
+      matter.stringify(contentWithPlaceholder, parsed.data),
+    );
+    const warnings: string[] = [];
+
+    await proposeDecision(creation.record.id, {
+      context,
+      gitClient,
+      onTemplateWarning: (message) => warnings.push(message),
+    });
+
+    expect(warnings).toContain(
+      "Template hygiene: The options table still contains placeholder rows.",
+    );
+  });
+
+  it("continues to the next candidate when stat inspection fails", () => {
+    const context = makeContext();
+    const envTemplatePath = path.join(
+      context.root,
+      "templates",
+      "env-template.md",
+    );
+    fs.mkdirSync(path.dirname(envTemplatePath), { recursive: true });
+    fs.writeFileSync(envTemplatePath, "# Env Template", "utf8");
+
+    const statSpy = vi
+      .spyOn(fs, "statSync")
+      .mockImplementationOnce(() => {
+        throw new Error("stat failure");
+      })
+      .mockImplementation(fs.statSync as (path: fs.PathLike) => fs.Stats);
+
+    const result = createDecision("meta", "stat-fallback", {
+      context,
+      templatePath: path.join(context.root, "missing-template.md"),
+      envTemplate: envTemplatePath,
+    });
+
+    const parsed = matter.read(result.filePath);
+    expect(parsed.data.templateUsed).toBeUndefined();
+    statSpy.mockRestore();
   });
 
   it("returns early when the decision is already proposed", async () => {

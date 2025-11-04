@@ -86,6 +86,7 @@ describe("cli index commands", () => {
     path: ./missing
   present:
     path: ./present
+    template: templates/meta.md
 `,
     );
     process.chdir(tempDir);
@@ -96,6 +97,9 @@ describe("cli index commands", () => {
     const logSpy = getLogSpy();
     expect(logSpy).toHaveBeenCalledWith(
       expect.stringMatching(/Working directory/),
+    );
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/Template: templates\/meta\.md/),
     );
     expect(consoleWarnSpy!).toHaveBeenCalledWith(
       expect.stringMatching(/Repository "missing"/),
