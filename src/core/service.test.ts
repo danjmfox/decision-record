@@ -4,6 +4,7 @@ import path from "path";
 import matter from "gray-matter";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { RepoContext } from "../config.js";
+import * as configModule from "../config.js";
 import {
   acceptDecision,
   correctionDecision,
@@ -17,6 +18,7 @@ import {
   retireDecision,
   supersedeDecision,
   collectDecisions,
+  resolveContext,
 } from "./service.js";
 import * as gitModule from "./git.js";
 
@@ -197,6 +199,27 @@ describe("service layer", () => {
     ).rejects.toThrow(/Cannot accept decision/);
   });
 
+  it("returns early when the decision is already accepted", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const creation = createDecision("personal", "hydrate-repeat", {
+      context,
+    });
+
+    await acceptDecision(creation.record.id, { context, gitClient });
+    gitClient.stageAndCommit.mockClear();
+
+    const result = await acceptDecision(creation.record.id, {
+      context,
+      gitClient,
+    });
+
+    expect(result.record.status).toBe("accepted");
+    expect(gitClient.stageAndCommit).not.toHaveBeenCalled();
+  });
+
   it("uses the full template when creating a record", () => {
     const context = makeContext();
     const result = createDecision("personal", "template-check", {
@@ -260,6 +283,27 @@ describe("service layer", () => {
       cwd: context.root,
       message: `drctl: propose ${creation.record.id}`,
     });
+  });
+
+  it("returns early when the decision is already proposed", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const creation = createDecision("personal", "hydrate-proposed", {
+      context,
+    });
+
+    await proposeDecision(creation.record.id, { context, gitClient });
+    gitClient.stageAndCommit.mockClear();
+
+    const result = await proposeDecision(creation.record.id, {
+      context,
+      gitClient,
+    });
+
+    expect(result.record.status).toBe("proposed");
+    expect(gitClient.stageAndCommit).not.toHaveBeenCalled();
   });
 
   it("backfills the draft state before proposing when the note is missing", async () => {
@@ -619,6 +663,36 @@ describe("service layer", () => {
     await expect(
       draftDecision(creation.record.id, { context, gitClient }),
     ).rejects.toThrow(/drctl repo bootstrap test/);
+  });
+
+  it("rethrows unexpected git errors from lifecycle commands", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi
+        .fn()
+        .mockRejectedValue(new Error("Git command failed: git add foo\nboom")),
+    };
+    const creation = createDecision("meta", "draft-error", { context });
+
+    await expect(
+      draftDecision(creation.record.id, { context, gitClient }),
+    ).rejects.toThrow(/boom/);
+  });
+
+  it("resolves context using provided configPath", () => {
+    const spy = vi.spyOn(configModule, "resolveRepoContext").mockReturnValue({
+      root: "/tmp/mock",
+      domainMap: {},
+      source: "cli",
+    } as RepoContext);
+
+    const context = resolveContext({ configPath: "/tmp/test-config" });
+
+    expect(spy).toHaveBeenCalledWith(
+      expect.objectContaining({ configPath: "/tmp/test-config" }),
+    );
+    expect(context.root).toBe("/tmp/mock");
+    spy.mockRestore();
   });
 
   it("collects decisions with source paths", () => {
