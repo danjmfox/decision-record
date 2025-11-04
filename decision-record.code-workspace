@@ -8,6 +8,10 @@
     }
   ],
   "settings": {
-    "conventionalCommits.scopes": ["add decision", "dependency-review"]
+    "conventionalCommits.scopes": [
+      "add decision",
+      "dependency-review",
+      "sonarcloud"
+    ]
   }
 }
