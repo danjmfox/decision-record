@@ -1,0 +1,13 @@
+{
+  "folders": [
+    {
+      "path": "."
+    },
+    {
+      "path": "../decisions"
+    }
+  ],
+  "settings": {
+    "conventionalCommits.scopes": ["add decision", "dependency-review"]
+  }
+}
