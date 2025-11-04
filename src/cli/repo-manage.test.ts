@@ -190,6 +190,78 @@ describe("createRepoEntry", () => {
       }),
     ).toThrow(/already configured/i);
   });
+
+  it("handles legacy flat repo definitions without duplicating keys", () => {
+    const cwd = makeTempDir();
+    const configPath = path.join(cwd, ".drctl.yaml");
+    fs.writeFileSync(
+      configPath,
+      `repos:
+  name: legacy
+  path: ./legacy
+`,
+    );
+
+    createRepoEntry({
+      cwd,
+      name: "work",
+      repoPath: "./work",
+    });
+
+    const parsed = loadYaml(fs.readFileSync(configPath, "utf8")) as Record<
+      string,
+      Record<string, unknown>
+    >;
+    const repos = parsed.repos;
+    expect(Object.keys(repos ?? {})).toEqual(
+      expect.arrayContaining(["legacy", "work"]),
+    );
+    expect(repos?.legacy?.path).toBe("./legacy");
+    expect(repos?.work?.path).toBe("./work");
+  });
+
+  it("ignores existing entries without a path when checking duplicates", () => {
+    const cwd = makeTempDir();
+    const configPath = path.join(cwd, ".drctl.yaml");
+    fs.writeFileSync(
+      configPath,
+      `repos:\n  metadata:\n    domains:\n      meta: meta\n`,
+    );
+
+    expect(() =>
+      createRepoEntry({
+        cwd,
+        name: "docs",
+        repoPath: "./docs",
+      }),
+    ).not.toThrow();
+
+    const parsed = loadYaml(fs.readFileSync(configPath, "utf8")) as Record<
+      string,
+      Record<string, unknown>
+    >;
+    expect(parsed.repos?.docs?.path).toBe("./docs");
+  });
+
+  it("treats non-object existing configs as empty", () => {
+    const cwd = makeTempDir();
+    const configPath = path.join(cwd, ".drctl.yaml");
+    fs.writeFileSync(configPath, `- "not-an-object"\n- 42\n`);
+
+    expect(() =>
+      createRepoEntry({
+        cwd,
+        name: "docs",
+        repoPath: "./docs",
+      }),
+    ).not.toThrow();
+
+    const parsed = loadYaml(fs.readFileSync(configPath, "utf8")) as Record<
+      string,
+      Record<string, unknown>
+    >;
+    expect(parsed.repos?.docs?.path).toBe("./docs");
+  });
 });
 
 describe("switchDefaultRepo", () => {
