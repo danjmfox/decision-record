@@ -235,7 +235,7 @@ describe("service layer", () => {
     });
   });
 
-  it("marks a decision as proposed and commits via git", async () => {
+  it("marks a decision as proposed", async () => {
     const context = makeContext();
     const gitClient = {
       stageAndCommit: vi.fn().mockResolvedValue(undefined),
@@ -249,15 +249,53 @@ describe("service layer", () => {
 
     expect(result.record.status).toBe("proposed");
     expect(result.record.lastEdited).toBe("2025-10-30");
-    expect(result.record.changelog?.at(-1)).toEqual({
-      date: "2025-10-30",
-      note: "Marked as proposed",
-    });
+    expect(result.record.changelog).toEqual(
+      expect.arrayContaining([
+        { date: "2025-10-30", note: "Marked as draft" },
+        { date: "2025-10-30", note: "Marked as proposed" },
+      ]),
+    );
 
     expect(gitClient.stageAndCommit).toHaveBeenCalledWith([result.filePath], {
       cwd: context.root,
       message: `drctl: propose ${creation.record.id}`,
     });
+  });
+  it("does not replay draft when it already exists", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const creation = createDecision("personal", "hydrate-draft", { context });
+    await draftDecision(creation.record.id, { context, gitClient });
+    gitClient.stageAndCommit.mockClear();
+
+    const result = await proposeDecision(creation.record.id, {
+      context,
+      gitClient,
+    });
+
+    expect(result.record.status).toBe("proposed");
+    expect(gitClient.stageAndCommit).toHaveBeenCalledTimes(1);
+    expect(gitClient.stageAndCommit).toHaveBeenCalledWith([result.filePath], {
+      cwd: context.root,
+      message: `drctl: propose ${creation.record.id}`,
+    });
+  });
+
+  it("fails to propose when status is incompatible", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const creation = createDecision("personal", "reject-before-propose", {
+      context,
+    });
+    await rejectDecision(creation.record.id, { context, gitClient });
+
+    await expect(
+      proposeDecision(creation.record.id, { context, gitClient }),
+    ).rejects.toThrow(/Cannot propose/);
   });
 
   it("fails when unrelated files are staged", async () => {

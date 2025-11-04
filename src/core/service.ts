@@ -115,7 +115,29 @@ export async function proposeDecision(
   options: RepoOptions = {},
 ): Promise<DecisionWriteResult> {
   const context = ensureContext(options);
-  const record = loadDecision(context, id);
+  const gitClient = options.gitClient ?? createGitClient();
+  const sharedOptions: RepoOptions = { ...options, context, gitClient };
+  let record = loadDecision(context, id);
+
+  if (!isProposableStatus(record.status)) {
+    throw new Error(
+      `Cannot propose decision "${id}" from status "${record.status}". Use the appropriate lifecycle command first.`,
+    );
+  }
+
+  if (
+    record.status === "draft" &&
+    !hasChangelogNote(record, "Marked as draft")
+  ) {
+    await draftDecision(id, sharedOptions);
+    record = loadDecision(context, id);
+  }
+
+  if (record.status === "proposed") {
+    const filePath = getDecisionPath(context, record);
+    return { record, filePath, context };
+  }
+
   const today = new Date().toISOString().slice(0, 10);
   record.status = "proposed";
   record.lastEdited = today;
@@ -123,7 +145,6 @@ export async function proposeDecision(
   changelog.push({ date: today, note: "Marked as proposed" });
   record.changelog = changelog;
   const filePath = saveDecision(context, record);
-  const gitClient = options.gitClient ?? createGitClient();
   await stageAndCommitWithHint(
     context,
     gitClient,
@@ -477,6 +498,10 @@ function hasChangelogNote(record: DecisionRecord, note: string): boolean {
 
 function isAcceptableStatus(status: DecisionStatus): boolean {
   return status === "draft" || status === "proposed" || status === "accepted";
+}
+
+function isProposableStatus(status: DecisionStatus): boolean {
+  return status === "draft" || status === "proposed";
 }
 
 export interface DecisionWithSource {

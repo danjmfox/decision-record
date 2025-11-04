@@ -200,7 +200,7 @@ home-decisions/
 - Use **conventional commits** for each logical change (e.g. `feat:`, `fix:`, `test:`).
 - If a change spans multiple concerns, split into multiple TDD cycles and commits.
 
-**Branch + PR loop**
+#### Branch + PR loop
 
 1. Branch from `main` (`git checkout -b feat/...`).
 2. Capture any new Decision Record (if the change warrants it) before coding.
