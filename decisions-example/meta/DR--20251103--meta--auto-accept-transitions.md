@@ -1,9 +1,9 @@
 ---
 id: DR--20251103--meta--auto-accept-transitions
 dateCreated: "2025-11-03"
-version: 1.0.0
+version: 1.0.1
 status: accepted
-changeType: creation
+changeType: correction
 domain: meta
 slug: auto-accept-transitions
 changelog:
@@ -15,6 +15,8 @@ changelog:
     note: Marked as proposed
   - date: "2025-11-04"
     note: Marked as accepted
+  - date: "2025-11-04"
+    note: Minor correction
 lastEdited: "2025-11-04"
 dateAccepted: "2025-11-04"
 ---
