@@ -520,14 +520,14 @@ function resolvePath(p: string, baseDir: string): string {
  * @returns The string with environment variables replaced.
  */
 function expandEnvVars(input: string): string {
-  return input.replaceAll(
-    /\$\{([^}]+)\}|\$([A-Za-z_]\w*)/g,
-    (_, group1, group2) => {
-      const key = group1 ?? group2;
-      if (!key) return "";
-      return process.env[key] ?? "";
-    },
-  );
+  const withBraces = input.replaceAll(/\$\{([^}]+)\}/g, (_, key: string) => {
+    if (!key) return "";
+    return process.env[key] ?? "";
+  });
+  return withBraces.replaceAll(/\$([A-Za-z_]\w*)/g, (_, key: string) => {
+    if (!key) return "";
+    return process.env[key] ?? "";
+  });
 }
 
 function resolveTemplatePath(repoRoot: string, templatePath: string): string {
