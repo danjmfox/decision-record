@@ -107,25 +107,94 @@ describe("service layer", () => {
     expect(accepted.record.lastEdited).toBe("2025-10-30");
     expect(accepted.record.dateAccepted).toBe("2025-10-30");
     expect(accepted.filePath).toBe(creation.filePath);
-    expect(accepted.record.changelog?.at(-1)).toEqual({
-      date: "2025-10-30",
-      note: "Marked as accepted",
-    });
+    expect(accepted.record.changelog).toEqual(
+      expect.arrayContaining([
+        {
+          date: "2025-10-30",
+          note: "Marked as draft",
+        },
+        {
+          date: "2025-10-30",
+          note: "Marked as proposed",
+        },
+        {
+          date: "2025-10-30",
+          note: "Marked as accepted",
+        },
+      ]),
+    );
 
     const storedFrontmatter = matter.read(creation.filePath);
     expect(storedFrontmatter.data.status).toBe("accepted");
     expect(storedFrontmatter.data.dateAccepted).toBe("2025-10-30");
 
-    expect(gitClient.stageAndCommit).toHaveBeenCalledWith([creation.filePath], {
-      cwd: context.root,
-      message: `drctl: accept ${creation.record.id}`,
-    });
+    expect(gitClient.stageAndCommit).toHaveBeenNthCalledWith(
+      1,
+      [creation.filePath],
+      {
+        cwd: context.root,
+        message: `drctl: draft ${creation.record.id}`,
+      },
+    );
+    expect(gitClient.stageAndCommit).toHaveBeenNthCalledWith(
+      2,
+      [creation.filePath],
+      {
+        cwd: context.root,
+        message: `drctl: propose ${creation.record.id}`,
+      },
+    );
+    expect(gitClient.stageAndCommit).toHaveBeenNthCalledWith(
+      3,
+      [creation.filePath],
+      {
+        cwd: context.root,
+        message: `drctl: accept ${creation.record.id}`,
+      },
+    );
 
     const acceptedRecords = listAll("accepted", { context });
     expect(acceptedRecords).toHaveLength(1);
     const acceptedRecord = acceptedRecords[0];
     expect(acceptedRecord).toBeDefined();
     expect(acceptedRecord?.status).toBe("accepted");
+  });
+
+  it("accepts a proposed decision without replaying earlier transitions", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const creation = createDecision("personal", "hydrate-2", { context });
+    await proposeDecision(creation.record.id, { context, gitClient });
+    gitClient.stageAndCommit.mockClear();
+
+    const accepted = await acceptDecision(creation.record.id, {
+      context,
+      gitClient,
+    });
+
+    expect(accepted.record.status).toBe("accepted");
+    expect(gitClient.stageAndCommit).toHaveBeenCalledTimes(1);
+    expect(gitClient.stageAndCommit).toHaveBeenCalledWith([creation.filePath], {
+      cwd: context.root,
+      message: `drctl: accept ${creation.record.id}`,
+    });
+  });
+
+  it("fails when attempting to accept an incompatible status", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const creation = createDecision("personal", "reject-then-accept", {
+      context,
+    });
+    await rejectDecision(creation.record.id, { context, gitClient });
+
+    await expect(
+      acceptDecision(creation.record.id, { context, gitClient }),
+    ).rejects.toThrow(/Cannot accept decision/);
   });
 
   it("uses the full template when creating a record", () => {
