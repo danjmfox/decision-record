@@ -17,4 +17,4 @@ jobs:
         with:
           persist-credentials: false
       - name: Dependency Review
-        uses: github/dependency-review-action@5e9dba735c08cb2cfd3c7f1f7cf63400b5d386ad
+        uses: actions/dependency-review-action@5194ced0a6f398b5acd35d8917d81e4f5d5f04cf # v4
