@@ -1,5 +1,5 @@
-import fs from "fs";
-import path from "path";
+import fs from "node:fs";
+import path from "node:path";
 import matter from "gray-matter";
 import type { DecisionRecord } from "./models.js";
 import type { RepoContext } from "../config.js";
@@ -27,9 +27,7 @@ export function saveDecision(
     const existing = matter.read(filePath);
     body = existing.content;
   }
-  if (body === undefined) {
-    body = "";
-  }
+  body ??= "";
   const md = matter.stringify(body, record);
   fs.writeFileSync(filePath, md);
   return filePath;

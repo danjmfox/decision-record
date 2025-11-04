@@ -1,15 +1,16 @@
-import path from "path";
+import path from "node:path";
 import type { RepoContext } from "../config.js";
 
 export function formatRepoContext(context: RepoContext): string[] {
   const lines: string[] = [];
   const label = context.name ?? "(unnamed)";
   const normalizedRoot = path.normalize(context.root);
-  lines.push(`📁 Repo: ${label} (${normalizedRoot})`);
-
-  lines.push(`   Source: ${context.source}`);
-  lines.push(`   Definition: ${context.definitionSource ?? "n/a"}`);
-  lines.push(`   Config: ${context.configPath ?? "n/a"}`);
+  lines.push(
+    `📁 Repo: ${label} (${normalizedRoot})`,
+    `   Source: ${context.source}`,
+    `   Definition: ${context.definitionSource ?? "n/a"}`,
+    `   Config: ${context.configPath ?? "n/a"}`,
+  );
 
   const defaultDomain = context.defaultDomainDir ?? "<domain>";
   lines.push(`   Default domain dir: ${defaultDomain}`);
@@ -27,8 +28,8 @@ export function formatRepoContext(context: RepoContext): string[] {
   }
 
   if (context.source === "fallback-home" || context.source === "fallback-cwd") {
-    lines.push(`\n`);
     lines.push(
+      `\n`,
       "   Note: No .drctl.yaml found. Create one to configure multiple decision repos.",
     );
   }

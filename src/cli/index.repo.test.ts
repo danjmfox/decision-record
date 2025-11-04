@@ -1,6 +1,6 @@
-import fs from "fs";
-import os from "os";
-import path from "path";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { load as loadYaml } from "js-yaml";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { saveDecision } from "../core/repository.js";
@@ -101,7 +101,7 @@ describe("cli index commands", () => {
     expect(logSpy).toHaveBeenCalledWith(
       expect.stringMatching(/Template: templates\/meta\.md/),
     );
-    expect(consoleWarnSpy!).toHaveBeenCalledWith(
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
       expect.stringMatching(/Repository "missing"/),
     );
     expect(process.exitCode).toBe(0);

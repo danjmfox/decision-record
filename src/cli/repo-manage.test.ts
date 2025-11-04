@@ -1,6 +1,6 @@
-import fs from "fs";
-import os from "os";
-import path from "path";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { load as loadYaml } from "js-yaml";
 import { createRepoEntry, switchDefaultRepo } from "./repo-manage.js";

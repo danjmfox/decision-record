@@ -1,6 +1,6 @@
-import fs from "fs";
-import os from "os";
-import path from "path";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { load as loadYaml } from "js-yaml";
 
 export type RepoDefinitionSource = "local" | "global";
@@ -135,15 +135,20 @@ export function resolveRepoContext(
     layersForDefaultSource.globalConfig = globalConfig;
   }
 
-  const requestedRepoSource =
-    repoFlag !== null
-      ? "cli"
-      : envRepo !== null
-        ? "env"
-        : defaultRepoName !== null
-          ? determineDefaultSource(defaultRepoName, layersForDefaultSource)
-          : undefined;
+  let requestedRepoSource: RepoResolutionSource | undefined;
 
+  if (repoFlag !== null) {
+    requestedRepoSource = "cli";
+  } else if (envRepo !== null) {
+    requestedRepoSource = "env";
+  } else if (defaultRepoName === null) {
+    requestedRepoSource = undefined;
+  } else {
+    requestedRepoSource = determineDefaultSource(
+      defaultRepoName,
+      layersForDefaultSource,
+    );
+  }
   if (requestedRepoName) {
     const repo = combinedRepos.get(requestedRepoName);
     if (repo) {
@@ -216,9 +221,9 @@ export function diagnoseConfig(
         ? resolveTemplatePath(repo.root, repo.defaultTemplate)
         : undefined;
     const templateRelative =
-      templateAbsolute !== undefined
-        ? path.relative(repo.root, templateAbsolute)
-        : undefined;
+      templateAbsolute === undefined
+        ? undefined
+        : path.relative(repo.root, templateAbsolute);
     repos.push({
       name: repo.name,
       root: repo.root,
@@ -500,16 +505,23 @@ function firstString(value: unknown): string | undefined {
 function resolvePath(p: string, baseDir: string): string {
   const envExpanded = expandEnvVars(p);
   const withHome = expandTilde(envExpanded);
-  const normalized = withHome.replace(/\\/g, path.sep);
+  const normalized = withHome.replaceAll("\\", path.sep);
   if (path.isAbsolute(normalized)) {
     return path.normalize(normalized);
   }
   return path.resolve(baseDir, normalized);
 }
 
+/**
+ * Replaces environment variables in a string with their values.
+ * Supports both ${VARIABLE_NAME} and $VARIABLE_NAME formats.
+ * If the variable is not set, it will be replaced with an empty string.
+ * @param input The string to replace environment variables in.
+ * @returns The string with environment variables replaced.
+ */
 function expandEnvVars(input: string): string {
-  return input.replace(
-    /\$\{([^}]+)\}|\$([A-Za-z_][A-Za-z0-9_]*)/g,
+  return input.replaceAll(
+    /\$\{([^}]+)\}|\$([A-Za-z_]\w*)/g,
     (_, group1, group2) => {
       const key = group1 ?? group2;
       if (!key) return "";
