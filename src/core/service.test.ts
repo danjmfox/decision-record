@@ -23,6 +23,11 @@ import {
 import * as gitModule from "./git.js";
 
 const tempRoots: string[] = [];
+let consoleWarnSpy: ReturnType<typeof vi.spyOn> | undefined;
+
+function toPosix(value: string): string {
+  return value.split(path.sep).join("/");
+}
 
 function makeContext(): RepoContext {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-service-test-"));
@@ -38,10 +43,12 @@ function makeContext(): RepoContext {
 beforeAll(() => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2025-10-30T12:00:00Z"));
+  consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 });
 
 afterAll(() => {
   vi.useRealTimers();
+  consoleWarnSpy?.mockRestore();
   for (const dir of tempRoots) {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -73,6 +80,96 @@ describe("service layer", () => {
     expect(storedRecord).toBeDefined();
     expect(storedRecord?.id).toBe(result.record.id);
     expect(storedRecord?.status).toBe("draft");
+  });
+
+  it("uses a configured template when creating a decision", () => {
+    const context = makeContext();
+    context.defaultTemplate = "templates/meta.md";
+    const templatePath = path.join(context.root, "templates", "meta.md");
+    fs.mkdirSync(path.dirname(templatePath), { recursive: true });
+    const templateBody = [
+      "# Custom Template Heading",
+      "",
+      "## Section",
+      "",
+      "Fill me in",
+      "",
+    ].join("\n");
+    fs.writeFileSync(templatePath, templateBody, "utf8");
+
+    const result = createDecision("meta", "with-template", { context });
+
+    const stored = fs.readFileSync(result.filePath, "utf8");
+    expect(stored).toContain("Custom Template Heading");
+    const parsed = matter.read(result.filePath);
+    expect(parsed.data.templateUsed).toBe("templates/meta.md");
+  });
+
+  it("prefers an explicit template path over defaults", () => {
+    const context = makeContext();
+    context.defaultTemplate = "templates/default.md";
+    const defaultTemplatePath = path.join(
+      context.root,
+      "templates",
+      "default.md",
+    );
+    fs.mkdirSync(path.dirname(defaultTemplatePath), { recursive: true });
+    fs.writeFileSync(defaultTemplatePath, "# Default Template\n", "utf8");
+    const externalTemplate = path.join(os.tmpdir(), "custom-template.md");
+    fs.writeFileSync(
+      externalTemplate,
+      ["# External Template", "", "Body content", ""].join("\n"),
+      "utf8",
+    );
+
+    const result = createDecision("meta", "override-template", {
+      context,
+      templatePath: externalTemplate,
+    });
+
+    const stored = fs.readFileSync(result.filePath, "utf8");
+    expect(stored).toContain("# External Template");
+    const parsed = matter.read(result.filePath);
+    const expectedTemplateWithinRepo = path.join(
+      context.root,
+      "templates",
+      path.basename(externalTemplate),
+    );
+    expect(fs.existsSync(expectedTemplateWithinRepo)).toBe(true);
+    expect(parsed.data.templateUsed).toBe(
+      toPosix(path.relative(context.root, expectedTemplateWithinRepo)),
+    );
+    expect(fs.readFileSync(expectedTemplateWithinRepo, "utf8")).toContain(
+      "# External Template",
+    );
+  });
+
+  it("falls back to the env template when provided", () => {
+    const context = makeContext();
+    const envTemplatePath = path.join(os.tmpdir(), "env-template.md");
+    fs.writeFileSync(
+      envTemplatePath,
+      ["# Env Template", "", "Body text", ""].join("\n"),
+      "utf8",
+    );
+
+    const result = createDecision("meta", "env-template", {
+      context,
+      envTemplate: envTemplatePath,
+    });
+
+    const stored = fs.readFileSync(result.filePath, "utf8");
+    expect(stored).toContain("# Env Template");
+    const parsed = matter.read(result.filePath);
+    const expectedTemplateWithinRepo = path.join(
+      context.root,
+      "templates",
+      path.basename(envTemplatePath),
+    );
+    expect(fs.existsSync(expectedTemplateWithinRepo)).toBe(true);
+    expect(parsed.data.templateUsed).toBe(
+      toPosix(path.relative(context.root, expectedTemplateWithinRepo)),
+    );
   });
 
   it("does not overwrite an existing decision when creating again", () => {
@@ -283,6 +380,56 @@ describe("service layer", () => {
       cwd: context.root,
       message: `drctl: propose ${creation.record.id}`,
     });
+  });
+
+  it("emits a warning when proposing with placeholder content", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const creation = createDecision("meta", "placeholder-warning", { context });
+    const warnings: string[] = [];
+
+    await proposeDecision(creation.record.id, {
+      context,
+      gitClient,
+      onTemplateWarning: (message) => {
+        warnings.push(message);
+      },
+    });
+
+    expect(warnings).not.toHaveLength(0);
+    expect(warnings[0]).toMatch(/Template hygiene/i);
+  });
+
+  it("does not warn when placeholder content is removed before proposing", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const creation = createDecision("meta", "placeholder-cleared", {
+      context,
+    });
+    const parsed = matter.read(creation.filePath);
+    const sanitized = parsed.content
+      .replace(/^_.*_$/gm, "Completed section.")
+      .replace(
+        /\| B\s+\|\s+\|\s+\|\s+\|/g,
+        "| B | Option B | Rejected | Provided rationale |",
+      );
+    const rewritten = matter.stringify(sanitized, parsed.data);
+    fs.writeFileSync(creation.filePath, rewritten, "utf8");
+    const warnings: string[] = [];
+
+    await proposeDecision(creation.record.id, {
+      context,
+      gitClient,
+      onTemplateWarning: (message) => {
+        warnings.push(message);
+      },
+    });
+
+    expect(warnings).toHaveLength(0);
   });
 
   it("returns early when the decision is already proposed", async () => {

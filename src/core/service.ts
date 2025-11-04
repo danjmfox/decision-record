@@ -1,4 +1,5 @@
 import fs from "fs";
+import os from "os";
 import path from "path";
 import matter from "gray-matter";
 import type { DecisionRecord, DecisionStatus } from "./models.js";
@@ -37,10 +38,13 @@ export interface RepoOptions {
   context?: RepoContext;
   gitClient?: GitClient;
   configPath?: string;
+  onTemplateWarning?: (message: string) => void;
 }
 
 export interface CreateDecisionOptions extends RepoOptions {
   confidence?: number;
+  templatePath?: string;
+  envTemplate?: string;
 }
 
 export interface CorrectionOptions extends RepoOptions {
@@ -82,7 +86,11 @@ export function createDecision(
       `Decision record "${record.id}" already exists at ${targetPath}. Use drctl lifecycle or revision commands to update it.`,
     );
   }
-  const filePath = saveDecision(context, record, renderTemplate(record));
+  const template = resolveTemplateBody(record, context, options);
+  if (template.templateUsed) {
+    record.templateUsed = template.templateUsed;
+  }
+  const filePath = saveDecision(context, record, template.body);
   return { record, filePath, context };
 }
 
@@ -133,6 +141,8 @@ export async function proposeDecision(
     record = loadDecision(context, id);
   }
 
+  emitTemplateWarnings(context, record, options);
+
   if (record.status === "proposed") {
     const filePath = getDecisionPath(context, record);
     return { record, filePath, context };
@@ -163,6 +173,7 @@ export async function acceptDecision(
   const gitClient = options.gitClient ?? createGitClient();
   const sharedOptions: RepoOptions = { ...options, context, gitClient };
   let rec = loadDecision(context, id);
+  let warningsHandled = false;
 
   if (!isAcceptableStatus(rec.status)) {
     throw new Error(
@@ -178,6 +189,11 @@ export async function acceptDecision(
   if (rec.status === "draft") {
     await proposeDecision(id, sharedOptions);
     rec = loadDecision(context, id);
+    warningsHandled = true;
+  }
+
+  if (!warningsHandled && rec.status !== "accepted") {
+    emitTemplateWarnings(context, rec, options);
   }
 
   if (rec.status === "accepted") {
@@ -406,6 +422,231 @@ function ensureContext(options: RepoOptions): RepoContext {
 
 export function resolveContext(options: RepoOptions = {}): RepoContext {
   return ensureContext(options);
+}
+
+interface ResolvedTemplate {
+  body: string;
+  templateUsed?: string;
+}
+
+function resolveTemplateBody(
+  record: DecisionRecord,
+  context: RepoContext,
+  options: CreateDecisionOptions,
+): ResolvedTemplate {
+  const candidates = [
+    sanitizeTemplateCandidate(options.templatePath),
+    sanitizeTemplateCandidate(
+      options.envTemplate ?? process.env.DRCTL_TEMPLATE,
+    ),
+    sanitizeTemplateCandidate(context.defaultTemplate),
+  ];
+
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const resolved = resolveTemplateCandidate(context, candidate);
+    if (!resolved) continue;
+    if (!fs.existsSync(resolved.absolutePath)) continue;
+    try {
+      const stats = fs.statSync(resolved.absolutePath);
+      if (!stats.isFile()) continue;
+    } catch {
+      continue;
+    }
+    try {
+      const body = fs.readFileSync(resolved.absolutePath, "utf8");
+      const templateUsed = ensureTemplateInRepo(context, resolved, body);
+      return { body, templateUsed };
+    } catch {
+      continue;
+    }
+  }
+
+  return { body: renderTemplate(record) };
+}
+
+function sanitizeTemplateCandidate(
+  value: string | null | undefined,
+): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length === 0 ? undefined : trimmed;
+}
+
+interface TemplateCandidateResolution {
+  absolutePath: string;
+  templateId: string;
+}
+
+function resolveTemplateCandidate(
+  context: RepoContext,
+  candidate: string,
+): TemplateCandidateResolution | undefined {
+  const expanded = expandHome(candidate);
+  const absolutePath = path.isAbsolute(expanded)
+    ? path.normalize(expanded)
+    : path.resolve(context.root, expanded);
+  const templateId = deriveTemplateId(context.root, candidate, absolutePath);
+  return { absolutePath, templateId };
+}
+
+function expandHome(input: string): string {
+  if (input === "~") {
+    return os.homedir();
+  }
+  if (input.startsWith("~/")) {
+    return path.join(os.homedir(), input.slice(2));
+  }
+  return input;
+}
+
+function deriveTemplateId(
+  repoRoot: string,
+  original: string,
+  absolutePath: string,
+): string {
+  if (!path.isAbsolute(original)) {
+    return normalizeToPosix(original);
+  }
+  const relative = path.relative(repoRoot, absolutePath);
+  if (!relative.startsWith("..") && !path.isAbsolute(relative)) {
+    return normalizeToPosix(relative);
+  }
+  return normalizeToPosix(original);
+}
+
+function normalizeToPosix(value: string): string {
+  return value.split(path.sep).join("/");
+}
+
+function ensureTemplateInRepo(
+  context: RepoContext,
+  resolved: TemplateCandidateResolution,
+  body: string,
+): string {
+  const relative = path.relative(context.root, resolved.absolutePath);
+  if (!relative.startsWith("..") && !path.isAbsolute(relative)) {
+    return normalizeToPosix(relative);
+  }
+
+  const templatesDir = path.join(context.root, "templates");
+  fs.mkdirSync(templatesDir, { recursive: true });
+
+  const sourceContent = body;
+  const { name, ext } = path.parse(resolved.absolutePath);
+  let candidateName = `${name}${ext}`;
+  let targetPath = path.join(templatesDir, candidateName);
+
+  if (fs.existsSync(targetPath)) {
+    const existing = fs.readFileSync(targetPath, "utf8");
+    if (existing === sourceContent) {
+      return normalizeToPosix(path.relative(context.root, targetPath));
+    }
+    let counter = 2;
+    while (true) {
+      candidateName = `${name}-${counter}${ext}`;
+      targetPath = path.join(templatesDir, candidateName);
+      if (!fs.existsSync(targetPath)) {
+        break;
+      }
+      const existingCandidate = fs.readFileSync(targetPath, "utf8");
+      if (existingCandidate === sourceContent) {
+        return normalizeToPosix(path.relative(context.root, targetPath));
+      }
+      counter += 1;
+    }
+  }
+
+  fs.writeFileSync(targetPath, sourceContent, "utf8");
+  return normalizeToPosix(path.relative(context.root, targetPath));
+}
+
+const DEFAULT_PLACEHOLDER_LINES = [
+  "_Describe the background and circumstances leading to this decision._",
+  "_List the main options or alternatives that were evaluated before making the decision, including why each was accepted or rejected._",
+  "_State the decision made clearly and succinctly._",
+  "_List the guiding principles or values that influenced this decision._",
+  "_Outline the current lifecycle state and any relevant change types._",
+  "_Explain the rationale, trade-offs, and considerations behind the decision._",
+  "_Specify the immediate next steps or actions following this decision._",
+  "_Indicate the confidence level in this decision and any planned reviews._",
+  "_Summarise notable updates, revisions, or corrections. Each should have a date and note in YAML frontmatter for traceability._",
+];
+
+const DEFAULT_REQUIRED_HEADINGS = [
+  "## 🧭 Context",
+  "## ⚖️ Options Considered",
+  "## 🧠 Decision",
+  "## 🪶 Principles",
+  "## 🔁 Lifecycle",
+  "## 🧩 Reasoning",
+  "## 🔄 Next Actions",
+  "## 🧠 Confidence",
+  "## 🧾 Changelog",
+];
+
+const OPTIONS_PLACEHOLDER_REGEX = /\| B\s+\|\s+\|\s+\|\s+\|/;
+
+function emitTemplateWarnings(
+  context: RepoContext,
+  record: DecisionRecord,
+  options: RepoOptions,
+): void {
+  const warnings = collectTemplateWarnings(context, record);
+  if (warnings.length === 0) return;
+  const handler =
+    typeof options.onTemplateWarning === "function"
+      ? options.onTemplateWarning
+      : (message: string) => {
+          console.warn(`⚠️ ${message}`);
+        };
+  for (const warning of warnings) {
+    handler(`Template hygiene: ${warning}`);
+  }
+}
+
+function collectTemplateWarnings(
+  context: RepoContext,
+  record: DecisionRecord,
+): string[] {
+  const warnings: string[] = [];
+  const filePath = getDecisionPath(context, record);
+  if (!fs.existsSync(filePath)) {
+    return warnings;
+  }
+  const { content } = matter.read(filePath);
+
+  if (DEFAULT_PLACEHOLDER_LINES.some((line) => content.includes(line))) {
+    warnings.push(
+      "Placeholder text from the default template is still present.",
+    );
+  }
+
+  if (!record.templateUsed) {
+    const missingHeadings = DEFAULT_REQUIRED_HEADINGS.filter(
+      (heading) => !headingExists(content, heading),
+    );
+    if (missingHeadings.length > 0) {
+      warnings.push(
+        `Missing default template heading(s): ${missingHeadings.join(", ")}.`,
+      );
+    }
+  }
+
+  if (OPTIONS_PLACEHOLDER_REGEX.test(content)) {
+    warnings.push("The options table still contains placeholder rows.");
+  }
+
+  return warnings;
+}
+
+function headingExists(content: string, heading: string): boolean {
+  const pattern = new RegExp(`^${escapeRegExp(heading)}\\s*$`, "m");
+  return pattern.test(content);
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function renderTemplate(record: DecisionRecord): string {
