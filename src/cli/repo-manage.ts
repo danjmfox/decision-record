@@ -1,6 +1,6 @@
-import fs from "fs";
-import os from "os";
-import path from "path";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import { resolveConfigPath } from "../config.js";
 
@@ -237,7 +237,7 @@ function findNearestConfig(startDir: string): string | undefined {
 function resolveRepoPath(repoPath: string, baseDir: string): string {
   const expandedEnv = expandEnvVars(repoPath);
   const expandedTilde = expandTilde(expandedEnv);
-  const normalized = expandedTilde.replace(/\\/g, path.sep);
+  const normalized = expandedTilde.replaceAll("\\", path.sep);
   if (path.isAbsolute(normalized)) {
     return path.normalize(normalized);
   }
@@ -245,8 +245,8 @@ function resolveRepoPath(repoPath: string, baseDir: string): string {
 }
 
 function expandEnvVars(input: string): string {
-  return input.replace(
-    /\$\{([^}]+)\}|\$([A-Za-z_][A-Za-z0-9_]*)/g,
+  return input.replaceAll(
+    /\$\{([^}]+)\}|\$([A-Za-z_]\w*)/g,
     (_, group1, group2) => {
       const key = group1 ?? group2;
       if (!key) return "";
@@ -255,6 +255,13 @@ function expandEnvVars(input: string): string {
   );
 }
 
+/**
+ * Expands tilde (~) to the user's home directory.
+ * If the input starts with ~/ it will be resolved to $HOME/<input without ~/>
+ * Otherwise, the input is returned as is.
+ * @param {string} input - The string to expand.
+ * @returns {string} - The expanded string.
+ */
 function expandTilde(input: string): string {
   if (input === "~") {
     return os.homedir();

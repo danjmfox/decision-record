@@ -1,6 +1,6 @@
-import fs from "fs";
-import os from "os";
-import path from "path";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 import { resolveRepoContext } from "../config.js";
 import { saveDecision, listDecisions, loadDecision } from "./repository.js";
@@ -105,7 +105,7 @@ describe("repository domain handling", () => {
     saveDecision(context, createRecord("meta", "decision-policy"), "B");
 
     const decisions = listDecisions(context);
-    const ids = decisions.map((r) => r.id).sort();
+    const ids = decisions.map((r) => r.id).sort((a, b) => a.localeCompare(b));
     expect(ids).toEqual([
       "DR--20250101--meta--decision-policy",
       "DR--20250101--personal--hydrate",

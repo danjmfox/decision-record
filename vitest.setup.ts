@@ -1,4 +1,4 @@
-import path from "path";
+import path from "node:path";
 
 const repoRoot = path.resolve(__dirname);
 if (!process.cwd().startsWith(repoRoot)) {

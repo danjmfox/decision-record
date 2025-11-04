@@ -1,6 +1,6 @@
-import fs from "fs";
-import os from "os";
-import path from "path";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import matter from "gray-matter";
 import type { DecisionRecord, DecisionStatus } from "./models.js";
 import {
@@ -72,7 +72,7 @@ export function createDecision(
     changeType: "creation",
     domain,
     slug,
-    ...(confidence !== undefined ? { confidence } : {}),
+    ...(confidence === undefined ? {} : { confidence }),
     changelog: [
       {
         date: today,
@@ -646,7 +646,7 @@ function headingExists(content: string, heading: string): boolean {
 }
 
 function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return value.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 }
 
 function renderTemplate(record: DecisionRecord): string {
@@ -695,6 +695,42 @@ function renderTemplate(record: DecisionRecord): string {
     "_Summarise notable updates, revisions, or corrections. Each should have a date and note in YAML frontmatter for traceability._",
     "",
   ].join("\n");
+}
+
+function readVisibleEntries(dir: string): fs.Dirent[] {
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  return entries.filter((entry) => !shouldSkipEntry(entry));
+}
+
+function addDecisionIfPresent(
+  filePath: string,
+  entry: fs.Dirent,
+  results: DecisionWithSource[],
+): void {
+  if (!isDecisionFileEntry(entry)) return;
+  const record = readDecisionFromFile(filePath);
+  if (!record) return;
+  results.push({ record, filePath });
+}
+
+function shouldSkipEntry(entry: fs.Dirent): boolean {
+  return entry.name.startsWith(".");
+}
+
+function isDecisionFileEntry(entry: fs.Dirent): boolean {
+  return entry.isFile() && entry.name.endsWith(".md");
+}
+
+function readDecisionFromFile(filePath: string): DecisionRecord | undefined {
+  try {
+    const { data } = matter.read(filePath);
+    if (!data || typeof data !== "object") {
+      return undefined;
+    }
+    return data as DecisionRecord;
+  } catch {
+    return undefined;
+  }
 }
 
 async function stageAndCommitWithHint(
@@ -753,29 +789,24 @@ export interface DecisionWithSource {
 export function collectDecisions(context: RepoContext): DecisionWithSource[] {
   if (!fs.existsSync(context.root)) return [];
   const results: DecisionWithSource[] = [];
-  const stack = [context.root];
+  traverseDecisionDirectories([context.root], results);
+  return results;
+}
 
+function traverseDecisionDirectories(
+  stack: string[],
+  results: DecisionWithSource[],
+): void {
   while (stack.length > 0) {
     const dir = stack.pop();
     if (!dir) continue;
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
-    for (const entry of entries) {
-      if (entry.name.startsWith(".")) continue;
+    for (const entry of readVisibleEntries(dir)) {
       const fullPath = path.join(dir, entry.name);
       if (entry.isDirectory()) {
         stack.push(fullPath);
         continue;
       }
-      if (!entry.isFile() || !entry.name.endsWith(".md")) continue;
-      try {
-        const { data } = matter.read(fullPath);
-        if (!data || typeof data !== "object") continue;
-        results.push({ record: data as DecisionRecord, filePath: fullPath });
-      } catch {
-        // ignore unreadable files
-      }
+      addDecisionIfPresent(fullPath, entry, results);
     }
   }
-
-  return results;
 }
