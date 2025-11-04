@@ -171,6 +171,7 @@ home-decisions/
    - [x] Trial automated release tooling (`release-it` with conventional changelog + GitHub releases).
    - [x] Add OpenSSF Scorecard workflow to surface supply-chain health.
    - [ ] Implement `drctl export` JSON metadata command.
+   - [ ] Implement `drctl diff` to compare decision metadata across repos or revisions.
    - [ ] Add REST API and dashboard layer.
    - [ ] Support remote DR syncing via `git` or API calls.
    - [ ] Explore n8n automation for scheduled reviews.
@@ -188,6 +189,15 @@ home-decisions/
    - [x] Implement `drctl supersede`/`drctl retire`, ensuring markdown bodies persist.
    - [ ] Add regression tests covering body preservation and changelog entries for every transition.
    - [ ] Decide whether lifecycle commands should regenerate or remind about repository indexes.
+
+6. **Reliability & Modernisation (Planned)**
+   - [ ] Generate signed release provenance and SBOMs alongside `npm pack`, archiving them in CI artifacts.
+   - [ ] Expand CI coverage to run key smoke tests on macOS and Windows runners in addition to Linux.
+   - [ ] Wire lifecycle regression suites into CI so every state transition is exercised end-to-end before merge.
+   - [ ] Automate repository index refresh or surface actionable reminders after lifecycle commands complete.
+   - [ ] Publish structured metadata outputs (JSON feeds, knowledge-graph hooks) so telemetry, dashboards, or governance tooling can ingest DR state safely.
+   - [ ] Stand up scheduled governance validation (e.g., via n8n) to detect drift in long-lived repositories.
+   - [ ] Strengthen contributor onboarding with CODEOWNERS, curated project boards, and DR-friendly issue templates.
 
 ---
 
