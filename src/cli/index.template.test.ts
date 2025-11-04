@@ -1,7 +1,7 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { RepoContext } from "../config.js";
 
 const originalArgv = process.argv.slice();
@@ -47,13 +47,16 @@ function buildDecisionResult(context: RepoContext, id: string) {
   };
 }
 
+beforeEach(() => {
+  vi.resetModules();
+});
+
 afterEach(() => {
   process.argv = originalArgv.slice();
   process.chdir(originalCwd);
   delete process.env.DRCTL_TEMPLATE;
   process.exitCode = 0;
   vi.restoreAllMocks();
-  vi.resetModules();
   while (tempDirs.length > 0) {
     const dir = tempDirs.pop();
     if (dir) {
@@ -61,6 +64,23 @@ afterEach(() => {
     }
   }
 });
+
+function mockResolveContext(context: RepoContext) {
+  vi.doMock("../core/service.js", () => ({
+    createDecision: vi.fn(),
+    correctionDecision: vi.fn(),
+    draftDecision: vi.fn(),
+    proposeDecision: vi.fn(),
+    acceptDecision: vi.fn(),
+    rejectDecision: vi.fn(),
+    deprecateDecision: vi.fn(),
+    retireDecision: vi.fn(),
+    supersedeDecision: vi.fn(),
+    reviseDecision: vi.fn(),
+    listAll: vi.fn().mockReturnValue([]),
+    resolveContext: vi.fn().mockReturnValue(context),
+  }));
+}
 
 describe("cli template-aware flows", () => {
   it("passes template options to createDecision and reports template provenance", async () => {
@@ -129,6 +149,72 @@ describe("cli template-aware flows", () => {
       logMessages.some((message) => message.includes("🧩 Template:")),
     ).toBe(true);
     expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it("logs the resolved repo including default template when running template-aware commands", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-index-"));
+    registerTemp(tempDir);
+    const context = makeContext(tempDir);
+
+    mockResolveContext(context);
+
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    process.chdir(tempDir);
+    process.argv = ["node", "drctl", "index"];
+
+    await import("./index.js");
+
+    const output = logSpy.mock.calls.map((call) => String(call[0] ?? ""));
+    expect(
+      output.some((line) =>
+        line.includes("Default template: templates/meta.md"),
+      ),
+    ).toBe(true);
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it("lists decisions with formatted output", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-list-"));
+    registerTemp(tempDir);
+    const context = makeContext(tempDir);
+
+    vi.doMock("../core/service.js", () => ({
+      createDecision: vi.fn(),
+      correctionDecision: vi.fn(),
+      draftDecision: vi.fn(),
+      proposeDecision: vi.fn(),
+      acceptDecision: vi.fn(),
+      rejectDecision: vi.fn(),
+      deprecateDecision: vi.fn(),
+      retireDecision: vi.fn(),
+      supersedeDecision: vi.fn(),
+      reviseDecision: vi.fn(),
+      listAll: vi.fn().mockReturnValue([
+        {
+          id: "DR--20250101--meta--list",
+          status: "draft",
+          domain: "meta",
+        },
+      ]),
+      resolveContext: vi.fn().mockReturnValue(context),
+    }));
+
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    process.chdir(tempDir);
+    process.argv = ["node", "drctl", "list"];
+
+    await import("./index.js");
+
+    const output = logSpy.mock.calls.map((call) => String(call[0] ?? ""));
+    expect(
+      output.some(
+        (line) =>
+          line.includes("DR--20250101--meta--list") && line.includes("draft"),
+      ),
+    ).toBe(true);
   });
 
   it("surfaces template hygiene warnings during proposal", async () => {

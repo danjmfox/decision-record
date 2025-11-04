@@ -144,6 +144,59 @@ describe("service layer", () => {
     );
   });
 
+  it("generates unique filenames when external templates share a name", () => {
+    const context = makeContext();
+    const sharedTemplate = path.join(os.tmpdir(), "duplicate-template.md");
+
+    fs.writeFileSync(
+      sharedTemplate,
+      ["# Duplicate Template", "", "Content A", ""].join("\n"),
+      "utf8",
+    );
+
+    const first = createDecision("meta", "duplicate-a", {
+      context,
+      templatePath: sharedTemplate,
+    });
+
+    const firstParsed = matter.read(first.filePath);
+    expect(firstParsed.data.templateUsed).toBe(
+      toPosix(
+        path.relative(
+          context.root,
+          path.join(context.root, "templates", path.basename(sharedTemplate)),
+        ),
+      ),
+    );
+
+    fs.writeFileSync(
+      sharedTemplate,
+      ["# Duplicate Template", "", "Content B", ""].join("\n"),
+      "utf8",
+    );
+
+    const second = createDecision("meta", "duplicate-b", {
+      context,
+      templatePath: sharedTemplate,
+    });
+
+    const secondParsed = matter.read(second.filePath);
+    expect(secondParsed.data.templateUsed).toBe(
+      toPosix(
+        path.relative(
+          context.root,
+          path.join(context.root, "templates", "duplicate-template-2.md"),
+        ),
+      ),
+    );
+    expect(
+      fs.readFileSync(
+        path.join(context.root, "templates", "duplicate-template-2.md"),
+        "utf8",
+      ),
+    ).toContain("Content B");
+  });
+
   it("falls back to the env template when provided", () => {
     const context = makeContext();
     const envTemplatePath = path.join(os.tmpdir(), "env-template.md");
@@ -170,6 +223,63 @@ describe("service layer", () => {
     expect(parsed.data.templateUsed).toBe(
       toPosix(path.relative(context.root, expectedTemplateWithinRepo)),
     );
+  });
+
+  it("skips template candidates that are directories before selecting the next option", () => {
+    const context = makeContext();
+    const dirTemplate = path.join(context.root, "templates", "dir-template");
+    fs.mkdirSync(dirTemplate, { recursive: true });
+
+    const fileTemplate = path.join(
+      context.root,
+      "templates",
+      "file-template.md",
+    );
+    fs.writeFileSync(fileTemplate, "# File Template", "utf8");
+
+    const result = createDecision("meta", "fallback-template", {
+      context,
+      templatePath: dirTemplate,
+      envTemplate: fileTemplate,
+    });
+
+    const parsed = matter.read(result.filePath);
+    expect(parsed.data.templateUsed).toBe(
+      toPosix(
+        path.relative(
+          context.root,
+          path.join(context.root, "templates", "file-template.md"),
+        ),
+      ),
+    );
+  });
+
+  it("falls back to the default template when custom files cannot be read", () => {
+    const context = makeContext();
+    const fileTemplate = path.join(
+      context.root,
+      "templates",
+      "file-template.md",
+    );
+    fs.mkdirSync(path.dirname(fileTemplate), { recursive: true });
+    fs.writeFileSync(fileTemplate, "# File Template", "utf8");
+
+    const readSpy = vi
+      .spyOn(fs, "readFileSync")
+      .mockImplementationOnce(() => {
+        throw new Error("unreadable");
+      })
+      .mockImplementationOnce(fs.readFileSync);
+
+    const result = createDecision("meta", "unreadable-template", {
+      context,
+      templatePath: fileTemplate,
+    });
+
+    const parsed = matter.read(result.filePath);
+    expect(parsed.data.templateUsed).toBeUndefined();
+    expect(readSpy).toHaveBeenCalled();
+    readSpy.mockRestore();
   });
 
   it("does not overwrite an existing decision when creating again", () => {
@@ -430,6 +540,33 @@ describe("service layer", () => {
     });
 
     expect(warnings).toHaveLength(0);
+  });
+
+  it("warns when required headings are missing for default template records", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const creation = createDecision("meta", "missing-heading", { context });
+    const parsed = matter.read(creation.filePath);
+    const withoutHeading = parsed.content.replace("## 🧾 Changelog\n\n", "");
+    fs.writeFileSync(
+      creation.filePath,
+      matter.stringify(withoutHeading, parsed.data),
+    );
+    const warnings: string[] = [];
+
+    await proposeDecision(creation.record.id, {
+      context,
+      gitClient,
+      onTemplateWarning: (message) => warnings.push(message),
+    });
+
+    expect(
+      warnings.some((message) =>
+        message.includes("Missing default template heading"),
+      ),
+    ).toBe(true);
   });
 
   it("returns early when the decision is already proposed", async () => {
