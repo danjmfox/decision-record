@@ -114,6 +114,20 @@ repos:
     expect(context.source).toBe("cli");
   });
 
+  it("throws when CLI repo alias does not exist", () => {
+    const dir = makeTempDir();
+    const config = `
+repos:
+  work:
+    path: ./work
+`;
+    fs.writeFileSync(path.join(dir, ".drctl.yaml"), config);
+
+    expect(() => resolveRepoContext({ cwd: dir, repoFlag: "missing" })).toThrow(
+      /not found/i,
+    );
+  });
+
   it("throws when multiple repos exist without explicit selection", () => {
     const dir = makeTempDir();
     const config = `
@@ -239,6 +253,53 @@ repos:
 });
 
 describe("diagnoseConfig", () => {
+  it("loads repositories defined in the global config when local config is absent", async () => {
+    const cwd = makeTempDir();
+    const home = makeTempDir();
+    const repo = path.join(home, "global-decisions");
+    fs.mkdirSync(repo, { recursive: true });
+    const configDir = path.join(home, ".config", "drctl");
+    fs.mkdirSync(configDir, { recursive: true });
+    const globalConfigPath = path.join(configDir, "config.yaml");
+    fs.writeFileSync(
+      globalConfigPath,
+      `defaultRepo: global
+repos:
+  global:
+    path: ${repo}
+`,
+    );
+
+    const originalHome = process.env.HOME;
+    const originalUserProfile = process.env.USERPROFILE;
+    process.env.HOME = home;
+    process.env.USERPROFILE = home;
+
+    vi.resetModules();
+    const { diagnoseConfig: freshDiagnose, resolveRepoContext: freshResolve } =
+      await import("./config.js");
+
+    try {
+      const diagnostics = freshDiagnose({ cwd });
+      expect(diagnostics.globalConfigPath).toBe(globalConfigPath);
+      expect(diagnostics.defaultRepoName).toBe("global");
+      expect(diagnostics.repos).toHaveLength(1);
+
+      const context = freshResolve({ cwd });
+      expect(context.root).toBe(repo);
+      expect(context.source).toBe("global-config");
+      expect(context.configPath).toBe(globalConfigPath);
+    } finally {
+      process.env.HOME = originalHome;
+      if (originalUserProfile === undefined) {
+        delete process.env.USERPROFILE;
+      } else {
+        process.env.USERPROFILE = originalUserProfile;
+      }
+      vi.resetModules();
+    }
+  });
+
   it("warns when no repositories are configured", () => {
     const dir = makeTempDir();
 
