@@ -261,6 +261,46 @@ describe("service layer", () => {
       message: `drctl: propose ${creation.record.id}`,
     });
   });
+
+  it("backfills the draft state before proposing when the note is missing", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const creation = createDecision("personal", "hydrate-missing", { context });
+
+    const parsed = matter.read(creation.filePath);
+    parsed.data.changelog = (parsed.data.changelog ?? []).filter(
+      (entry: { note?: string }) => entry.note !== "Marked as draft",
+    );
+    fs.writeFileSync(
+      creation.filePath,
+      matter.stringify(parsed.content, parsed.data),
+    );
+
+    const result = await proposeDecision(creation.record.id, {
+      context,
+      gitClient,
+    });
+
+    expect(result.record.status).toBe("proposed");
+    expect(gitClient.stageAndCommit).toHaveBeenNthCalledWith(
+      1,
+      [creation.filePath],
+      {
+        cwd: context.root,
+        message: `drctl: draft ${creation.record.id}`,
+      },
+    );
+    expect(gitClient.stageAndCommit).toHaveBeenNthCalledWith(
+      2,
+      [creation.filePath],
+      {
+        cwd: context.root,
+        message: `drctl: propose ${creation.record.id}`,
+      },
+    );
+  });
   it("does not replay draft when it already exists", async () => {
     const context = makeContext();
     const gitClient = {
