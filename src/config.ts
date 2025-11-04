@@ -523,7 +523,7 @@ function expandEnvVars(input: string): string {
   let result = "";
   let index = 0;
   while (index < input.length) {
-    const char = input[index];
+    const char = input.charAt(index);
     if (char !== "$") {
       result += char;
       index += 1;
@@ -537,7 +537,7 @@ function expandEnvVars(input: string): string {
       continue;
     }
 
-    const nextChar = input[nextIndex];
+    const nextChar = input.charAt(nextIndex);
     if (nextChar === "{") {
       const endBrace = input.indexOf("}", nextIndex + 1);
       if (endBrace === -1 || endBrace === nextIndex + 1) {
@@ -558,7 +558,7 @@ function expandEnvVars(input: string): string {
     }
 
     let cursor = nextIndex + 1;
-    while (cursor < input.length && isEnvVarChar(input[cursor])) {
+    while (cursor < input.length && isEnvVarChar(input.charAt(cursor))) {
       cursor += 1;
     }
     const key = input.slice(nextIndex, cursor);
