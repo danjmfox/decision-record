@@ -2,7 +2,7 @@
 id: DR--20251103--meta--auto-accept-transitions
 dateCreated: "2025-11-03"
 version: 1.0.0
-status: draft
+status: proposed
 changeType: creation
 domain: meta
 slug: auto-accept-transitions
@@ -11,6 +11,8 @@ changelog:
     note: Initial creation
   - date: "2025-11-04"
     note: Marked as draft
+  - date: "2025-11-04"
+    note: Marked as proposed
 lastEdited: "2025-11-04"
 ---
 
