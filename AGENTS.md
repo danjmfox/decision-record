@@ -59,7 +59,7 @@ We now articulate DecisionOps parallels explicitly: README highlights agile-frie
 | Topic                  | Agreement                                                                                                                                                                                    |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Source control**     | `decision-record` (public GitHub) contains code and examples; actual DRs live in private repos (`work-decisions`, `home-decisions`).                                                         |
-| **Configuration**      | `.drctl.yaml` supports multiple named repos and optional domain mappings.                                                                                                                    |
+| **Configuration**      | `.drctl.yaml` supports multiple named repos, optional domain mappings, and default templates.                                                                                                |
 | **Development**        | Use `tsx` + `Commander.js` for CLI; logic separated from CLI interface for future API/UI reuse; run `npx trunk check` for linting, formatting, and supply-chain scans.                       |
 | **Decision records**   | Each architectural choice (for this app) is captured in a `DR--YYYYMMDD--meta--*.md`.                                                                                                        |
 | **Example DR hygiene** | Files under `decisions-example/` are updated exclusively via the appropriate `drctl` lifecycle command (e.g., `drctl correction`, `drctl revise`) so the automation stays exercised.         |
@@ -157,6 +157,7 @@ home-decisions/
    - [x] Auto-create domain subfolders when writing records.
    - [x] Add an `index` generator that aggregates across configured repos.
    - [x] Prevent duplicate repo aliases pointing at the same filesystem path.
+   - [x] Support configurable templates (CLI/env/config cascade + frontmatter provenance).
    - [ ] Generate repo/domain `index.md` files with linked decision records.
    - [ ] Enable hierarchical navigation between config → repo → domain → DR.
 
