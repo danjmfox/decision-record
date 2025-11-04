@@ -520,14 +520,62 @@ function resolvePath(p: string, baseDir: string): string {
  * @returns The string with environment variables replaced.
  */
 function expandEnvVars(input: string): string {
-  const withBraces = input.replaceAll(/\$\{([^}]+)\}/g, (_, key: string) => {
-    if (!key) return "";
-    return process.env[key] ?? "";
-  });
-  return withBraces.replaceAll(/\$([A-Za-z_]\w*)/g, (_, key: string) => {
-    if (!key) return "";
-    return process.env[key] ?? "";
-  });
+  let result = "";
+  let index = 0;
+  while (index < input.length) {
+    const char = input[index];
+    if (char !== "$") {
+      result += char;
+      index += 1;
+      continue;
+    }
+
+    const nextIndex = index + 1;
+    if (nextIndex >= input.length) {
+      result += char;
+      index += 1;
+      continue;
+    }
+
+    const nextChar = input[nextIndex];
+    if (nextChar === "{") {
+      const endBrace = input.indexOf("}", nextIndex + 1);
+      if (endBrace === -1 || endBrace === nextIndex + 1) {
+        result += char;
+        index += 1;
+        continue;
+      }
+      const key = input.slice(nextIndex + 1, endBrace);
+      result += process.env[key] ?? "";
+      index = endBrace + 1;
+      continue;
+    }
+
+    if (!isEnvVarStart(nextChar)) {
+      result += char;
+      index += 1;
+      continue;
+    }
+
+    let cursor = nextIndex + 1;
+    while (cursor < input.length && isEnvVarChar(input[cursor])) {
+      cursor += 1;
+    }
+    const key = input.slice(nextIndex, cursor);
+    result += process.env[key] ?? "";
+    index = cursor;
+  }
+  return result;
+}
+
+function isEnvVarStart(char: string): boolean {
+  return (
+    (char >= "A" && char <= "Z") || (char >= "a" && char <= "z") || char === "_"
+  );
+}
+
+function isEnvVarChar(char: string): boolean {
+  return isEnvVarStart(char) || (char >= "0" && char <= "9");
 }
 
 function resolveTemplatePath(repoRoot: string, templatePath: string): string {

@@ -220,7 +220,7 @@ home-decisions/
 3. TDD the behaviour (add failing test → code → refactor).
 4. Update docs/AGENTS/DRs as part of the same branch.
 5. Commit with conventional messages; push the branch.
-6. Open a PR; wait for CI + dependency review + CodeQL + Scorecard + approvals, then merge and delete the branch.
+6. Open a PR; wait for CI + dependency review + CodeQL + Scorecard + approvals, then merge via GitHub “Rebase and merge” (squash only for rescue cleanups) and delete the branch.
 
 ### 🔄 Quickstart (from a new repo)
 
