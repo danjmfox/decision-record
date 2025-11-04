@@ -10,7 +10,11 @@ import {
   beforeEach,
   vi,
 } from "vitest";
-import { resolveRepoContext, diagnoseConfig } from "./config.js";
+import {
+  resolveRepoContext,
+  diagnoseConfig,
+  resolveConfigPath,
+} from "./config.js";
 
 const tempDirs: string[] = [];
 const originalEnvRepo = process.env.DRCTL_REPO;
@@ -331,5 +335,68 @@ describe("diagnoseConfig", () => {
     expect(diagnostics.warnings).toContainEqual(
       expect.stringMatching(/outside the repo root/i),
     );
+  });
+});
+
+describe("resolveConfigPath edge cases", () => {
+  it("leaves trailing dollar signs untouched", () => {
+    const base = makeTempDir();
+    const result = resolveConfigPath("decisions-$", base);
+    expect(result).toBe(path.resolve(base, "decisions-$"));
+  });
+
+  it("leaves unmatched brace substitutions untouched", () => {
+    const base = makeTempDir();
+    const result = resolveConfigPath("${UNFINISHED", base);
+    expect(result).toBe(path.resolve(base, "${UNFINISHED"));
+  });
+
+  it("preserves empty brace expressions", () => {
+    const base = makeTempDir();
+    const result = resolveConfigPath("${}", base);
+    expect(result).toBe(path.resolve(base, "${}"));
+  });
+
+  it("does not treat digits as env variable identifiers", () => {
+    const base = makeTempDir();
+    const result = resolveConfigPath("$1decisions", base);
+    expect(result).toBe(path.resolve(base, "$1decisions"));
+  });
+
+  it("normalises absolute unix paths without modification", () => {
+    const base = makeTempDir();
+    const absolute = path.join(base, "absolute");
+    const result = resolveConfigPath(absolute, "/any/base");
+    expect(result).toBe(absolute);
+  });
+
+  it("resolves windows-style paths relative to the base directory on POSIX", () => {
+    const base = makeTempDir();
+    const winStyle = `C:\\decisions\\project`;
+    const result = resolveConfigPath(winStyle, base);
+    const normalized = path
+      .resolve(base, winStyle.replace(/\\/g, path.sep))
+      .replace(/\\/g, path.sep);
+    expect(result).toBe(normalized);
+  });
+
+  it("expands bare tildes to the user home", () => {
+    const base = makeTempDir();
+    const home = makeTempDir();
+    const spy = vi.spyOn(os, "homedir").mockReturnValue(home);
+    restoreSpies.push(() => spy.mockRestore());
+
+    const result = resolveConfigPath("~", base);
+    expect(result).toBe(path.normalize(home));
+  });
+
+  it("expands tilde-prefixed paths relative to the user home", () => {
+    const base = makeTempDir();
+    const home = makeTempDir();
+    const spy = vi.spyOn(os, "homedir").mockReturnValue(home);
+    restoreSpies.push(() => spy.mockRestore());
+
+    const result = resolveConfigPath("~/decisions", base);
+    expect(result).toBe(path.join(home, "decisions"));
   });
 });
