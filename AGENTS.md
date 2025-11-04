@@ -210,6 +210,8 @@ home-decisions/
 - Follow **trunk-based development**: ship incremental, focused changes; avoid long-lived branches.
 - Use **conventional commits** for each logical change (e.g. `feat:`, `fix:`, `test:`).
 - If a change spans multiple concerns, split into multiple TDD cycles and commits.
+- Ensure each logical changeset meets the coverage thresholds defined in `vitest.config.ts` (statements ≥80%, branches ≥70%, functions ≥80%, lines ≥80%) before proposing a push.
+- Run tests from the repository root with no residual `DRCTL_*` environment variables set; the Vitest setup will fail fast if `cwd` drifts or `DRCTL_TEMPLATE` is present.
 
 #### Branch + PR loop
 
