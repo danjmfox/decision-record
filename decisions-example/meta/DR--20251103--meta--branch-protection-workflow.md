@@ -1,15 +1,16 @@
 ---
 id: DR--20251103--meta--branch-protection-workflow
-dateCreated: '2025-11-03'
+dateCreated: "2025-11-03"
 version: 1.0.0
 status: draft
 changeType: creation
 domain: meta
 slug: branch-protection-workflow
 changelog:
-- date: '2025-11-03'
-  note: Initial creation
+  - date: "2025-11-03"
+    note: Initial creation
 ---
+
 # DR--20251103--meta--branch-protection-workflow
 
 ## 🧭 Context
@@ -18,11 +19,11 @@ Branch protection is now required for `decision-record`: we rely on GitHub Actio
 
 ## ⚖️ Options Considered
 
-| Option | Description | Outcome  | Rationale |
-| ------ | ----------- | -------- | --------- |
-| A | Keep pushing directly to `main` | Rejected | Fails Scorecard, no approvals, high risk of regressions |
-| B | Rely on “remember to branch” discipline only | Rejected | Easy to slip, no automated enforcement for AI agent |
-| C | Enforce GitHub branch protection + document workflow (chosen) | Accepted | Automates reviews + status checks; aligns with governance + CI |
+| Option | Description                                                   | Outcome  | Rationale                                                      |
+| ------ | ------------------------------------------------------------- | -------- | -------------------------------------------------------------- |
+| A      | Keep pushing directly to `main`                               | Rejected | Fails Scorecard, no approvals, high risk of regressions        |
+| B      | Rely on “remember to branch” discipline only                  | Rejected | Easy to slip, no automated enforcement for AI agent            |
+| C      | Enforce GitHub branch protection + document workflow (chosen) | Accepted | Automates reviews + status checks; aligns with governance + CI |
 
 ## 🧠 Decision
 
