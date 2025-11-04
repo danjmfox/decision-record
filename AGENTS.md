@@ -59,7 +59,7 @@ We now articulate DecisionOps parallels explicitly: README highlights agile-frie
 | Topic                  | Agreement                                                                                                                                                                                    |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Source control**     | `decision-record` (public GitHub) contains code and examples; actual DRs live in private repos (`work-decisions`, `home-decisions`).                                                         |
-| **Configuration**      | `.drctl.yaml` supports multiple named repos and optional domain mappings.                                                                                                                    |
+| **Configuration**      | `.drctl.yaml` supports multiple named repos, optional domain mappings, and default templates.                                                                                                |
 | **Development**        | Use `tsx` + `Commander.js` for CLI; logic separated from CLI interface for future API/UI reuse; run `npx trunk check` for linting, formatting, and supply-chain scans.                       |
 | **Decision records**   | Each architectural choice (for this app) is captured in a `DR--YYYYMMDD--meta--*.md`.                                                                                                        |
 | **Example DR hygiene** | Files under `decisions-example/` are updated exclusively via the appropriate `drctl` lifecycle command (e.g., `drctl correction`, `drctl revise`) so the automation stays exercised.         |
@@ -157,6 +157,7 @@ home-decisions/
    - [x] Auto-create domain subfolders when writing records.
    - [x] Add an `index` generator that aggregates across configured repos.
    - [x] Prevent duplicate repo aliases pointing at the same filesystem path.
+   - [x] Support configurable templates (CLI/env/config cascade + frontmatter provenance).
    - [ ] Generate repo/domain `index.md` files with linked decision records.
    - [ ] Enable hierarchical navigation between config → repo → domain → DR.
 
@@ -171,6 +172,7 @@ home-decisions/
    - [x] Trial automated release tooling (`release-it` with conventional changelog + GitHub releases).
    - [x] Add OpenSSF Scorecard workflow to surface supply-chain health.
    - [ ] Implement `drctl export` JSON metadata command.
+   - [ ] Implement `drctl diff` to compare decision metadata across repos or revisions.
    - [ ] Add REST API and dashboard layer.
    - [ ] Support remote DR syncing via `git` or API calls.
    - [ ] Explore n8n automation for scheduled reviews.
@@ -189,6 +191,15 @@ home-decisions/
    - [ ] Add regression tests covering body preservation and changelog entries for every transition.
    - [ ] Decide whether lifecycle commands should regenerate or remind about repository indexes.
 
+6. **Reliability & Modernisation (Planned)**
+   - [ ] Generate signed release provenance and SBOMs alongside `npm pack`, archiving them in CI artifacts.
+   - [ ] Expand CI coverage to run key smoke tests on macOS and Windows runners in addition to Linux.
+   - [ ] Wire lifecycle regression suites into CI so every state transition is exercised end-to-end before merge.
+   - [ ] Automate repository index refresh or surface actionable reminders after lifecycle commands complete.
+   - [ ] Publish structured metadata outputs (JSON feeds, knowledge-graph hooks) so telemetry, dashboards, or governance tooling can ingest DR state safely.
+   - [ ] Stand up scheduled governance validation (e.g., via n8n) to detect drift in long-lived repositories.
+   - [ ] Strengthen contributor onboarding with CODEOWNERS, curated project boards, and DR-friendly issue templates.
+
 ---
 
 ### 🔄 Working Rhythm
@@ -199,6 +210,8 @@ home-decisions/
 - Follow **trunk-based development**: ship incremental, focused changes; avoid long-lived branches.
 - Use **conventional commits** for each logical change (e.g. `feat:`, `fix:`, `test:`).
 - If a change spans multiple concerns, split into multiple TDD cycles and commits.
+- Ensure each logical changeset meets the coverage thresholds defined in `vitest.config.ts` (statements ≥80%, branches ≥70%, functions ≥80%, lines ≥80%) before proposing a push.
+- Run tests from the repository root with no residual `DRCTL_*` environment variables set; the Vitest setup will fail fast if `cwd` drifts or `DRCTL_TEMPLATE` is present.
 
 #### Branch + PR loop
 

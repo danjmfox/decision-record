@@ -36,4 +36,5 @@ export interface DecisionRecord {
   supersedes?: string | null;
   supersededBy?: string | null;
   tags?: string[];
+  templateUsed?: string;
 }

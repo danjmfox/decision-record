@@ -65,6 +65,7 @@ repos:
   work:
     path: ./workspace
     defaultDomainDir: domains
+    template: templates/meta.md
 `;
     fs.writeFileSync(path.join(dir, ".drctl.yaml"), config);
 
@@ -73,6 +74,7 @@ repos:
     expect(context.name).toBe("work");
     expect(context.root).toBe(path.resolve(dir, "workspace"));
     expect(context.defaultDomainDir).toBe("domains");
+    expect(context.defaultTemplate).toBe("templates/meta.md");
     expect(context.source).toBe("local-config");
   });
 
@@ -250,7 +252,10 @@ describe("diagnoseConfig", () => {
     const repoDir = path.join(dir, "workspace");
     fs.mkdirSync(repoDir, { recursive: true });
     fs.mkdirSync(path.join(repoDir, ".git"));
-    const config = `defaultRepo: work\nrepos:\n  work:\n    path: ./workspace\n`;
+    const templateFile = path.join(repoDir, "templates", "meta.md");
+    fs.mkdirSync(path.dirname(templateFile), { recursive: true });
+    fs.writeFileSync(templateFile, "# Template\n", "utf8");
+    const config = `defaultRepo: work\nrepos:\n  work:\n    path: ./workspace\n    template: templates/meta.md\n`;
     fs.writeFileSync(path.join(dir, ".drctl.yaml"), config);
 
     const diagnostics = diagnoseConfig({ cwd: dir });
@@ -282,6 +287,49 @@ describe("diagnoseConfig", () => {
     );
     expect(diagnostics.warnings).toContain(
       "Multiple repositories configured but no defaultRepo specified.",
+    );
+  });
+
+  it("warns when the configured template file is missing", () => {
+    const dir = makeTempDir();
+    const repoDir = path.join(dir, "workspace");
+    fs.mkdirSync(repoDir, { recursive: true });
+    fs.mkdirSync(path.join(repoDir, ".git"));
+    const config = `repos:
+  work:
+    path: ./workspace
+    template: templates/meta.md
+`;
+    fs.writeFileSync(path.join(dir, ".drctl.yaml"), config);
+
+    const diagnostics = diagnoseConfig({ cwd: dir });
+
+    expect(diagnostics.repos[0]?.defaultTemplate).toBe("templates/meta.md");
+    expect(diagnostics.warnings).toContainEqual(
+      expect.stringMatching(/Template "templates\/meta\.md" not found/i),
+    );
+  });
+
+  it("warns when the configured template path is outside the repository", () => {
+    const dir = makeTempDir();
+    const repoDir = path.join(dir, "workspace");
+    fs.mkdirSync(repoDir, { recursive: true });
+    fs.mkdirSync(path.join(repoDir, ".git"));
+    const externalDir = path.join(dir, "external");
+    fs.mkdirSync(externalDir, { recursive: true });
+    const externalTemplate = path.join(externalDir, "custom.md");
+    fs.writeFileSync(externalTemplate, "# External Template\n", "utf8");
+    const config = `repos:
+  work:
+    path: ./workspace
+    template: ../external/custom.md
+`;
+    fs.writeFileSync(path.join(dir, ".drctl.yaml"), config);
+
+    const diagnostics = diagnoseConfig({ cwd: dir });
+
+    expect(diagnostics.warnings).toContainEqual(
+      expect.stringMatching(/outside the repo root/i),
     );
   });
 });

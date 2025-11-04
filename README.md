@@ -55,6 +55,7 @@ A Markdown file with YAML frontmatter holding:
 - **reasoning** (context, decision, reasoning, confidence)
 - **lineage** (supersedes, supersededBy)
 - **revision log** (changelog — timestamped list of notable updates stored in YAML)
+- **template provenance** (`templateUsed` records which scaffold created the record)
 
 ### Lifecycle States
 
@@ -134,6 +135,16 @@ Every command echoes the resolved repo and any file it touches. Example output:
 ```
 
 Remove the link later with `npm unlink -g decision-record` (or run `npm unlink` inside the repo).
+
+### Custom Templates
+
+`drctl new` honours a cascading template override so teams can tailor their scaffolds without losing automation:
+
+- `drctl new --template <path>` uses the provided Markdown file (relative to the repo root or absolute) instead of the built-in template.
+- Set `DRCTL_TEMPLATE=/path/to/template.md` to establish a workspace-wide default when the flag is not supplied.
+- Add `template: templates/meta.md` inside `.drctl.yaml` repo entries to pin long-lived defaults per repository.
+- External templates are copied into `<repo>/templates/` and the relative path is captured in frontmatter as `templateUsed` for provenance.
+- `drctl config check` warns if a configured template is missing or lives outside the repo root, and `drctl propose`/`drctl accept` surface placeholder text before advancing the lifecycle.
 
 ## DecisionOps in Practice
 
@@ -228,6 +239,7 @@ version: "1.2"
 status: accepted
 changeType: revision
 confidence: 0.9
+templateUsed: templates/meta.md
 changelog:
   - date: 2025-11-05
     note: Increased confidence after successful backups
@@ -306,6 +318,7 @@ repos:
   app-decisions:
     path: ./decisions
     defaultDomainDir: domains
+    template: templates/meta.md
 defaultRepo: app-decisions
 ```
 
@@ -385,16 +398,16 @@ GitHub releases are created automatically (set `GITHUB_TOKEN=<your PAT>` in the 
 
 ## 🌱 Plan for Evolution
 
-| Phase             | Goal                        | Outcome                                             |
-| ----------------- | --------------------------- | --------------------------------------------------- |
-| **Phase 1 (Now)** | CLI-only, file-based, no DB | Test friction and cognitive value                   |
-| **Phase 1 (Now)** | Harden repo management      | ✅ Prevent duplicate aliases targeting same path    |
-| **Phase 1 (Now)** | Add index generator         | Emit repo/domain `index.md` with linked decisions   |
-| **Phase 2**       | Hierarchical navigation     | Navigate repo ⇄ domain ⇄ decisions seamlessly       |
-| **Phase 2**       | Index enhancements          | Sorting, status roll-ups, review reminders, filters |
-| **Phase 3**       | Add REST API adapter        | n8n, Express, or local service layer                |
-| **Phase 4**       | Vue dashboard               | Search, filter, and view reasoning visually         |
-| **Phase 5**       | Sync/export layer           | Integrate with Notion, Airtable, or TheBrain        |
+| Phase             | Goal                        | Outcome                                                           |
+| ----------------- | --------------------------- | ----------------------------------------------------------------- |
+| **Phase 1 (Now)** | CLI-only, file-based, no DB | Test friction and cognitive value                                 |
+| **Phase 1 (Now)** | Harden repo management      | ✅ Prevent duplicate aliases targeting same path                  |
+| **Phase 1 (Now)** | Add index generator         | Repo-level `drctl index` shipped; domain/index navigation pending |
+| **Phase 2**       | Hierarchical navigation     | Navigate repo ⇄ domain ⇄ decisions seamlessly                     |
+| **Phase 2**       | Index enhancements          | Sorting, status roll-ups, review reminders, filters               |
+| **Phase 3**       | Add REST API adapter        | n8n, Express, or local service layer                              |
+| **Phase 4**       | Vue dashboard               | Search, filter, and view reasoning visually                       |
+| **Phase 5**       | Sync/export layer           | Integrate with Notion, Airtable, or TheBrain                      |
 
 ### 🔜 Lifecycle Automation Priorities
 
@@ -403,6 +416,15 @@ GitHub releases are created automatically (set `GITHUB_TOKEN=<your PAT>` in the 
 3. ✅ Implement `drctl supersede` / `drctl retire`, preserving markdown bodies while adjusting metadata.
 4. Add regression tests that verify changelog consistency and body preservation across every transition.
 5. Decide whether lifecycle commands should trigger `drctl index` (or emit a reminder) after updates.
+
+### 🚧 Upcoming Enhancements
+
+- Lifecycle regression matrix that runs across Linux, macOS, and Windows in CI so every state transition stays green.
+- Automatic repository index refresh (or actionable reminders) after lifecycle commands mutate decision sets.
+- Structured metadata outputs (`drctl export`, `drctl diff`, scheduled governance checks) for dashboards and knowledge graphs.
+- Release provenance and SBOM generation captured as workflow artifacts alongside `npm pack`.
+- Optional automation hooks (n8n, scheduled validations) to surface stale decisions and drift proactively.
+- Contributor enablement touchpoints such as CODEOWNERS, curated project boards, and DR-friendly issue templates.
 
 ## 🧩 Design Philosophy
 
@@ -413,10 +435,10 @@ GitHub releases are created automatically (set `GITHUB_TOKEN=<your PAT>` in the 
 
 ## 🧠 Steps
 
-1. Implement `drctl index` and drctl diff` for complete lifecycle visibility.
-2. Dogfood the workflow for 2–3 weeks (real decisions only).
-3. Capture meta-observations in `DR--0001--meta--decision-policy--learnings.md`.
-4. Decide whether to pursue API integration or local dashboard first.
+1. Ship the remaining CLI roadmap: `drctl diff`, `drctl export`, and `drctl sync` with documented lifecycle hooks.
+2. Build an end-to-end regression suite for every lifecycle transition and wire it into a cross-platform (Linux/macOS/Windows) CI matrix.
+3. Produce signed release provenance and SBOM artifacts alongside `npm pack`, baking the checks into the release checklist.
+4. Pilot operational automation (knowledge graph feeds, scheduled governance via n8n) and capture observations in future meta DRs.
 
 ## 📜 License
 

@@ -15,6 +15,7 @@ describe("formatRepoContext", () => {
       definitionSource: "local",
       configPath: "/configs/.drctl.yaml",
       defaultDomainDir: "domains",
+      defaultTemplate: "templates/meta.md",
       domainMap: {
         personal: "domains/personal",
         work: "domains/work",
@@ -29,6 +30,7 @@ describe("formatRepoContext", () => {
       "   Definition: local",
       "   Config: /configs/.drctl.yaml",
       "   Default domain dir: domains",
+      "   Default template: templates/meta.md",
       "   Domain overrides:",
       "     - personal -> domains/personal",
       "     - work -> domains/work",
@@ -50,6 +52,7 @@ describe("formatRepoContext", () => {
       "   Definition: n/a",
       "   Config: n/a",
       "   Default domain dir: <domain>",
+      "   Default template: (internal default)",
       "   Domain overrides: none",
     ]);
     expect(lines).not.toContain(NOTE);
