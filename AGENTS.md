@@ -166,6 +166,7 @@ home-decisions/
    - [x] Document build artefact strategy and packaging workflow (README, AGENTS, DR--20251102--meta--build-artifacts-strategy).
    - [ ] Capture the multi-repo config design in `DR--20251030--meta--multi-repo-config.md`.
    - [ ] Continue treating `AGENTS.md` as the canonical collaboration record (update as decisions land).
+   - [ ] Restructure docs (split README, add JSDoc-style references, explore publishing DRs as browsable HTML).
 
 3. **Automation & Integrations (Future)**
    - [x] Establish CI pipeline (GitHub Actions build + test).
@@ -190,6 +191,8 @@ home-decisions/
    - [x] Implement `drctl supersede`/`drctl retire`, ensuring markdown bodies persist.
    - [ ] Add regression tests covering body preservation and changelog entries for every transition.
    - [ ] Decide whether lifecycle commands should regenerate or remind about repository indexes.
+   - [ ] Provide guardrails for manually-authored decision files (lint/doctor command or stronger governance hints when frontmatter is incomplete).
+   - [ ] Restructure lifecycle commands under a `drctl decision` subcommand group for clearer CLI organisation.
 
 6. **Reliability & Modernisation (Planned)**
    - [ ] Generate signed release provenance and SBOMs alongside `npm pack`, archiving them in CI artifacts.
@@ -199,6 +202,8 @@ home-decisions/
    - [ ] Publish structured metadata outputs (JSON feeds, knowledge-graph hooks) so telemetry, dashboards, or governance tooling can ingest DR state safely.
    - [ ] Stand up scheduled governance validation (e.g., via n8n) to detect drift in long-lived repositories.
    - [ ] Strengthen contributor onboarding with CODEOWNERS, curated project boards, and DR-friendly issue templates.
+   - [ ] Refactor test suites with clearer `describe` groupings and shared helpers to improve readability and reuse.
+   - [ ] Add Snyk security scanning to CI alongside existing supply-chain checks.
 
 ---
 
