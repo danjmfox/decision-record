@@ -154,6 +154,7 @@ describe("cli template-aware flows", () => {
 
     process.env.DRCTL_TEMPLATE = " env-template.md ";
     await runCli(tempDir, [
+      "decision",
       "new",
       "meta",
       "custom",
@@ -175,6 +176,28 @@ describe("cli template-aware flows", () => {
       logMessages.some((message) => message.includes("🧩 Template:")),
     ).toBe(true);
     expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it("warns when using the legacy top-level new command", async () => {
+    const { tempDir, context } = createTempContext("drctl-cli-legacy-new-");
+
+    const createDecision = vi
+      .fn()
+      .mockReturnValue(
+        buildDecisionResult(context, "DR--20250101--meta--legacy"),
+      );
+
+    mockService(context, { createDecision });
+
+    const { warn: warnSpy } = spyConsole();
+
+    await runCli(tempDir, ["new", "meta", "legacy"]);
+
+    expect(createDecision).toHaveBeenCalledTimes(1);
+    const warningMessages = collectOutput(warnSpy);
+    expect(
+      warningMessages.some((message) => message.includes("drctl decision new")),
+    ).toBe(true);
   });
 
   it("logs the resolved repo including default template when running template-aware commands", async () => {
@@ -210,7 +233,7 @@ describe("cli template-aware flows", () => {
 
     const { log: logSpy } = spyConsole();
 
-    await runCli(tempDir, ["list"]);
+    await runCli(tempDir, ["decision", "list"]);
 
     const output = collectOutput(logSpy);
     expect(
@@ -252,7 +275,11 @@ describe("cli template-aware flows", () => {
 
     const { log: logSpy, warn: warnSpy } = spyConsole();
 
-    await runCli(tempDir, ["propose", "DR--20250101--meta--placeholder"]);
+    await runCli(tempDir, [
+      "decision",
+      "propose",
+      "DR--20250101--meta--placeholder",
+    ]);
 
     expect(proposeDecision).toHaveBeenCalledTimes(1);
     expect(
@@ -309,7 +336,11 @@ describe("cli template-aware flows", () => {
 
     const { log: logSpy, warn: warnSpy } = spyConsole();
 
-    await runCli(tempDir, ["accept", "DR--20250101--meta--approved"]);
+    await runCli(tempDir, [
+      "decision",
+      "accept",
+      "DR--20250101--meta--approved",
+    ]);
 
     expect(acceptDecision).toHaveBeenCalledTimes(1);
     expect(handler).toHaveBeenCalledWith("Handled by repo options");
