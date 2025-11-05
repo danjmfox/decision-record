@@ -70,18 +70,30 @@ function resolveGitPreference(
 ): "enabled" | "disabled" | undefined {
   let cursor: Command | null | undefined = command;
   while (cursor) {
-    const opts = typeof cursor.opts === "function" ? cursor.opts() : undefined;
-    if (opts) {
-      const git = (opts as GitFlag).git;
-      if (typeof git === "boolean") {
-        return git ? "enabled" : "disabled";
-      }
-      const noGit = (opts as GitFlag).noGit;
-      if (typeof noGit === "boolean") {
-        return noGit ? "disabled" : "enabled";
-      }
+    const preference = resolveGitFromCommand(cursor);
+    if (preference) {
+      return preference;
     }
     cursor = cursor.parent as Command | undefined;
+  }
+  return undefined;
+}
+
+function resolveGitFromCommand(
+  command: Command | null | undefined,
+): "enabled" | "disabled" | undefined {
+  if (!command || typeof command.opts !== "function") {
+    return undefined;
+  }
+  const opts = command.opts() as GitFlag | undefined;
+  if (!opts) {
+    return undefined;
+  }
+  if (typeof opts.git === "boolean") {
+    return opts.git ? "enabled" : "disabled";
+  }
+  if (typeof opts.noGit === "boolean") {
+    return opts.noGit ? "disabled" : "enabled";
   }
   return undefined;
 }

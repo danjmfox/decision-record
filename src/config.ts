@@ -60,7 +60,7 @@ export interface ResolveRepoOptions {
   envRepo?: string | null;
   cwd?: string;
   configPath?: string | null;
-  gitModeFlag?: GitMode | string | null;
+  gitModeFlag?: GitMode | null;
 }
 
 interface RawDrctlConfig {

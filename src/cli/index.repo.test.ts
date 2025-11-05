@@ -8,6 +8,25 @@ import { saveDecision } from "../core/repository.js";
 import type { RepoContext } from "../config.js";
 import type { DecisionRecord } from "../core/models.js";
 
+function stringify(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (value === undefined || value === null) return "";
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    "toString" in value &&
+    typeof value.toString === "function" &&
+    value.toString !== Object.prototype.toString
+  ) {
+    return value.toString();
+  }
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
 describe("cli index commands", () => {
   const originalArgv = process.argv.slice();
   const originalCwd = process.cwd();
@@ -111,7 +130,7 @@ describe("cli index commands", () => {
       expect.stringMatching(/Template: templates\/meta\.md/),
     );
     const gitLines = logSpy.mock.calls
-      .map((call: unknown[]) => String(call[0] ?? ""))
+      .map((call: unknown[]) => stringify(call[0]))
       .filter((line: string) => line.includes("git: disabled"));
     expect(gitLines.length).toBeGreaterThan(0);
     expect(consoleWarnSpy).toHaveBeenCalledWith(
@@ -133,7 +152,7 @@ describe("cli index commands", () => {
     await import("./index.js");
 
     const output = stdoutSpy.mock.calls
-      .map((call: unknown[]) => String(call[0] ?? ""))
+      .map((call: unknown[]) => stringify(call[0]))
       .join("");
     expect(output).toMatch(/--config/);
     expect(output).toMatch(/DRCTL_CONFIG/);
@@ -157,7 +176,7 @@ describe("cli index commands", () => {
     await import("./index.js");
 
     const logMessages = getLogSpy().mock.calls.map((call: unknown[]) => {
-      return String(call[0] ?? "");
+      return stringify(call[0]);
     });
     expect(
       logMessages.some((msg: string) => /Initialised git repository/.test(msg)),
@@ -207,7 +226,7 @@ describe("cli index commands", () => {
     await import("./index.js");
 
     const logMessages = getLogSpy().mock.calls.map((call: unknown[]) => {
-      return String(call[0] ?? "");
+      return stringify(call[0]);
     });
     expect(
       logMessages.some((msg: string) => /Default repo.*home/.test(msg)),
@@ -289,7 +308,7 @@ describe("cli index commands", () => {
     await import("./index.js");
 
     const logs = getLogSpy().mock.calls.map((call: unknown[]) =>
-      String(call[0] ?? ""),
+      stringify(call[0]),
     );
     expect(logs.join("\n")).toMatch(/Governance validation/);
     expect(logs.join("\n")).toMatch(/missing-supersede-link/);
@@ -386,7 +405,7 @@ defaultRepo: sandbox
     await import("./index.js");
 
     const gitHints = getLogSpy()
-      .mock.calls.map((call: unknown[]) => String(call[0] ?? ""))
+      .mock.calls.map((call: unknown[]) => stringify(call[0]))
       .filter((line: string) => line.includes("Git disabled"));
     expect(gitHints).toHaveLength(1);
 
@@ -429,7 +448,7 @@ defaultRepo: sandbox
     await import("./index.js");
 
     const outputCalls = getLogSpy().mock.calls.map((call: unknown[]) =>
-      String(call[0] ?? ""),
+      stringify(call[0]),
     );
     const jsonPayload = outputCalls.find((msg: string) =>
       msg.trim().startsWith("{"),
