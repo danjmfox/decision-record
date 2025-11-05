@@ -966,6 +966,38 @@ describe("service layer", () => {
     );
   });
 
+  it("commits from the git root when the repository root is nested", async () => {
+    const gitRoot = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-gitroot-"));
+    const nested = path.join(gitRoot, "decisions");
+    fs.mkdirSync(nested, { recursive: true });
+
+    const context: RepoContext = {
+      root: nested,
+      domainMap: {},
+      source: "cli",
+      name: "nested",
+      gitMode: "enabled",
+      gitModeSource: "detected",
+      gitRoot,
+    };
+
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const creation = createDecision("meta", "nested-case", { context });
+
+    const accepted = await acceptDecision(creation.record.id, {
+      context,
+      gitClient,
+    });
+
+    expect(gitClient.stageAndCommit).toHaveBeenCalledWith([accepted.filePath], {
+      cwd: gitRoot,
+      message: `drctl: accept ${creation.record.id}`,
+    });
+  });
+
   it("applies a revision with a minor version bump and metadata update", async () => {
     const context = makeContext();
     const gitClient = {
