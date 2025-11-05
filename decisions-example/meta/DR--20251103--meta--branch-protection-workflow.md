@@ -2,13 +2,20 @@
 id: DR--20251103--meta--branch-protection-workflow
 dateCreated: "2025-11-03"
 version: 1.0.0
-status: draft
+status: proposed
 changeType: creation
 domain: meta
 slug: branch-protection-workflow
 changelog:
   - date: "2025-11-03"
     note: Initial creation
+  - date: "2025-11-05"
+    note: Marked as draft
+  - date: "2025-11-05"
+    note: Marked as proposed
+  - date: "2025-11-05"
+    note: Marked as proposed
+lastEdited: "2025-11-05"
 ---
 
 # DR--20251103--meta--branch-protection-workflow
