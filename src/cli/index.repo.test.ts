@@ -23,7 +23,10 @@ function stringify(value: unknown): string {
   try {
     return JSON.stringify(value);
   } catch {
-    return String(value);
+    if (value instanceof Error && value.message) {
+      return value.message;
+    }
+    return "[unserialisable value]";
   }
 }
 
