@@ -541,6 +541,13 @@ function logRepositoryEntry(repo: RepoDiagnostic): void {
   if (repo.defaultTemplate) {
     console.log(`      Template: ${repo.defaultTemplate}`);
   }
+  if (repo.gitRoot) {
+    const normalizedRepoRoot = path.normalize(repo.root);
+    const normalizedGitRoot = path.normalize(repo.gitRoot);
+    const suffix =
+      normalizedGitRoot === normalizedRepoRoot ? "" : " (inherited)";
+    console.log(`      Git root: ${normalizedGitRoot}${suffix}`);
+  }
 }
 
 function resolveRepoOptions(

@@ -22,6 +22,7 @@ describe("formatRepoContext", () => {
       },
       gitMode: "enabled",
       gitModeSource: "detected",
+      gitRoot: path.join("/tmp", "home-decisions"),
     };
 
     const lines = formatRepoContext(context);
@@ -32,12 +33,30 @@ describe("formatRepoContext", () => {
       "   Definition: local",
       "   Config: /configs/.drctl.yaml",
       "   Git: enabled (auto)",
+      `   Git root: ${path.normalize(context.gitRoot)}`,
       "   Default domain dir: domains",
       "   Default template: templates/meta.md",
       "   Domain overrides:",
       "     - personal -> domains/personal",
       "     - work -> domains/work",
     ]);
+  });
+
+  it("labels inherited git roots when the repo is nested", () => {
+    const context: RepoContext = {
+      root: path.join("/tmp", "outer", "workspace"),
+      source: "local-config",
+      domainMap: {},
+      gitMode: "enabled",
+      gitModeSource: "detected",
+      gitRoot: path.join("/tmp", "outer"),
+    };
+
+    const lines = formatRepoContext(context);
+
+    expect(lines).toContain(
+      `   Git root: ${path.normalize(context.gitRoot)} (inherited)`,
+    );
   });
 
   it("falls back gracefully when optional fields are missing", () => {
