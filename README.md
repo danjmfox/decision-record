@@ -116,8 +116,8 @@ To install `drctl` on your PATH:
 npm run build   # produce dist/cli/index.js
 npm link        # exposes the drctl bin globally
 
-drctl list --repo home
-drctl new personal hydrate-every-hour --repo home
+drctl decision list --repo home
+drctl decision new personal hydrate-every-hour --repo home
 ```
 
 Every command resolves repository context through a shared middleware, so `--repo`/`DRCTL_REPO` overrides are honoured consistently and the resolved workspace is logged automatically.
@@ -140,13 +140,13 @@ Remove the link later with `npm unlink -g decision-record` (or run `npm unlink` 
 
 ### Custom Templates
 
-`drctl new` honours a cascading template override so teams can tailor their scaffolds without losing automation:
+`drctl decision new` honours a cascading template override so teams can tailor their scaffolds without losing automation:
 
-- `drctl new --template <path>` uses the provided Markdown file (relative to the repo root or absolute) instead of the built-in template.
+- `drctl decision new --template <path>` uses the provided Markdown file (relative to the repo root or absolute) instead of the built-in template.
 - Set `DRCTL_TEMPLATE=/path/to/template.md` to establish a workspace-wide default when the flag is not supplied.
 - Add `template: templates/meta.md` inside `.drctl.yaml` repo entries to pin long-lived defaults per repository.
 - External templates are copied into `<repo>/templates/` and the relative path is captured in frontmatter as `templateUsed` for provenance.
-- `drctl config check` warns if a configured template is missing or lives outside the repo root, and `drctl propose`/`drctl accept` surface placeholder text before advancing the lifecycle.
+- `drctl config check` warns if a configured template is missing or lives outside the repo root, and `drctl decision propose`/`drctl decision accept` surface placeholder text before advancing the lifecycle.
 
 ### Git-Optional Lifecycle
 
@@ -202,31 +202,33 @@ For a deeper architectural overview (layers, lifecycle automation, comparisons w
 
 ## Key CLI Commands
 
-| Command                                                      | Purpose                                 |
-| ------------------------------------------------------------ | --------------------------------------- |
-| `drctl new <domain> <slug>`                                  | Scaffold a new draft (no git yet)       |
-| `drctl draft <id>`                                           | Commit the current draft state          |
-| `drctl propose <id>`                                         | Move draft to proposed + commit         |
-| `drctl list`                                                 | List decisions (filterable)             |
-| `drctl accept <id>`                                          | Mark proposed decision accepted         |
-| `drctl reject <id>`                                          | Mark proposed decision rejected         |
-| `drctl deprecate <id>`                                       | Mark decision deprecated (no successor) |
-| `drctl repo`                                                 | Display the currently resolved repo     |
-| `drctl repo new <name> <path>`                               | Add a repo entry to the nearest config  |
-| `drctl repo bootstrap <name>`                                | Initialise git for a configured repo    |
-| `drctl repo switch <name>`                                   | Make an existing repo the default       |
-| `drctl correction <id> --note` / `drctl correct <id> --note` | Record a small correction               |
-| `drctl revise <id> --note`                                   | Increment version, update metadata      |
-| `drctl supersede <old_id> <new_id>`                          | Replace old decision                    |
-| `drctl retire <id>`                                          | Retire obsolete decision                |
-| `drctl config check`                                         | Validate configuration files and repos  |
-| `drctl index`                                                | Rebuild master index                    |
-| `drctl governance validate`                                  | Check decision metadata integrity       |
-| `drctl export` _(planned)_                                   | Export metadata as JSON for dashboards  |
+| Command                                                                        | Purpose                                 |
+| ------------------------------------------------------------------------------ | --------------------------------------- |
+| `drctl decision new <domain> <slug>`                                           | Scaffold a new draft (no git yet)       |
+| `drctl decision draft <id>`                                                    | Commit the current draft state          |
+| `drctl decision propose <id>`                                                  | Move draft to proposed + commit         |
+| `drctl decision list`                                                          | List decisions (filterable)             |
+| `drctl decision accept <id>`                                                   | Mark proposed decision accepted         |
+| `drctl decision reject <id>`                                                   | Mark proposed decision rejected         |
+| `drctl decision deprecate <id>`                                                | Mark decision deprecated (no successor) |
+| `drctl repo`                                                                   | Display the currently resolved repo     |
+| `drctl repo new <name> <path>`                                                 | Add a repo entry to the nearest config  |
+| `drctl repo bootstrap <name>`                                                  | Initialise git for a configured repo    |
+| `drctl repo switch <name>`                                                     | Make an existing repo the default       |
+| `drctl decision correction <id> --note` / `drctl decision correct <id> --note` | Record a small correction               |
+| `drctl decision revise <id> --note`                                            | Increment version, update metadata      |
+| `drctl decision supersede <old_id> <new_id>`                                   | Replace old decision                    |
+| `drctl decision retire <id>`                                                   | Retire obsolete decision                |
+| `drctl config check`                                                           | Validate configuration files and repos  |
+| `drctl index`                                                                  | Rebuild master index                    |
+| `drctl governance validate`                                                    | Check decision metadata integrity       |
+| `drctl export` _(planned)_                                                     | Export metadata as JSON for dashboards  |
 
-> `drctl new` scaffolds a record once. Re-run lifecycle commands (`draft`, `accept`, `correction`, `revise`, etc.) to evolve a decision; calling `new` again now reports that the decision already exists.
+> `drctl decision new` scaffolds a record once. Re-run lifecycle commands (`decision draft`, `decision accept`, `decision correction`, `decision revise`, etc.) to evolve a decision; calling `new` again now reports that the decision already exists.
 >
-> `drctl accept` automatically backfills missing `draft`/`proposed` transitions (with their own commits/changelog entries) so the lifecycle trail is always complete.
+> `drctl decision accept` automatically backfills missing `draft`/`proposed` transitions (with their own commits/changelog entries) so the lifecycle trail is always complete.
+
+> Legacy aliases (e.g. `drctl new`, `drctl draft`) remain temporarily and print a deprecation warning. Update scripts to use the `drctl decision …` form; the top-level lifecycle commands will be removed in a future release.
 
 Global flags (`--repo`, `--config`, `--git`, `--no-git`) apply to every subcommand. Combine them with env vars (`DRCTL_REPO`, `DRCTL_CONFIG`, `DRCTL_GIT`) for reproducible automation scripts.
 
@@ -296,12 +298,12 @@ See [decision-record-template.md](./decisions-example/decision-record-template.m
 
 ## 🔁 Workflow Summary
 
-1. **Capture**: `drctl new infra "secure-docs-repo"`
-2. **Draft**: `drctl draft <id>` once the starter content is ready to track
-3. **Propose**: `drctl propose <id>` to circulate for review
-4. **Accept**: `drctl accept <id>` when it’s adopted
-5. **Revise**: `drctl revise <id> --note "Raised confidence" --confidence 0.9`
-6. **Supersede**: `drctl supersede <old_id> <new_id>` when replaced
+1. **Capture**: `drctl decision new infra "secure-docs-repo"`
+2. **Draft**: `drctl decision draft <id>` once the starter content is ready to track
+3. **Propose**: `drctl decision propose <id>` to circulate for review
+4. **Accept**: `drctl decision accept <id>` when it’s adopted
+5. **Revise**: `drctl decision revise <id> --note "Raised confidence" --confidence 0.9`
+6. **Supersede**: `drctl decision supersede <old_id> <new_id>` when replaced
 7. **Review**: periodically check reviewDate for updates.
 
 8. **Index**: auto-generate `DecisionIndex.md` for browsing.
@@ -345,7 +347,7 @@ Place this `.drctl.yaml` in the project root (or reference it via `--config`). B
 - Use descriptive commit messages (the CLI defaults to `drctl: <action> <id>`).
 - If your CI pipeline runs on every commit, consider configuring a skip rule for messages that start with `drctl:` (e.g., `[skip ci]` or equivalent) or run lifecycle commands in a separate branch that you squash on merge.
 - `drctl` aborts if other files are staged; run `git status` first if you expect to batch changes.
-- Avoid `git add`/`git commit` directly on decision records—use `drctl correction`, `drctl revise`, or lifecycle commands so versions and changelog entries remain consistent.
+- Avoid `git add`/`git commit` directly on decision records—use `drctl decision correction`, `drctl decision revise`, or other lifecycle commands so versions and changelog entries remain consistent.
 
 Want a manual workflow instead? Add `git: disabled` to the repo entry:
 
@@ -438,9 +440,9 @@ GitHub releases are created automatically (set `GITHUB_TOKEN=<your PAT>` in the 
 
 ### 🔜 Lifecycle Automation Priorities
 
-1. ✅ Extend `drctl accept` so the git-backed flow mirrors `draft`/`propose` (status update, changelog entry, commit).
-2. Introduce `drctl reject` / `drctl deprecate` with the same frontmatter-only updates. ✅
-3. ✅ Implement `drctl supersede` / `drctl retire`, preserving markdown bodies while adjusting metadata.
+1. ✅ Extend `drctl decision accept` so the git-backed flow mirrors `decision draft`/`decision propose` (status update, changelog entry, commit).
+2. Introduce `drctl decision reject` / `drctl decision deprecate` with the same frontmatter-only updates. ✅
+3. ✅ Implement `drctl decision supersede` / `drctl decision retire`, preserving markdown bodies while adjusting metadata.
 4. Add regression tests that verify changelog consistency and body preservation across every transition.
 5. Decide whether lifecycle commands should trigger `drctl index` (or emit a reminder) after updates.
 
@@ -479,7 +481,7 @@ Teams embedding decisions in application repos can add a local git hook to remin
 # .git/hooks/post-commit (make executable)
 if git diff --cached --name-only | grep -E '^decisions/'; then
   if ! git log -1 --pretty=%B | grep -q '^drctl:'; then
-    echo "⚠️  Consider using drctl correction/revise/lifecycle commands for decision records." >&2
+    echo "⚠️  Consider using drctl decision correction/revise/lifecycle commands for decision records." >&2
   fi
 fi
 ```

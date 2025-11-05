@@ -48,7 +48,7 @@ For more information, refer to [meta/DR--20251029--meta--decision-policy.md](dec
 | **Human-AI collaboration**     | Maintain calm, reflective, evidence-based dialogue — no performative authority.              |
 | **Future-proofing**            | File-based today; API, n8n, and UI integrations tomorrow.                                    |
 | **DecisionOps framing**        | Align drctl with agile + governance practices per `DR--20251101--meta--decisionops-framing`. |
-| **Single-source scaffolding**  | `drctl new` runs once; lifecycle commands own every subsequent change.                       |
+| **Single-source scaffolding**  | `drctl decision new` runs once; lifecycle commands own every subsequent change.              |
 
 ---
 
@@ -56,22 +56,22 @@ We now articulate DecisionOps parallels explicitly: README highlights agile-frie
 
 ## ⚙️ Working Agreements
 
-| Topic                  | Agreement                                                                                                                                                                                    |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Source control**     | `decision-record` (public GitHub) contains code and examples; actual DRs live in private repos (`work-decisions`, `home-decisions`).                                                         |
-| **Configuration**      | `.drctl.yaml` supports multiple named repos, optional domain mappings, and default templates.                                                                                                |
-| **Development**        | Use `tsx` + `Commander.js` for CLI; logic separated from CLI interface for future API/UI reuse; run `npx trunk check` for linting, formatting, and supply-chain scans.                       |
-| **Decision records**   | Each architectural choice (for this app) is captured in a `DR--YYYYMMDD--meta--*.md`.                                                                                                        |
-| **Example DR hygiene** | Files under `decisions-example/` are updated exclusively via the appropriate `drctl` lifecycle command (e.g., `drctl correction`, `drctl revise`) so the automation stays exercised.         |
-| **File conventions**   | Use `DR--YYYYMMDD--domain--slug.md` IDs; domain as folder; markdown + YAML frontmatter.                                                                                                      |
-| **Private data**       | `.drctl.yaml` and `decisions/` folders are `.gitignore`d; only `decisions-example/` is public.                                                                                               |
-| **Git optional**       | Opt out per repo via `git: disabled`, per session with `DRCTL_GIT`, or ad-hoc with `--no-git`; the CLI logs the resolved mode and skips commits while keeping changelogs accurate.           |
-| **AI collaboration**   | All reasoning steps remain inspectable; outputs versioned in code, not ephemeral.                                                                                                            |
-| **CLI feedback**       | Commands echo repo context and file paths; `drctl repo` surfaces the resolved workspace on demand.                                                                                           |
-| **Lifecycle flow**     | `drctl new` scaffolds a draft; lifecycle commands (`draft` → `propose` → `accept`) now auto-progress missing states so changelogs capture every transition.                                  |
-| **Branch protection**  | All work lands through feature branches + PRs; main is protected (reviews + CI/CodeQL/Scorecard/dependency-review required; no direct pushes or force-pushes).                               |
-| **Build artefacts**    | `dist/` is git-ignored; package via `npm run build` + `npm pack` per [DR--20251102--meta--build-artifacts-strategy](decisions-example/meta/DR--20251102--meta--build-artifacts-strategy.md). |
-| **Releases**           | `npm run release` (release-it) drives version bumps + GitHub releases; export `GITHUB_TOKEN` locally, publish to npm manually when ready.                                                    |
+| Topic                  | Agreement                                                                                                                                                                                                       |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Source control**     | `decision-record` (public GitHub) contains code and examples; actual DRs live in private repos (`work-decisions`, `home-decisions`).                                                                            |
+| **Configuration**      | `.drctl.yaml` supports multiple named repos, optional domain mappings, and default templates.                                                                                                                   |
+| **Development**        | Use `tsx` + `Commander.js` for CLI; logic separated from CLI interface for future API/UI reuse; run `npx trunk check` for linting, formatting, and supply-chain scans.                                          |
+| **Decision records**   | Each architectural choice (for this app) is captured in a `DR--YYYYMMDD--meta--*.md`.                                                                                                                           |
+| **Example DR hygiene** | Files under `decisions-example/` are updated exclusively via the appropriate `drctl decision` lifecycle command (e.g., `drctl decision correction`, `drctl decision revise`) so the automation stays exercised. |
+| **File conventions**   | Use `DR--YYYYMMDD--domain--slug.md` IDs; domain as folder; markdown + YAML frontmatter.                                                                                                                         |
+| **Private data**       | `.drctl.yaml` and `decisions/` folders are `.gitignore`d; only `decisions-example/` is public.                                                                                                                  |
+| **Git optional**       | Opt out per repo via `git: disabled`, per session with `DRCTL_GIT`, or ad-hoc with `--no-git`; the CLI logs the resolved mode and skips commits while keeping changelogs accurate.                              |
+| **AI collaboration**   | All reasoning steps remain inspectable; outputs versioned in code, not ephemeral.                                                                                                                               |
+| **CLI feedback**       | Commands echo repo context and file paths; `drctl repo` surfaces the resolved workspace on demand.                                                                                                              |
+| **Lifecycle flow**     | `drctl decision new` scaffolds a draft; lifecycle commands (`decision draft` → `decision propose` → `decision accept`) now auto-progress missing states so changelogs capture every transition.                 |
+| **Branch protection**  | All work lands through feature branches + PRs; main is protected (reviews + CI/CodeQL/Scorecard/dependency-review required; no direct pushes or force-pushes).                                                  |
+| **Build artefacts**    | `dist/` is git-ignored; package via `npm run build` + `npm pack` per [DR--20251102--meta--build-artifacts-strategy](decisions-example/meta/DR--20251102--meta--build-artifacts-strategy.md).                    |
+| **Releases**           | `npm run release` (release-it) drives version bumps + GitHub releases; export `GITHUB_TOKEN` locally, publish to npm manually when ready.                                                                       |
 
 ---
 
@@ -132,7 +132,7 @@ Refer to [ARCHITECTURE.md](./ARCHITECTURE.md) for the layered overview and reaso
 - Run lifecycle commands with a clean staging area; drctl commits the files it changes.
 - drctl aborts when other files are staged, so contributors should check `git status` before running commands if they expect to batch changes.
 - Communicate with delivery teams about CI behaviour—pipelines can ignore commits whose messages start with `drctl:` if desired.
-- Prefer `drctl correction` / `drctl revise` / lifecycle commands over manual `git add`/`git commit` when touching decision records so metadata stays in sync.
+- Prefer `drctl decision correction` / `drctl decision revise` / other lifecycle commands over manual `git add`/`git commit` when touching decision records so metadata stays in sync.
 
 ---
 
@@ -187,14 +187,14 @@ home-decisions/
    - [x] Per-repo governance validation command (`drctl governance validate`).
 
 5. **Lifecycle Automation (Current Focus)**
-   - [x] Harden `drctl accept` so the git-backed status flow mirrors `draft`/`propose`.
-   - [x] Add `drctl reject` and `drctl deprecate` with consistent changelog handling.
-   - [x] Implement `drctl supersede`/`drctl retire`, ensuring markdown bodies persist.
+   - [x] Harden `drctl decision accept` so the git-backed status flow mirrors `decision draft`/`decision propose`.
+   - [x] Add `drctl decision reject` and `drctl decision deprecate` with consistent changelog handling.
+   - [x] Implement `drctl decision supersede`/`drctl decision retire`, ensuring markdown bodies persist.
    - [x] Honour git-mode overrides (CLI/env/config) so lifecycle commands run without a git repo (`DR--20251105--meta--git-optional-lifecycle`).
    - [ ] Add regression tests covering body preservation and changelog entries for every transition.
    - [ ] Decide whether lifecycle commands should regenerate or remind about repository indexes.
    - [ ] Provide guardrails for manually-authored decision files (lint/doctor command or stronger governance hints when frontmatter is incomplete).
-   - [ ] Restructure lifecycle commands under a `drctl decision` subcommand group for clearer CLI organisation.
+   - [x] Restructure lifecycle commands under a `drctl decision` subcommand group for clearer CLI organisation (legacy shims emit deprecation warnings).
 
 6. **Reliability & Modernisation (Planned)**
    - [ ] Generate signed release provenance and SBOMs alongside `npm pack`, archiving them in CI artifacts.
@@ -242,11 +242,11 @@ npm run dev -- repo bootstrap demo
 npm run dev -- config check
 
 # Create, propose, and accept a decision (replace <id> with the generated ID)
-npm run dev -- new meta initial-guardrails
-npm run dev -- list
-npm run dev -- draft <id>
-npm run dev -- propose <id>
-npm run dev -- accept <id>
+npm run dev -- decision new meta initial-guardrails
+npm run dev -- decision list
+npm run dev -- decision draft <id>
+npm run dev -- decision propose <id>
+npm run dev -- decision accept <id>
 
 # Regenerate the index
 npm run dev -- index
