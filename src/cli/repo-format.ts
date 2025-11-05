@@ -21,6 +21,11 @@ export function formatRepoContext(context: RepoContext): string[] {
       `   Git note: ignored ${context.gitModeOverrideCleared} disable (git repo detected)`,
     );
   }
+  if (context.gitRoot) {
+    const normalizedGitRoot = path.normalize(context.gitRoot);
+    const suffix = normalizedRoot === normalizedGitRoot ? "" : " (inherited)";
+    lines.push(`   Git root: ${normalizedGitRoot}${suffix}`);
+  }
 
   const defaultDomain = context.defaultDomainDir ?? "<domain>";
   lines.push(`   Default domain dir: ${defaultDomain}`);

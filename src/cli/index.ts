@@ -453,9 +453,9 @@ async function handleDecisionSupersede(
   console.log(`📄 Updated: ${result.newFilePath}`);
 }
 
-const decisionCommand = new Command("decision").description(
-  "Manage decision records and lifecycle operations",
-);
+const decisionCommand = new Command("decision")
+  .alias("dr")
+  .description("Manage decision records and lifecycle operations");
 
 decisionCommand
   .command("index")
@@ -672,6 +672,13 @@ function logRepositoryEntry(repo: RepoDiagnostic): void {
   }
   if (repo.defaultTemplate) {
     console.log(`      Template: ${repo.defaultTemplate}`);
+  }
+  if (repo.gitRoot) {
+    const normalizedRepoRoot = path.normalize(repo.root);
+    const normalizedGitRoot = path.normalize(repo.gitRoot);
+    const suffix =
+      normalizedGitRoot === normalizedRepoRoot ? "" : " (inherited)";
+    console.log(`      Git root: ${normalizedGitRoot}${suffix}`);
   }
 }
 

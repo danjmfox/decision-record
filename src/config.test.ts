@@ -169,6 +169,29 @@ repos:
 
     expect(context.gitMode).toBe("enabled");
     expect(context.gitModeSource).toBe("detected");
+    expect(context.gitRoot).toBe(path.resolve(repoRoot));
+  });
+
+  it("detects git mode when the repo root is nested inside a git repository", () => {
+    const dir = makeTempDir();
+    const outer = path.join(dir, "outer");
+    const nested = path.join(outer, "workspace");
+    fs.mkdirSync(path.join(outer, ".git"), { recursive: true });
+    fs.mkdirSync(nested, { recursive: true });
+    const config = `
+defaultRepo: work
+repos:
+  work:
+    path: ./outer/workspace
+`;
+    fs.writeFileSync(path.join(dir, ".drctl.yaml"), config);
+
+    const context = resolveRepoContext({ cwd: dir });
+
+    expect(context.root).toBe(path.resolve(nested));
+    expect(context.gitMode).toBe("enabled");
+    expect(context.gitModeSource).toBe("detected");
+    expect(context.gitRoot).toBe(path.resolve(outer));
   });
 
   it("selects the only configured repo when no default is specified", () => {
@@ -189,6 +212,7 @@ repos:
     expect(context.source).toBe("local-config");
     expect(context.gitMode).toBe("disabled");
     expect(context.gitModeSource).toBe("detected");
+    expect(context.gitRoot).toBeUndefined();
   });
 
   it("prefers CLI path strings when provided", () => {
@@ -205,6 +229,7 @@ repos:
     expect(context.source).toBe("cli");
     expect(context.gitMode).toBe("disabled");
     expect(context.gitModeSource).toBe("detected");
+    expect(context.gitRoot).toBeUndefined();
   });
 
   it("throws when CLI repo alias does not exist", () => {
@@ -532,7 +557,34 @@ describe("diagnoseConfig", () => {
     expect(diagnostics.repos).toHaveLength(1);
     expect(diagnostics.repos[0]?.exists).toBe(true);
     expect(diagnostics.repos[0]?.gitInitialized).toBe(true);
+    expect(diagnostics.repos[0]?.gitRoot).toBe(path.resolve(repoDir));
     expect(diagnostics.warnings).toHaveLength(0);
+  });
+
+  it("treats nested repositories as git-initialized", () => {
+    const dir = makeTempDir();
+    const outer = path.join(dir, "outer");
+    const nested = path.join(outer, "workspace");
+    fs.mkdirSync(path.join(outer, ".git"), { recursive: true });
+    fs.mkdirSync(nested, { recursive: true });
+    const config = `defaultRepo: work
+repos:
+  work:
+    path: ./outer/workspace
+`;
+    fs.writeFileSync(path.join(dir, ".drctl.yaml"), config);
+
+    const diagnostics = diagnoseConfig({ cwd: dir });
+
+    expect(diagnostics.repos).toHaveLength(1);
+    const repo = diagnostics.repos[0];
+    expect(repo?.gitInitialized).toBe(true);
+    expect(repo?.gitRoot).toBe(path.resolve(outer));
+    expect(
+      diagnostics.warnings.some((warning) =>
+        /is not a git repository/.test(warning),
+      ),
+    ).toBe(false);
   });
 
   it("warns when repositories point to missing paths", () => {

@@ -29,6 +29,7 @@ export interface RepoContext {
   gitMode: GitMode;
   gitModeSource: GitModeSource;
   gitModeOverrideCleared?: GitModeOverrideSource;
+  gitRoot?: string | undefined;
 }
 
 export interface RepoDiagnostic {
@@ -43,6 +44,7 @@ export interface RepoDiagnostic {
   gitInitialized: boolean;
   gitMode: GitMode;
   gitModeSource: GitModeSource;
+  gitRoot?: string | undefined;
 }
 
 export interface ConfigDiagnostics {
@@ -397,6 +399,11 @@ function finalizeContext(
   } else if (context.gitModeOverrideCleared) {
     delete context.gitModeOverrideCleared;
   }
+  if (gitResult.mode === "enabled" && gitResult.detectedGitRoot) {
+    context.gitRoot = gitResult.detectedGitRoot;
+  } else if (context.gitRoot) {
+    delete context.gitRoot;
+  }
   return context;
 }
 
@@ -409,8 +416,10 @@ function resolveGitMode(options: {
   mode: GitMode;
   source: GitModeSource;
   overrideCleared?: GitModeOverrideSource;
+  detectedGitRoot?: string;
 } {
-  const gitExists = fs.existsSync(path.join(options.root, ".git"));
+  const gitRoot = findGitRoot(options.root);
+  const gitExists = Boolean(gitRoot);
   const detected: GitMode = gitExists ? "enabled" : "disabled";
 
   const cascade: Array<{ value: GitMode | null; source: GitModeSource }> = [
@@ -429,17 +438,39 @@ function resolveGitMode(options: {
           mode: "enabled",
           source: "detected",
           overrideCleared: overrideSource,
+          ...(gitRoot ? { detectedGitRoot: gitRoot } : {}),
         };
       }
     }
-    return { mode: entry.value, source: entry.source };
+    return {
+      mode: entry.value,
+      source: entry.source,
+      ...(gitRoot ? { detectedGitRoot: gitRoot } : {}),
+    };
   }
 
-  return { mode: detected, source: "detected" };
+  return {
+    mode: detected,
+    source: "detected",
+    ...(gitRoot ? { detectedGitRoot: gitRoot } : {}),
+  };
 }
 
 function sourceFromRepo(repo: NormalizedRepo): RepoResolutionSource {
   return repo.definitionSource === "local" ? "local-config" : "global-config";
+}
+
+function findGitRoot(start: string): string | undefined {
+  let current = path.resolve(start);
+  while (true) {
+    const candidate = path.join(current, ".git");
+    if (fs.existsSync(candidate)) {
+      return current;
+    }
+    const parent = path.dirname(current);
+    if (parent === current) return undefined;
+    current = parent;
+  }
 }
 
 function determineDefaultSource(
@@ -552,8 +583,8 @@ class DiagnosticsCollector {
 
   private addRepoDiagnostic(repo: NormalizedRepo): void {
     const exists = fs.existsSync(repo.root);
-    const gitInitialized =
-      exists && fs.existsSync(path.join(repo.root, ".git"));
+    const detectedGitRoot = exists ? findGitRoot(repo.root) : undefined;
+    const gitInitialized = Boolean(detectedGitRoot);
     const gitResolution = resolveGitMode({
       root: repo.root,
       gitFlag: null,
@@ -585,6 +616,9 @@ class DiagnosticsCollector {
       gitInitialized,
       gitMode: gitResolution.mode,
       gitModeSource: gitResolution.source,
+      ...((gitResolution.detectedGitRoot ?? detectedGitRoot)
+        ? { gitRoot: gitResolution.detectedGitRoot ?? detectedGitRoot }
+        : {}),
     });
 
     if (repo.defaultTemplate && exists) {
