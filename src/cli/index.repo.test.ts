@@ -21,7 +21,17 @@ function stringify(value: unknown): string {
       return "[unserialisable value]";
     }
   }
-  return String(value);
+  if (
+    typeof value === "number" ||
+    typeof value === "boolean" ||
+    typeof value === "bigint"
+  ) {
+    return value.toString();
+  }
+  if (typeof value === "symbol") {
+    return value.toString();
+  }
+  return "";
 }
 
 describe("cli index commands", () => {
