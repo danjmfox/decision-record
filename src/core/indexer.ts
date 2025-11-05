@@ -1,5 +1,5 @@
-import fs from "fs";
-import path from "path";
+import fs from "node:fs";
+import path from "node:path";
 import type { RepoContext } from "../config.js";
 import { listDecisions, getDecisionPath } from "./repository.js";
 import type { DecisionRecord } from "./models.js";
@@ -47,31 +47,32 @@ function buildMarkdown(
 
   const domains = Array.from(grouped.keys()).sort((a, b) => a.localeCompare(b));
   const lines: string[] = [];
-  lines.push(`# ${title}`);
-  lines.push("");
+  lines.push(`# ${title}`, "");
   if (includeGeneratedNote) {
     lines.push(
       `_Generated ${new Date().toISOString().slice(0, 10)} by drctl index_`,
+      "",
     );
-    lines.push("");
   }
 
   for (const domain of domains) {
-    lines.push(`## ${domain}`);
-    lines.push("");
+    lines.push(`## ${domain}`, "");
     const records = grouped
       .get(domain)
       ?.sort((a, b) => a.id.localeCompare(b.id));
-    records?.forEach((record, index) => {
-      const rel = relativePath(context, record);
-      lines.push(`${index + 1}. [${record.id}](${rel})`);
-    });
+    if (records) {
+      let index = 1;
+      for (const record of records) {
+        const rel = relativePath(context, record);
+        lines.push(`${index}. [${record.id}](${rel})`);
+        index += 1;
+      }
+    }
     lines.push("");
   }
 
   if (domains.length === 0) {
-    lines.push("_(No decisions found.)_");
-    lines.push("");
+    lines.push("_(No decisions found.)_", "");
   }
 
   return lines.join("\n");

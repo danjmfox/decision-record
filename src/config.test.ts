@@ -1,6 +1,6 @@
-import fs from "fs";
-import os from "os";
-import path from "path";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import {
   describe,
   expect,
@@ -10,7 +10,11 @@ import {
   beforeEach,
   vi,
 } from "vitest";
-import { resolveRepoContext, diagnoseConfig } from "./config.js";
+import {
+  resolveRepoContext,
+  diagnoseConfig,
+  resolveConfigPath,
+} from "./config.js";
 
 const tempDirs: string[] = [];
 const originalEnvRepo = process.env.DRCTL_REPO;
@@ -20,6 +24,72 @@ function makeTempDir(): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-config-test-"));
   tempDirs.push(dir);
   return dir;
+}
+
+function withMockedHome<T>(homePath: string, run: () => T): T {
+  const spy = vi.spyOn(os, "homedir").mockReturnValue(homePath);
+  restoreSpies.push(() => spy.mockRestore());
+  return run();
+}
+
+async function withGlobalConfigSetup(
+  run: (
+    modules: {
+      diagnoseConfig: typeof diagnoseConfig;
+      resolveRepoContext: typeof resolveRepoContext;
+    },
+    context: {
+      cwd: string;
+      home: string;
+      repo: string;
+      globalConfigPath: string;
+    },
+  ) => Promise<void>,
+): Promise<void> {
+  const cwd = makeTempDir();
+  const home = makeTempDir();
+  const repo = path.join(home, "global-decisions");
+  fs.mkdirSync(repo, { recursive: true });
+  const configDir = path.join(home, ".config", "drctl");
+  fs.mkdirSync(configDir, { recursive: true });
+  const globalConfigPath = path.join(configDir, "config.yaml");
+  fs.writeFileSync(
+    globalConfigPath,
+    `defaultRepo: global
+repos:
+  global:
+    path: ${repo}
+`,
+  );
+
+  const originalHome = process.env.HOME;
+  const originalUserProfile = process.env.USERPROFILE;
+  process.env.HOME = home;
+  process.env.USERPROFILE = home;
+
+  vi.resetModules();
+  try {
+    const modules = await import("./config.js");
+    await run(
+      {
+        diagnoseConfig: modules.diagnoseConfig,
+        resolveRepoContext: modules.resolveRepoContext,
+      },
+      { cwd, home, repo, globalConfigPath },
+    );
+  } finally {
+    if (originalHome === undefined) {
+      delete process.env.HOME;
+    } else {
+      process.env.HOME = originalHome;
+    }
+    if (originalUserProfile === undefined) {
+      delete process.env.USERPROFILE;
+    } else {
+      process.env.USERPROFILE = originalUserProfile;
+    }
+    vi.resetModules();
+  }
 }
 
 afterEach(() => {
@@ -108,6 +178,20 @@ repos:
     expect(context.root).toBe(path.resolve(repoPath));
     expect(context.name).toBeUndefined();
     expect(context.source).toBe("cli");
+  });
+
+  it("throws when CLI repo alias does not exist", () => {
+    const dir = makeTempDir();
+    const config = `
+repos:
+  work:
+    path: ./work
+`;
+    fs.writeFileSync(path.join(dir, ".drctl.yaml"), config);
+
+    expect(() => resolveRepoContext({ cwd: dir, repoFlag: "missing" })).toThrow(
+      /not found/i,
+    );
   });
 
   it("throws when multiple repos exist without explicit selection", () => {
@@ -235,6 +319,25 @@ repos:
 });
 
 describe("diagnoseConfig", () => {
+  it("loads repositories defined in the global config when local config is absent", async () => {
+    await withGlobalConfigSetup(
+      async (
+        { diagnoseConfig: freshDiagnose, resolveRepoContext: freshResolve },
+        { cwd, repo, globalConfigPath },
+      ) => {
+        const diagnostics = freshDiagnose({ cwd });
+        expect(diagnostics.globalConfigPath).toBe(globalConfigPath);
+        expect(diagnostics.defaultRepoName).toBe("global");
+        expect(diagnostics.repos).toHaveLength(1);
+
+        const context = freshResolve({ cwd });
+        expect(context.root).toBe(repo);
+        expect(context.source).toBe("global-config");
+        expect(context.configPath).toBe(globalConfigPath);
+      },
+    );
+  });
+
   it("warns when no repositories are configured", () => {
     const dir = makeTempDir();
 
@@ -331,5 +434,56 @@ describe("diagnoseConfig", () => {
     expect(diagnostics.warnings).toContainEqual(
       expect.stringMatching(/outside the repo root/i),
     );
+  });
+});
+
+describe("resolveConfigPath edge cases", () => {
+  it.each([
+    { name: "leaves trailing dollar signs untouched", input: "decisions-$" },
+    {
+      name: "leaves unmatched brace substitutions untouched",
+      input: "${UNFINISHED",
+    },
+    { name: "preserves empty brace expressions", input: "${}" },
+    {
+      name: "does not treat digits as env variable identifiers",
+      input: "$1decisions",
+    },
+  ])("$name", ({ input }) => {
+    const base = makeTempDir();
+    expect(resolveConfigPath(input, base)).toBe(path.resolve(base, input));
+  });
+
+  it("normalises absolute unix paths without modification", () => {
+    const base = makeTempDir();
+    const absolute = path.join(base, "absolute");
+    expect(resolveConfigPath(absolute, "/any/base")).toBe(absolute);
+  });
+
+  it("resolves windows-style paths relative to the base directory on POSIX", () => {
+    const base = makeTempDir();
+    const winStyle = `C:\\decisions\\project`;
+    const expected = path
+      .resolve(base, winStyle.replaceAll("\\", path.sep))
+      .replaceAll("\\", path.sep);
+    expect(resolveConfigPath(winStyle, base)).toBe(expected);
+  });
+
+  it("expands bare tildes to the user home", () => {
+    const base = makeTempDir();
+    const home = makeTempDir();
+    withMockedHome(home, () => {
+      expect(resolveConfigPath("~", base)).toBe(path.normalize(home));
+    });
+  });
+
+  it("expands tilde-prefixed paths relative to the user home", () => {
+    const base = makeTempDir();
+    const home = makeTempDir();
+    withMockedHome(home, () => {
+      expect(resolveConfigPath("~/decisions", base)).toBe(
+        path.join(home, "decisions"),
+      );
+    });
   });
 });

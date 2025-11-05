@@ -1,8 +1,9 @@
-import fs from "fs";
-import os from "os";
-import path from "path";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import matter from "gray-matter";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import type { MockInstance } from "vitest";
 import type { RepoContext } from "../config.js";
 import * as configModule from "../config.js";
 import {
@@ -23,7 +24,7 @@ import {
 import * as gitModule from "./git.js";
 
 const tempRoots: string[] = [];
-let consoleWarnSpy: ReturnType<typeof vi.spyOn> | undefined;
+let consoleWarnSpy: MockInstance | undefined;
 
 function toPosix(value: string): string {
   return value.split(path.sep).join("/");
@@ -606,8 +607,8 @@ describe("service layer", () => {
     });
     const parsed = matter.read(creation.filePath);
     const sanitized = parsed.content
-      .replace(/^_.*_$/gm, "Completed section.")
-      .replace(
+      .replaceAll(/^_.*_$/gm, "Completed section.")
+      .replaceAll(
         /\| B\s+\|\s+\|\s+\|\s+\|/g,
         "| B | Option B | Rejected | Provided rationale |",
       );
@@ -682,7 +683,7 @@ describe("service layer", () => {
     };
     const creation = createDecision("meta", "placeholder-table", { context });
     const parsed = matter.read(creation.filePath);
-    const withoutGuidance = parsed.content.replace(/^_.*_$/gm, "");
+    const withoutGuidance = parsed.content.replaceAll(/^_.*_$/gm, "");
     const contentWithPlaceholder = `${withoutGuidance}\n| B |     |     |     |`;
     fs.writeFileSync(
       creation.filePath,
@@ -1148,9 +1149,9 @@ describe("service layer", () => {
     expect(collected.map((entry) => entry.record.id)).toEqual(
       expect.arrayContaining([first.record.id, second.record.id]),
     );
-    collected.forEach((entry) => {
+    for (const entry of collected) {
       expect(fs.existsSync(entry.filePath)).toBe(true);
       expect(entry.record).toHaveProperty("status");
-    });
+    }
   });
 });

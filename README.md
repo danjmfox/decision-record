@@ -5,6 +5,7 @@
 [![codecov](https://codecov.io/gh/danjmfox/decision-record/branch/main/graph/badge.svg?token=dbd18aca-0a06-448b-a2e3-fa346995b240)](https://codecov.io/gh/danjmfox/decision-record)
 [![Security Contact](https://img.shields.io/badge/security-contact-blueviolet)](SECURITY.md)
 [![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/danjmfox/decision-record?label=OpenSSF%20Scorecard)](https://securityscorecards.dev/viewer/?uri=github.com/danjmfox/decision-record)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=danjmfox_decision-record&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=danjmfox_decision-record)
 
 ## 🎯 Purpose
 

@@ -1,6 +1,6 @@
-import fs from "fs";
-import os from "os";
-import path from "path";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import { resolveConfigPath } from "../config.js";
 
@@ -157,37 +157,53 @@ function ensureRepoMap(
   value: unknown,
 ): Record<string, Record<string, unknown>> {
   const normalized: Record<string, Record<string, unknown>> = {};
-  const candidate =
-    value && typeof value === "object" && !Array.isArray(value)
-      ? extractFlatRepoDefinition(value as Record<string, unknown>)
-      : null;
-
+  const candidate = extractFlatRepoCandidate(value);
   if (candidate) {
     normalized[candidate.name] = candidate.entry;
   }
-
   if (value && typeof value === "object" && !Array.isArray(value)) {
-    for (const [key, entryValue] of Object.entries(
-      value as Record<string, unknown>,
-    )) {
-      if (
-        candidate &&
-        (key === "name" ||
-          key === "path" ||
-          key === "defaultDomainDir" ||
-          key === "domains")
-      ) {
-        continue;
-      }
-      if (entryValue && typeof entryValue === "object") {
-        normalized[key] = { ...(entryValue as Record<string, unknown>) };
-      } else if (typeof entryValue === "string") {
-        normalized[key] = { path: entryValue };
-      }
+    addConfigEntries(normalized, value as Record<string, unknown>, candidate);
+  }
+  return normalized;
+}
+
+function extractFlatRepoCandidate(
+  value: unknown,
+): { name: string; entry: Record<string, unknown> } | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  return extractFlatRepoDefinition(value as Record<string, unknown>);
+}
+
+function addConfigEntries(
+  normalized: Record<string, Record<string, unknown>>,
+  value: Record<string, unknown>,
+  candidate: { name: string; entry: Record<string, unknown> } | null,
+): void {
+  for (const [key, entryValue] of Object.entries(value)) {
+    if (shouldSkipFlatCandidateKey(candidate, key)) {
+      continue;
+    }
+    if (entryValue && typeof entryValue === "object") {
+      normalized[key] = { ...(entryValue as Record<string, unknown>) };
+    } else if (typeof entryValue === "string") {
+      normalized[key] = { path: entryValue };
     }
   }
+}
 
-  return normalized;
+function shouldSkipFlatCandidateKey(
+  candidate: { name: string } | null,
+  key: string,
+): boolean {
+  if (!candidate) return false;
+  return (
+    key === "name" ||
+    key === "path" ||
+    key === "defaultDomainDir" ||
+    key === "domains"
+  );
 }
 
 function extractFlatRepoDefinition(
@@ -237,7 +253,7 @@ function findNearestConfig(startDir: string): string | undefined {
 function resolveRepoPath(repoPath: string, baseDir: string): string {
   const expandedEnv = expandEnvVars(repoPath);
   const expandedTilde = expandTilde(expandedEnv);
-  const normalized = expandedTilde.replace(/\\/g, path.sep);
+  const normalized = expandedTilde.replaceAll("\\", path.sep);
   if (path.isAbsolute(normalized)) {
     return path.normalize(normalized);
   }
@@ -245,8 +261,8 @@ function resolveRepoPath(repoPath: string, baseDir: string): string {
 }
 
 function expandEnvVars(input: string): string {
-  return input.replace(
-    /\$\{([^}]+)\}|\$([A-Za-z_][A-Za-z0-9_]*)/g,
+  return input.replaceAll(
+    /\$\{([^}]+)\}|\$([A-Za-z_]\w*)/g,
     (_, group1, group2) => {
       const key = group1 ?? group2;
       if (!key) return "";
@@ -255,6 +271,13 @@ function expandEnvVars(input: string): string {
   );
 }
 
+/**
+ * Expands tilde (~) to the user's home directory.
+ * If the input starts with ~/ it will be resolved to $HOME/<input without ~/>
+ * Otherwise, the input is returned as is.
+ * @param {string} input - The string to expand.
+ * @returns {string} - The expanded string.
+ */
 function expandTilde(input: string): string {
   if (input === "~") {
     return os.homedir();

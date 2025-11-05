@@ -1,12 +1,13 @@
-import fs from "fs";
-import os from "os";
-import path from "path";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { RepoContext } from "../config.js";
 
 const originalArgv = process.argv.slice();
 const originalCwd = process.cwd();
 const tempDirs: string[] = [];
+let stderrSpy: ReturnType<typeof vi.spyOn> | undefined;
 
 function registerTemp(dir: string): void {
   tempDirs.push(dir);
@@ -78,6 +79,7 @@ function collectOutput(spy: ConsoleSpy): string[] {
 
 beforeEach(() => {
   vi.resetModules();
+  stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
 });
 
 afterEach(() => {
@@ -92,6 +94,8 @@ afterEach(() => {
       fs.rmSync(dir, { recursive: true, force: true });
     }
   }
+  stderrSpy?.mockRestore();
+  stderrSpy = undefined;
 });
 
 function mockService(
@@ -326,7 +330,7 @@ describe("cli template-aware flows", () => {
       generateIndex,
     }));
 
-    const { log: logSpy, error: errorSpy } = spyConsole();
+    const { error: errorSpy } = spyConsole();
 
     await runCli(process.cwd(), ["index"]);
 

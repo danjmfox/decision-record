@@ -1,6 +1,6 @@
-import fs from "fs";
-import os from "os";
-import path from "path";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { load as loadYaml } from "js-yaml";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { saveDecision } from "../core/repository.js";
@@ -14,6 +14,7 @@ describe("cli index commands", () => {
   let consoleErrorSpy: any;
   let consoleWarnSpy: any;
   let consoleLogSpy: any;
+  let stderrSpy: ReturnType<typeof vi.spyOn> | undefined;
 
   beforeEach(() => {
     vi.resetModules();
@@ -24,6 +25,9 @@ describe("cli index commands", () => {
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    stderrSpy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
   });
 
   afterEach(() => {
@@ -39,6 +43,8 @@ describe("cli index commands", () => {
     if (consoleLogSpy) {
       consoleLogSpy.mockRestore();
     }
+    stderrSpy?.mockRestore();
+    stderrSpy = undefined;
     process.exitCode = 0;
     process.argv = originalArgv.slice();
     process.chdir(originalCwd);
@@ -101,7 +107,7 @@ describe("cli index commands", () => {
     expect(logSpy).toHaveBeenCalledWith(
       expect.stringMatching(/Template: templates\/meta\.md/),
     );
-    expect(consoleWarnSpy!).toHaveBeenCalledWith(
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
       expect.stringMatching(/Repository "missing"/),
     );
     expect(process.exitCode).toBe(0);

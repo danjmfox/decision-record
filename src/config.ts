@@ -1,6 +1,6 @@
-import fs from "fs";
-import os from "os";
-import path from "path";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { load as loadYaml } from "js-yaml";
 
 export type RepoDefinitionSource = "local" | "global";
@@ -124,68 +124,40 @@ export function resolveRepoContext(
 
   const requestedRepoName = repoFlag ?? envRepo ?? defaultRepoName ?? null;
 
-  const layersForDefaultSource: {
-    localConfig?: NormalizedConfigLayer;
-    globalConfig?: NormalizedConfigLayer;
-  } = {};
-  if (localConfig) {
-    layersForDefaultSource.localConfig = localConfig;
-  }
-  if (globalConfig) {
-    layersForDefaultSource.globalConfig = globalConfig;
-  }
+  const layersForDefaultSource = collectLayersForDefaultSource(
+    localConfig,
+    globalConfig,
+  );
 
-  const requestedRepoSource =
-    repoFlag !== null
-      ? "cli"
-      : envRepo !== null
-        ? "env"
-        : defaultRepoName !== null
-          ? determineDefaultSource(defaultRepoName, layersForDefaultSource)
-          : undefined;
+  const requestedRepoSource = determineRequestedRepoSource(
+    repoFlag,
+    envRepo,
+    defaultRepoName,
+    layersForDefaultSource,
+  );
 
-  if (requestedRepoName) {
-    const repo = combinedRepos.get(requestedRepoName);
-    if (repo) {
-      return buildContext(repo, requestedRepoSource ?? sourceFromRepo(repo));
-    }
-
-    if (looksLikePath(requestedRepoName)) {
-      return {
-        root: resolvePath(requestedRepoName, cwd),
-        source: requestedRepoSource ?? "cli",
-        domainMap: {},
-      };
-    }
-
-    if (repoFlag !== null || envRepo !== null) {
-      throw new Error(
-        `Repository "${requestedRepoName}" not found in configuration`,
-      );
-    }
+  const explicitContext = resolveExplicitRepo({
+    requestedRepoName,
+    requestedRepoSource,
+    combinedRepos,
+    cwd,
+    repoFlagProvided: repoFlag !== null,
+    envRepoProvided: envRepo !== null,
+  });
+  if (explicitContext) {
+    return explicitContext;
   }
 
-  if (!requestedRepoName && combinedRepos.size === 1) {
-    const iterator = combinedRepos.values().next();
-    if (!iterator.done) {
-      const repo = iterator.value;
-      return buildContext(repo, requestedRepoSource ?? sourceFromRepo(repo));
-    }
+  const implicitContext = resolveImplicitRepo({
+    requestedRepoName,
+    combinedRepos,
+    requestedRepoSource,
+  });
+  if (implicitContext) {
+    return implicitContext;
   }
 
-  if (!requestedRepoName && combinedRepos.size > 1) {
-    const names = [...combinedRepos.keys()].join(", ");
-    throw new Error(
-      `Multiple repositories configured (${names}). Specify one with --repo or DRCTL_REPO.`,
-    );
-  }
-
-  const fallback = selectFallbackRoot(cwd);
-  return {
-    root: fallback.root,
-    source: fallback.source,
-    domainMap: {},
-  };
+  return buildFallbackContext(cwd);
 }
 
 export function resolveConfigPath(input: string, cwd: string): string {
@@ -204,82 +176,13 @@ export function diagnoseConfig(
   const defaultRepoName =
     layers.localConfig?.defaultRepo ?? layers.globalConfig?.defaultRepo;
 
-  const warnings: string[] = [];
-  const errors: string[] = [];
-  const repos: RepoDiagnostic[] = [];
-  for (const repo of combinedRepos.values()) {
-    const exists = fs.existsSync(repo.root);
-    const gitInitialized =
-      exists && fs.existsSync(path.join(repo.root, ".git"));
-    const templateAbsolute =
-      repo.defaultTemplate && exists
-        ? resolveTemplatePath(repo.root, repo.defaultTemplate)
-        : undefined;
-    const templateRelative =
-      templateAbsolute !== undefined
-        ? path.relative(repo.root, templateAbsolute)
-        : undefined;
-    repos.push({
-      name: repo.name,
-      root: repo.root,
-      definitionSource: repo.definitionSource,
-      configPath: repo.configPath,
-      domainMap: repo.domainMap,
-      ...(repo.defaultDomainDir
-        ? { defaultDomainDir: repo.defaultDomainDir }
-        : {}),
-      ...(repo.defaultTemplate
-        ? { defaultTemplate: repo.defaultTemplate }
-        : {}),
-      exists,
-      gitInitialized,
-    });
-    if (repo.defaultTemplate && exists) {
-      if (!templateAbsolute || !fs.existsSync(templateAbsolute)) {
-        warnings.push(
-          `Template "${repo.defaultTemplate}" not found for repository "${repo.name}".`,
-        );
-      } else if (
-        templateRelative &&
-        (templateRelative.startsWith("..") || path.isAbsolute(templateRelative))
-      ) {
-        warnings.push(
-          `Template "${repo.defaultTemplate}" for repository "${repo.name}" is outside the repo root (${templateAbsolute}).`,
-        );
-      }
-    }
-  }
+  const collector = new DiagnosticsCollector(defaultRepoName);
+  collector.collectRepoDiagnostics(combinedRepos.values());
+  collector.ensureWarningsForEmptyRepoList();
+  collector.ensureWarningsForMissingRepos();
+  collector.ensureDefaultRepoWarning();
 
-  if (repos.length === 0) {
-    warnings.push(
-      "No repositories configured. Create a .drctl.yaml to get started.",
-    );
-  }
-
-  for (const repo of repos) {
-    if (!repo.exists) {
-      warnings.push(
-        `Repository "${repo.name}" points to missing path: ${repo.root}`,
-      );
-    } else if (!repo.gitInitialized) {
-      warnings.push(
-        `Repository "${repo.name}" is not a git repository. Run "drctl repo bootstrap ${repo.name}" to initialise git.`,
-      );
-    }
-  }
-
-  if (repos.length > 1 && !defaultRepoName) {
-    warnings.push(
-      "Multiple repositories configured but no defaultRepo specified.",
-    );
-  }
-
-  const diagnostics: ConfigDiagnostics = {
-    cwd,
-    repos,
-    warnings,
-    errors,
-  };
+  const diagnostics: ConfigDiagnostics = collector.toDiagnostics(cwd);
   if (layers.localConfigPath) {
     diagnostics.localConfigPath = layers.localConfigPath;
   }
@@ -328,6 +231,116 @@ function buildContext(
   return context;
 }
 
+function collectLayersForDefaultSource(
+  localConfig?: NormalizedConfigLayer,
+  globalConfig?: NormalizedConfigLayer,
+): {
+  localConfig?: NormalizedConfigLayer;
+  globalConfig?: NormalizedConfigLayer;
+} {
+  const layers: {
+    localConfig?: NormalizedConfigLayer;
+    globalConfig?: NormalizedConfigLayer;
+  } = {};
+  if (localConfig) layers.localConfig = localConfig;
+  if (globalConfig) layers.globalConfig = globalConfig;
+  return layers;
+}
+
+function determineRequestedRepoSource(
+  repoFlag: string | null,
+  envRepo: string | null,
+  defaultRepoName: string | null,
+  layersForDefaultSource: {
+    localConfig?: NormalizedConfigLayer;
+    globalConfig?: NormalizedConfigLayer;
+  },
+): RepoResolutionSource | undefined {
+  if (repoFlag !== null) return "cli";
+  if (envRepo !== null) return "env";
+  if (defaultRepoName === null) return undefined;
+  return determineDefaultSource(defaultRepoName, layersForDefaultSource);
+}
+
+function resolveExplicitRepo(options: {
+  requestedRepoName: string | null;
+  requestedRepoSource: RepoResolutionSource | undefined;
+  combinedRepos: Map<string, NormalizedRepo>;
+  cwd: string;
+  repoFlagProvided: boolean;
+  envRepoProvided: boolean;
+}): RepoContext | null {
+  const {
+    requestedRepoName,
+    requestedRepoSource,
+    combinedRepos,
+    cwd,
+    repoFlagProvided,
+    envRepoProvided,
+  } = options;
+
+  if (!requestedRepoName) return null;
+
+  const repo = combinedRepos.get(requestedRepoName);
+  if (repo) {
+    return buildContext(repo, requestedRepoSource ?? sourceFromRepo(repo));
+  }
+
+  if (looksLikePath(requestedRepoName)) {
+    return {
+      root: resolvePath(requestedRepoName, cwd),
+      source: requestedRepoSource ?? "cli",
+      domainMap: {},
+    };
+  }
+
+  if (repoFlagProvided || envRepoProvided) {
+    throw new Error(
+      `Repository "${requestedRepoName}" not found in configuration`,
+    );
+  }
+
+  return null;
+}
+
+function resolveImplicitRepo(options: {
+  requestedRepoName: string | null;
+  combinedRepos: Map<string, NormalizedRepo>;
+  requestedRepoSource: RepoResolutionSource | undefined;
+}): RepoContext | null {
+  const { requestedRepoName, combinedRepos, requestedRepoSource } = options;
+
+  if (requestedRepoName) {
+    return null;
+  }
+
+  if (combinedRepos.size === 1) {
+    const iterator = combinedRepos.values().next();
+    if (!iterator.done) {
+      const repo = iterator.value;
+      return buildContext(repo, requestedRepoSource ?? sourceFromRepo(repo));
+    }
+  }
+
+  if (combinedRepos.size > 1) {
+    const names = [...combinedRepos.keys()].join(", ");
+    throw new Error(
+      `Multiple repositories configured (${names}). Specify one with --repo or DRCTL_REPO.`,
+    );
+  }
+
+  return null;
+}
+
+function buildFallbackContext(cwd: string): RepoContext {
+  const fallback = selectFallbackRoot(cwd);
+  return {
+    root: fallback.root,
+    source: fallback.source,
+    domainMap: {},
+  };
+}
+
 function sourceFromRepo(repo: NormalizedRepo): RepoResolutionSource {
   return repo.definitionSource === "local" ? "local-config" : "global-config";
 }
@@ -352,6 +365,114 @@ function sanitizeString(value: string | null | undefined): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed.length === 0 ? null : trimmed;
+}
+
+class DiagnosticsCollector {
+  private readonly warnings: string[] = [];
+  private readonly errors: string[] = [];
+  private readonly repos: RepoDiagnostic[] = [];
+
+  constructor(private readonly defaultRepoName: string | undefined | null) {}
+
+  collectRepoDiagnostics(repos: Iterable<NormalizedRepo>): void {
+    for (const repo of repos) {
+      this.addRepoDiagnostic(repo);
+    }
+  }
+
+  ensureWarningsForEmptyRepoList(): void {
+    if (this.repos.length === 0) {
+      this.warnings.push(
+        "No repositories configured. Create a .drctl.yaml to get started.",
+      );
+    }
+  }
+
+  ensureWarningsForMissingRepos(): void {
+    for (const repo of this.repos) {
+      if (!repo.exists) {
+        this.warnings.push(
+          `Repository "${repo.name}" points to missing path: ${repo.root}`,
+        );
+      } else if (!repo.gitInitialized) {
+        this.warnings.push(
+          `Repository "${repo.name}" is not a git repository. Run "drctl repo bootstrap ${repo.name}" to initialise git.`,
+        );
+      }
+    }
+  }
+
+  ensureDefaultRepoWarning(): void {
+    if (this.repos.length > 1 && !this.defaultRepoName) {
+      this.warnings.push(
+        "Multiple repositories configured but no defaultRepo specified.",
+      );
+    }
+  }
+
+  toDiagnostics(cwd: string): ConfigDiagnostics {
+    return {
+      cwd,
+      warnings: this.warnings,
+      errors: this.errors,
+      repos: this.repos,
+    };
+  }
+
+  private addRepoDiagnostic(repo: NormalizedRepo): void {
+    const exists = fs.existsSync(repo.root);
+    const gitInitialized =
+      exists && fs.existsSync(path.join(repo.root, ".git"));
+    const templateAbsolute =
+      repo.defaultTemplate && exists
+        ? resolveTemplatePath(repo.root, repo.defaultTemplate)
+        : undefined;
+    const templateRelative =
+      templateAbsolute === undefined
+        ? undefined
+        : path.relative(repo.root, templateAbsolute);
+
+    this.repos.push({
+      name: repo.name,
+      root: repo.root,
+      definitionSource: repo.definitionSource,
+      configPath: repo.configPath,
+      domainMap: repo.domainMap,
+      ...(repo.defaultDomainDir
+        ? { defaultDomainDir: repo.defaultDomainDir }
+        : {}),
+      ...(repo.defaultTemplate
+        ? { defaultTemplate: repo.defaultTemplate }
+        : {}),
+      exists,
+      gitInitialized,
+    });
+
+    if (repo.defaultTemplate && exists) {
+      this.ensureTemplateWarnings(repo, templateAbsolute, templateRelative);
+    }
+  }
+
+  private ensureTemplateWarnings(
+    repo: NormalizedRepo,
+    templateAbsolute: string | undefined,
+    templateRelative: string | undefined,
+  ): void {
+    if (!templateAbsolute || !fs.existsSync(templateAbsolute)) {
+      this.warnings.push(
+        `Template "${repo.defaultTemplate}" not found for repository "${repo.name}".`,
+      );
+      return;
+    }
+    if (
+      templateRelative &&
+      (templateRelative.startsWith("..") || path.isAbsolute(templateRelative))
+    ) {
+      this.warnings.push(
+        `Template "${repo.defaultTemplate}" for repository "${repo.name}" is outside the repo root (${templateAbsolute}).`,
+      );
+    }
+  }
 }
 
 function findConfigRecursive(startDir: string): string | undefined {
@@ -500,22 +621,77 @@ function firstString(value: unknown): string | undefined {
 function resolvePath(p: string, baseDir: string): string {
   const envExpanded = expandEnvVars(p);
   const withHome = expandTilde(envExpanded);
-  const normalized = withHome.replace(/\\/g, path.sep);
+  const normalized = withHome.replaceAll("\\", path.sep);
   if (path.isAbsolute(normalized)) {
     return path.normalize(normalized);
   }
   return path.resolve(baseDir, normalized);
 }
 
+/**
+ * Replaces environment variables in a string with their values.
+ * Supports both ${VARIABLE_NAME} and $VARIABLE_NAME formats.
+ * If the variable is not set, it will be replaced with an empty string.
+ * @param input The string to replace environment variables in.
+ * @returns The string with environment variables replaced.
+ */
 function expandEnvVars(input: string): string {
-  return input.replace(
-    /\$\{([^}]+)\}|\$([A-Za-z_][A-Za-z0-9_]*)/g,
-    (_, group1, group2) => {
-      const key = group1 ?? group2;
-      if (!key) return "";
-      return process.env[key] ?? "";
-    },
+  let result = "";
+  let index = 0;
+  while (index < input.length) {
+    const char = input.charAt(index);
+    if (char !== "$") {
+      result += char;
+      index += 1;
+      continue;
+    }
+
+    const nextIndex = index + 1;
+    if (nextIndex >= input.length) {
+      result += char;
+      index += 1;
+      continue;
+    }
+
+    const nextChar = input.charAt(nextIndex);
+    if (nextChar === "{") {
+      const endBrace = input.indexOf("}", nextIndex + 1);
+      if (endBrace === -1 || endBrace === nextIndex + 1) {
+        result += char;
+        index += 1;
+        continue;
+      }
+      const key = input.slice(nextIndex + 1, endBrace);
+      result += process.env[key] ?? "";
+      index = endBrace + 1;
+      continue;
+    }
+
+    if (!isEnvVarStart(nextChar)) {
+      result += char;
+      index += 1;
+      continue;
+    }
+
+    let cursor = nextIndex + 1;
+    while (cursor < input.length && isEnvVarChar(input.charAt(cursor))) {
+      cursor += 1;
+    }
+    const key = input.slice(nextIndex, cursor);
+    result += process.env[key] ?? "";
+    index = cursor;
+  }
+  return result;
+}
+
+function isEnvVarStart(char: string): boolean {
+  return (
+    (char >= "A" && char <= "Z") || (char >= "a" && char <= "z") || char === "_"
   );
+}
+
+function isEnvVarChar(char: string): boolean {
+  return isEnvVarStart(char) || (char >= "0" && char <= "9");
 }
 
 function resolveTemplatePath(repoRoot: string, templatePath: string): string {

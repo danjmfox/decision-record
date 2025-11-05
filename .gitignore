@@ -209,3 +209,4 @@ home-decisions/
 
 # CI artifacts
 test-results.junit.xml
+.scannerwork
