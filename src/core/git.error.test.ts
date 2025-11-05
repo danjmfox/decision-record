@@ -8,7 +8,7 @@ type ExecCallback = (
 
 function mockExecFailure(message: string): void {
   const execMock = vi.fn((...args: unknown[]) => {
-    const callback = args[args.length - 1] as unknown;
+    const callback = args.at(-1);
     if (typeof callback === "function") {
       (callback as ExecCallback)(new Error(message), "", "");
     }
