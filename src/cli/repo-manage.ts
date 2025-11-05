@@ -157,37 +157,53 @@ function ensureRepoMap(
   value: unknown,
 ): Record<string, Record<string, unknown>> {
   const normalized: Record<string, Record<string, unknown>> = {};
-  const candidate =
-    value && typeof value === "object" && !Array.isArray(value)
-      ? extractFlatRepoDefinition(value as Record<string, unknown>)
-      : null;
-
+  const candidate = extractFlatRepoCandidate(value);
   if (candidate) {
     normalized[candidate.name] = candidate.entry;
   }
-
   if (value && typeof value === "object" && !Array.isArray(value)) {
-    for (const [key, entryValue] of Object.entries(
-      value as Record<string, unknown>,
-    )) {
-      if (
-        candidate &&
-        (key === "name" ||
-          key === "path" ||
-          key === "defaultDomainDir" ||
-          key === "domains")
-      ) {
-        continue;
-      }
-      if (entryValue && typeof entryValue === "object") {
-        normalized[key] = { ...(entryValue as Record<string, unknown>) };
-      } else if (typeof entryValue === "string") {
-        normalized[key] = { path: entryValue };
-      }
+    addConfigEntries(normalized, value as Record<string, unknown>, candidate);
+  }
+  return normalized;
+}
+
+function extractFlatRepoCandidate(
+  value: unknown,
+): { name: string; entry: Record<string, unknown> } | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  return extractFlatRepoDefinition(value as Record<string, unknown>);
+}
+
+function addConfigEntries(
+  normalized: Record<string, Record<string, unknown>>,
+  value: Record<string, unknown>,
+  candidate: { name: string; entry: Record<string, unknown> } | null,
+): void {
+  for (const [key, entryValue] of Object.entries(value)) {
+    if (shouldSkipFlatCandidateKey(candidate, key)) {
+      continue;
+    }
+    if (entryValue && typeof entryValue === "object") {
+      normalized[key] = { ...(entryValue as Record<string, unknown>) };
+    } else if (typeof entryValue === "string") {
+      normalized[key] = { path: entryValue };
     }
   }
+}
 
-  return normalized;
+function shouldSkipFlatCandidateKey(
+  candidate: { name: string } | null,
+  key: string,
+): boolean {
+  if (!candidate) return false;
+  return (
+    key === "name" ||
+    key === "path" ||
+    key === "defaultDomainDir" ||
+    key === "domains"
+  );
 }
 
 function extractFlatRepoDefinition(

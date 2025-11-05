@@ -212,7 +212,7 @@ describe("createRepoEntry", () => {
       string,
       Record<string, unknown>
     >;
-    const repos = parsed.repos;
+    const repos = parsed.repos as Record<string, { path?: string }>;
     expect(Object.keys(repos ?? {})).toEqual(
       expect.arrayContaining(["legacy", "work"]),
     );
@@ -240,7 +240,9 @@ describe("createRepoEntry", () => {
       string,
       Record<string, unknown>
     >;
-    expect(parsed.repos?.docs?.path).toBe("./docs");
+    const repos =
+      (parsed.repos as Record<string, { path?: string }> | undefined) ?? {};
+    expect(repos.docs?.path).toBe("./docs");
   });
 
   it("treats non-object existing configs as empty", () => {
@@ -260,7 +262,9 @@ describe("createRepoEntry", () => {
       string,
       Record<string, unknown>
     >;
-    expect(parsed.repos?.docs?.path).toBe("./docs");
+    const repos =
+      (parsed.repos as Record<string, { path?: string }> | undefined) ?? {};
+    expect(repos.docs?.path).toBe("./docs");
   });
 });
 
