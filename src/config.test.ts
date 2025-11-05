@@ -436,6 +436,30 @@ repos:
     expect(context.root).toBe(fallbackDir);
   });
 
+  it("ignores repo entries without object configuration", () => {
+    const dir = makeTempDir();
+    fs.writeFileSync(path.join(dir, ".drctl.yaml"), `repos:\n  invalid: 123\n`);
+
+    expect(() => resolveRepoContext({ cwd: dir, repoFlag: "invalid" })).toThrow(
+      /Repository "invalid" not found/,
+    );
+  });
+
+  it("trims the configured default repo name", () => {
+    const dir = makeTempDir();
+    const repoRoot = path.join(dir, "repo");
+    fs.mkdirSync(repoRoot, { recursive: true });
+    fs.writeFileSync(
+      path.join(dir, ".drctl.yaml"),
+      `defaultRepo: " work "\nrepos:\n  work:\n    path: ./repo\n`,
+    );
+
+    const context = resolveRepoContext({ cwd: dir });
+
+    expect(context.name).toBe("work");
+    expect(context.root).toBe(path.resolve(repoRoot));
+  });
+
   it("honours DRCTL_CONFIG when no config path is supplied", () => {
     const base = makeTempDir();
     const workspace = path.join(base, "repo");

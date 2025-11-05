@@ -152,6 +152,25 @@ describe("cli index commands", () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
+  it("reports git initialisation status in config check", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
+    const repoDir = path.join(tempDir, "workspace");
+    fs.mkdirSync(path.join(repoDir, ".git"), { recursive: true });
+    fs.writeFileSync(
+      path.join(tempDir, ".drctl.yaml"),
+      `repos:\n  work:\n    path: ./workspace\n`,
+    );
+    process.chdir(tempDir);
+    process.argv = ["node", "drctl", "config", "check"];
+
+    await import("./index.js");
+
+    const logs = collectLogLines().join("\n");
+    expect(logs).toMatch(/git: initialised/);
+
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
   it("mentions config overrides in repo help output", async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
     process.chdir(tempDir);
