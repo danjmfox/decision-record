@@ -1,9 +1,9 @@
 ---
 id: DR--20251105--meta--git-optional-lifecycle
 dateCreated: "2025-11-05"
-version: 1.0.0
+version: 1.0.1
 status: accepted
-changeType: creation
+changeType: correction
 domain: meta
 slug: git-optional-lifecycle
 changelog:
@@ -15,6 +15,8 @@ changelog:
     note: Marked as proposed
   - date: "2025-11-05"
     note: Marked as accepted
+  - date: "2025-11-05"
+    note: clarify lifecycle section usage
 lastEdited: "2025-11-05"
 dateAccepted: "2025-11-05"
 ---
@@ -59,7 +61,7 @@ The CLI stays git-first—gitless operation is explicit opt-in with visible audi
 
 ## 🔁 Lifecycle
 
-Status: `draft`. Implementation, documentation, and validation updates will determine acceptance.
+Lifecycle status is recorded in the YAML frontmatter; use `drctl` lifecycle commands to advance states and capture changelog entries. Track implementation, documentation, and regression tests as follow-on actions.
 
 ## 🧩 Reasoning
 
