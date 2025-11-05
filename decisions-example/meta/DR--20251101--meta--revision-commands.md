@@ -2,7 +2,7 @@
 id: DR--20251101--meta--revision-commands
 dateCreated: "2025-11-01"
 version: 1.0.1
-status: draft
+status: proposed
 changeType: correction
 domain: meta
 slug: revision-commands
@@ -13,7 +13,9 @@ changelog:
     note: Marked as draft
   - date: "2025-11-01"
     note: Removed duplicate template section
-lastEdited: "2025-11-01"
+  - date: "2025-11-05"
+    note: Marked as proposed
+lastEdited: "2025-11-05"
 ---
 
 # DR--20251101--meta--revision-commands
