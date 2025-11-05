@@ -36,6 +36,8 @@ import { validateRepository } from "../core/governance.js";
 
 interface GlobalCliOptions {
   repo?: string;
+  git?: boolean;
+  noGit?: boolean;
 }
 
 const packageVersion =
@@ -49,6 +51,8 @@ program
 
 program.option("--repo <repo>", "target repo alias or path");
 program.option("--config <config>", "path to drctl configuration file");
+program.option("--git", "force git-backed lifecycle commands (default: auto)");
+program.option("--no-git", "disable git integration for lifecycle commands");
 
 const repoCommand = new Command("repo")
   .description("Show or manage repository configuration")
@@ -520,9 +524,13 @@ function logRepositoryEntry(repo: RepoDiagnostic): void {
     repo.definitionSource === "local" ? "local-config" : "global-config";
   let gitLabel = "git: n/a";
   if (repo.exists) {
-    gitLabel = repo.gitInitialized
-      ? "git: initialised"
-      : "git: not initialised";
+    if (repo.gitMode === "disabled" && repo.gitModeSource !== "detected") {
+      gitLabel = `git: disabled (${repo.gitModeSource})`;
+    } else {
+      gitLabel = repo.gitInitialized
+        ? "git: initialised"
+        : "git: not initialised";
+    }
   }
   console.log(
     `   ${status} ${repo.name} → ${repo.root} (${sourceLabel}, ${gitLabel})`,
@@ -540,7 +548,22 @@ function resolveRepoOptions(
 ): RepoOptions & { context: RepoContext } {
   const repoOptions = collectRepoOptions(command);
   const context = resolveContext(repoOptions);
-  return { ...repoOptions, context };
+  const merged: RepoOptions & { context: RepoContext } = {
+    ...repoOptions,
+    context,
+  };
+  if (!merged.onGitDisabled) {
+    let notified = false;
+    merged.onGitDisabled = ({ context: ctx }) => {
+      if (notified) return;
+      notified = true;
+      const label = ctx.name ? `repo "${ctx.name}"` : ctx.root;
+      console.log(
+        `ℹ️ Git disabled for ${label}; lifecycle commands leave changes unstaged.`,
+      );
+    };
+  }
+  return merged;
 }
 
 function handleAction<T extends unknown[]>(
