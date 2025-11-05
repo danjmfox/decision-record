@@ -459,7 +459,6 @@ repos:
     expect(context.name).toBe("work");
     expect(context.root).toBe(path.resolve(repoRoot));
   });
-
   it("honours DRCTL_CONFIG when no config path is supplied", () => {
     const base = makeTempDir();
     const workspace = path.join(base, "repo");
