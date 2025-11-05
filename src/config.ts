@@ -3,6 +3,10 @@ import os from "node:os";
 import path from "node:path";
 import { load as loadYaml } from "js-yaml";
 
+export type GitMode = "enabled" | "disabled";
+export type GitModeSource = "cli" | "env" | "config" | "detected";
+export type GitModeOverrideSource = Exclude<GitModeSource, "detected">;
+
 export type RepoDefinitionSource = "local" | "global";
 
 export type RepoResolutionSource =
@@ -22,6 +26,9 @@ export interface RepoContext {
   domainMap: Record<string, string>;
   defaultDomainDir?: string;
   defaultTemplate?: string;
+  gitMode: GitMode;
+  gitModeSource: GitModeSource;
+  gitModeOverrideCleared?: GitModeOverrideSource;
 }
 
 export interface RepoDiagnostic {
@@ -34,6 +41,8 @@ export interface RepoDiagnostic {
   defaultTemplate?: string;
   exists: boolean;
   gitInitialized: boolean;
+  gitMode: GitMode;
+  gitModeSource: GitModeSource;
 }
 
 export interface ConfigDiagnostics {
@@ -51,6 +60,7 @@ export interface ResolveRepoOptions {
   envRepo?: string | null;
   cwd?: string;
   configPath?: string | null;
+  gitModeFlag?: GitMode | string | null;
 }
 
 interface RawDrctlConfig {
@@ -67,6 +77,7 @@ interface RawRepoConfig {
   defaultDomainDir?: unknown;
   domainRoot?: unknown;
   template?: unknown;
+  git?: unknown;
 }
 
 interface RawDomainConfig {
@@ -81,6 +92,7 @@ interface NormalizedRepo {
   domainMap: Record<string, string>;
   defaultDomainDir?: string;
   defaultTemplate?: string;
+  gitMode?: GitMode;
   definitionSource: RepoDefinitionSource;
   configPath: string;
 }
@@ -111,6 +123,8 @@ export function resolveRepoContext(
   const envRepo = sanitizeString(options.envRepo ?? process.env.DRCTL_REPO);
   const explicitConfigPath = sanitizeString(options.configPath);
   const envConfigPath = sanitizeString(process.env.DRCTL_CONFIG);
+  const gitFlag = coerceGitMode(options.gitModeFlag ?? null);
+  const gitEnv = coerceGitMode(process.env.DRCTL_GIT);
 
   const { localConfig, globalConfig } = loadConfigLayers(cwd, {
     explicitConfigPath,
@@ -145,7 +159,7 @@ export function resolveRepoContext(
     envRepoProvided: envRepo !== null,
   });
   if (explicitContext) {
-    return explicitContext;
+    return finalizeContext(explicitContext, { gitFlag, gitEnv });
   }
 
   const implicitContext = resolveImplicitRepo({
@@ -154,10 +168,10 @@ export function resolveRepoContext(
     requestedRepoSource,
   });
   if (implicitContext) {
-    return implicitContext;
+    return finalizeContext(implicitContext, { gitFlag, gitEnv });
   }
 
-  return buildFallbackContext(cwd);
+  return finalizeContext(buildFallbackContext(cwd), { gitFlag, gitEnv });
 }
 
 export function resolveConfigPath(input: string, cwd: string): string {
@@ -210,6 +224,11 @@ export function resolveDomainDir(context: RepoContext, domain: string): string {
   return path.resolve(context.root, relative);
 }
 
+interface ContextResolution {
+  context: RepoContext;
+  repo?: NormalizedRepo;
+}
+
 function buildContext(
   repo: NormalizedRepo,
   source: RepoResolutionSource,
@@ -221,6 +240,8 @@ function buildContext(
     definitionSource: repo.definitionSource,
     configPath: repo.configPath,
     domainMap: repo.domainMap,
+    gitMode: "disabled",
+    gitModeSource: "detected",
   };
   if (repo.defaultDomainDir) {
     context.defaultDomainDir = repo.defaultDomainDir;
@@ -269,7 +290,7 @@ function resolveExplicitRepo(options: {
   cwd: string;
   repoFlagProvided: boolean;
   envRepoProvided: boolean;
-}): RepoContext | null {
+}): ContextResolution | null {
   const {
     requestedRepoName,
     requestedRepoSource,
@@ -283,14 +304,21 @@ function resolveExplicitRepo(options: {
 
   const repo = combinedRepos.get(requestedRepoName);
   if (repo) {
-    return buildContext(repo, requestedRepoSource ?? sourceFromRepo(repo));
+    return {
+      context: buildContext(repo, requestedRepoSource ?? sourceFromRepo(repo)),
+      repo,
+    };
   }
 
   if (looksLikePath(requestedRepoName)) {
     return {
-      root: resolvePath(requestedRepoName, cwd),
-      source: requestedRepoSource ?? "cli",
-      domainMap: {},
+      context: {
+        root: resolvePath(requestedRepoName, cwd),
+        source: requestedRepoSource ?? "cli",
+        domainMap: {},
+        gitMode: "disabled",
+        gitModeSource: "detected",
+      },
     };
   }
 
@@ -307,7 +335,7 @@ function resolveImplicitRepo(options: {
   requestedRepoName: string | null;
   combinedRepos: Map<string, NormalizedRepo>;
   requestedRepoSource: RepoResolutionSource | undefined;
-}): RepoContext | null {
+}): ContextResolution | null {
   const { requestedRepoName, combinedRepos, requestedRepoSource } = options;
 
   if (requestedRepoName) {
@@ -318,7 +346,13 @@ function resolveImplicitRepo(options: {
     const iterator = combinedRepos.values().next();
     if (!iterator.done) {
       const repo = iterator.value;
-      return buildContext(repo, requestedRepoSource ?? sourceFromRepo(repo));
+      return {
+        context: buildContext(
+          repo,
+          requestedRepoSource ?? sourceFromRepo(repo),
+        ),
+        repo,
+      };
     }
   }
 
@@ -332,13 +366,76 @@ function resolveImplicitRepo(options: {
   return null;
 }
 
-function buildFallbackContext(cwd: string): RepoContext {
+function buildFallbackContext(cwd: string): ContextResolution {
   const fallback = selectFallbackRoot(cwd);
   return {
-    root: fallback.root,
-    source: fallback.source,
-    domainMap: {},
+    context: {
+      root: fallback.root,
+      source: fallback.source,
+      domainMap: {},
+      gitMode: "disabled",
+      gitModeSource: "detected",
+    },
   };
+}
+
+function finalizeContext(
+  resolution: ContextResolution,
+  overrides: { gitFlag: GitMode | null; gitEnv: GitMode | null },
+): RepoContext {
+  const { context, repo } = resolution;
+  const gitResult = resolveGitMode({
+    root: context.root,
+    gitFlag: overrides.gitFlag,
+    gitEnv: overrides.gitEnv,
+    gitConfig: repo?.gitMode ?? null,
+  });
+  context.gitMode = gitResult.mode;
+  context.gitModeSource = gitResult.source;
+  if (gitResult.overrideCleared) {
+    context.gitModeOverrideCleared = gitResult.overrideCleared;
+  } else if (context.gitModeOverrideCleared) {
+    delete context.gitModeOverrideCleared;
+  }
+  return context;
+}
+
+function resolveGitMode(options: {
+  root: string;
+  gitFlag: GitMode | null;
+  gitEnv: GitMode | null;
+  gitConfig: GitMode | null;
+}): {
+  mode: GitMode;
+  source: GitModeSource;
+  overrideCleared?: GitModeOverrideSource;
+} {
+  const gitExists = fs.existsSync(path.join(options.root, ".git"));
+  const detected: GitMode = gitExists ? "enabled" : "disabled";
+
+  const cascade: Array<{ value: GitMode | null; source: GitModeSource }> = [
+    { value: options.gitFlag, source: "cli" },
+    { value: options.gitEnv, source: "env" },
+    { value: options.gitConfig, source: "config" },
+  ];
+
+  for (const entry of cascade) {
+    if (!entry.value) continue;
+    if (entry.value === "disabled" && gitExists) {
+      const overrideSource =
+        entry.source === "detected" ? undefined : entry.source;
+      if (overrideSource) {
+        return {
+          mode: "enabled",
+          source: "detected",
+          overrideCleared: overrideSource,
+        };
+      }
+    }
+    return { mode: entry.value, source: entry.source };
+  }
+
+  return { mode: detected, source: "detected" };
 }
 
 function sourceFromRepo(repo: NormalizedRepo): RepoResolutionSource {
@@ -365,6 +462,40 @@ function sanitizeString(value: string | null | undefined): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed.length === 0 ? null : trimmed;
+}
+
+function coerceGitMode(value: unknown): GitMode | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (
+      normalized === "enabled" ||
+      normalized === "enable" ||
+      normalized === "on" ||
+      normalized === "true" ||
+      normalized === "1" ||
+      normalized === "yes"
+    ) {
+      return "enabled";
+    }
+    if (
+      normalized === "disabled" ||
+      normalized === "disable" ||
+      normalized === "off" ||
+      normalized === "false" ||
+      normalized === "0" ||
+      normalized === "no"
+    ) {
+      return "disabled";
+    }
+    return null;
+  }
+  if (typeof value === "boolean") {
+    return value ? "enabled" : "disabled";
+  }
+  return null;
 }
 
 class DiagnosticsCollector {
@@ -394,7 +525,7 @@ class DiagnosticsCollector {
         this.warnings.push(
           `Repository "${repo.name}" points to missing path: ${repo.root}`,
         );
-      } else if (!repo.gitInitialized) {
+      } else if (!repo.gitInitialized && repo.gitModeSource === "detected") {
         this.warnings.push(
           `Repository "${repo.name}" is not a git repository. Run "drctl repo bootstrap ${repo.name}" to initialise git.`,
         );
@@ -423,6 +554,12 @@ class DiagnosticsCollector {
     const exists = fs.existsSync(repo.root);
     const gitInitialized =
       exists && fs.existsSync(path.join(repo.root, ".git"));
+    const gitResolution = resolveGitMode({
+      root: repo.root,
+      gitFlag: null,
+      gitEnv: null,
+      gitConfig: repo.gitMode ?? null,
+    });
     const templateAbsolute =
       repo.defaultTemplate && exists
         ? resolveTemplatePath(repo.root, repo.defaultTemplate)
@@ -446,6 +583,8 @@ class DiagnosticsCollector {
         : {}),
       exists,
       gitInitialized,
+      gitMode: gitResolution.mode,
+      gitModeSource: gitResolution.source,
     });
 
     if (repo.defaultTemplate && exists) {
@@ -592,6 +731,10 @@ function normalizeRepoConfig(
   }
   if (defaultTemplate) {
     normalized.defaultTemplate = defaultTemplate;
+  }
+  const configGitMode = coerceGitMode(raw.git);
+  if (configGitMode) {
+    normalized.gitMode = configGitMode;
   }
   return normalized;
 }

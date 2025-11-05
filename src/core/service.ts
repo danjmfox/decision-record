@@ -10,7 +10,7 @@ import {
   getDecisionPath,
 } from "./repository.js";
 import { generateId } from "./utils.js";
-import type { RepoContext, ResolveRepoOptions } from "../config.js";
+import type { GitMode, RepoContext, ResolveRepoOptions } from "../config.js";
 import { resolveRepoContext } from "../config.js";
 import {
   createGitClient,
@@ -39,6 +39,8 @@ export interface RepoOptions {
   gitClient?: GitClient;
   configPath?: string;
   onTemplateWarning?: (message: string) => void;
+  gitModeFlag?: GitMode;
+  onGitDisabled?: (details: { context: RepoContext }) => void;
 }
 
 export interface CreateDecisionOptions extends RepoOptions {
@@ -99,6 +101,7 @@ export async function draftDecision(
   options: RepoOptions = {},
 ): Promise<DecisionWriteResult> {
   const context = ensureContext(options);
+  const workingOptions = withContext(options, context);
   const record = loadDecision(context, id);
   const today = new Date().toISOString().slice(0, 10);
   record.status = "draft";
@@ -107,10 +110,9 @@ export async function draftDecision(
   changelog.push({ date: today, note: "Marked as draft" });
   record.changelog = changelog;
   const filePath = saveDecision(context, record);
-  const gitClient = options.gitClient ?? createGitClient();
-  await stageAndCommitWithHint(
+  await commitIfEnabled(
     context,
-    gitClient,
+    workingOptions,
     [filePath],
     `drctl: draft ${record.id}`,
   );
@@ -123,8 +125,7 @@ export async function proposeDecision(
   options: RepoOptions = {},
 ): Promise<DecisionWriteResult> {
   const context = ensureContext(options);
-  const gitClient = options.gitClient ?? createGitClient();
-  const sharedOptions: RepoOptions = { ...options, context, gitClient };
+  const workingOptions = withContext(options, context);
   let record = loadDecision(context, id);
 
   if (!isProposableStatus(record.status)) {
@@ -137,7 +138,7 @@ export async function proposeDecision(
     record.status === "draft" &&
     !hasChangelogNote(record, "Marked as draft")
   ) {
-    await draftDecision(id, sharedOptions);
+    await draftDecision(id, workingOptions);
     record = loadDecision(context, id);
   }
 
@@ -155,9 +156,9 @@ export async function proposeDecision(
   changelog.push({ date: today, note: "Marked as proposed" });
   record.changelog = changelog;
   const filePath = saveDecision(context, record);
-  await stageAndCommitWithHint(
+  await commitIfEnabled(
     context,
-    gitClient,
+    workingOptions,
     [filePath],
     `drctl: propose ${record.id}`,
   );
@@ -170,8 +171,7 @@ export async function acceptDecision(
   options: RepoOptions = {},
 ): Promise<DecisionWriteResult> {
   const context = ensureContext(options);
-  const gitClient = options.gitClient ?? createGitClient();
-  const sharedOptions: RepoOptions = { ...options, context, gitClient };
+  const workingOptions = withContext(options, context);
   let rec = loadDecision(context, id);
   let warningsHandled = false;
 
@@ -182,12 +182,12 @@ export async function acceptDecision(
   }
 
   if (rec.status === "draft" && !hasChangelogNote(rec, "Marked as draft")) {
-    await draftDecision(id, sharedOptions);
+    await draftDecision(id, workingOptions);
     rec = loadDecision(context, id);
   }
 
   if (rec.status === "draft") {
-    await proposeDecision(id, sharedOptions);
+    await proposeDecision(id, workingOptions);
     rec = loadDecision(context, id);
     warningsHandled = true;
   }
@@ -209,9 +209,9 @@ export async function acceptDecision(
   changelog.push({ date: today, note: "Marked as accepted" });
   rec.changelog = changelog;
   const filePath = saveDecision(context, rec);
-  await stageAndCommitWithHint(
+  await commitIfEnabled(
     context,
-    gitClient,
+    workingOptions,
     [filePath],
     `drctl: accept ${rec.id}`,
   );
@@ -223,6 +223,7 @@ export async function rejectDecision(
   options: RepoOptions = {},
 ): Promise<DecisionWriteResult> {
   const context = ensureContext(options);
+  const workingOptions = withContext(options, context);
   const rec = loadDecision(context, id);
   const today = new Date().toISOString().slice(0, 10);
   rec.status = "rejected";
@@ -231,10 +232,9 @@ export async function rejectDecision(
   changelog.push({ date: today, note: "Marked as rejected" });
   rec.changelog = changelog;
   const filePath = saveDecision(context, rec);
-  const gitClient = options.gitClient ?? createGitClient();
-  await stageAndCommitWithHint(
+  await commitIfEnabled(
     context,
-    gitClient,
+    workingOptions,
     [filePath],
     `drctl: reject ${rec.id}`,
   );
@@ -246,6 +246,7 @@ export async function deprecateDecision(
   options: RepoOptions = {},
 ): Promise<DecisionWriteResult> {
   const context = ensureContext(options);
+  const workingOptions = withContext(options, context);
   const rec = loadDecision(context, id);
   const today = new Date().toISOString().slice(0, 10);
   rec.status = "deprecated";
@@ -254,10 +255,9 @@ export async function deprecateDecision(
   changelog.push({ date: today, note: "Marked as deprecated" });
   rec.changelog = changelog;
   const filePath = saveDecision(context, rec);
-  const gitClient = options.gitClient ?? createGitClient();
-  await stageAndCommitWithHint(
+  await commitIfEnabled(
     context,
-    gitClient,
+    workingOptions,
     [filePath],
     `drctl: deprecate ${rec.id}`,
   );
@@ -269,6 +269,7 @@ export async function retireDecision(
   options: RepoOptions = {},
 ): Promise<DecisionWriteResult> {
   const context = ensureContext(options);
+  const workingOptions = withContext(options, context);
   const rec = loadDecision(context, id);
   const today = new Date().toISOString().slice(0, 10);
   rec.status = "retired";
@@ -278,10 +279,9 @@ export async function retireDecision(
   changelog.push({ date: today, note: "Marked as retired" });
   rec.changelog = changelog;
   const filePath = saveDecision(context, rec);
-  const gitClient = options.gitClient ?? createGitClient();
-  await stageAndCommitWithHint(
+  await commitIfEnabled(
     context,
-    gitClient,
+    workingOptions,
     [filePath],
     `drctl: retire ${rec.id}`,
   );
@@ -294,6 +294,7 @@ export async function supersedeDecision(
   options: RepoOptions = {},
 ): Promise<SupersedeResult> {
   const context = ensureContext(options);
+  const workingOptions = withContext(options, context);
   const oldRecord = loadDecision(context, oldId);
   const newRecord = loadDecision(context, newId);
   const today = new Date().toISOString().slice(0, 10);
@@ -315,10 +316,9 @@ export async function supersedeDecision(
   const oldFilePath = saveDecision(context, oldRecord);
   const newFilePath = saveDecision(context, newRecord);
 
-  const gitClient = options.gitClient ?? createGitClient();
-  await stageAndCommitWithHint(
+  await commitIfEnabled(
     context,
-    gitClient,
+    workingOptions,
     [oldFilePath, newFilePath],
     `drctl: supersede ${oldId} -> ${newId}`,
   );
@@ -337,6 +337,7 @@ export async function correctionDecision(
   options: CorrectionOptions = {},
 ): Promise<DecisionWriteResult> {
   const context = ensureContext(options);
+  const workingOptions = withContext(options, context);
   const record = loadDecision(context, id);
   const today = new Date().toISOString().slice(0, 10);
 
@@ -351,10 +352,9 @@ export async function correctionDecision(
   record.changelog = changelog;
 
   const filePath = saveDecision(context, record);
-  const gitClient = options.gitClient ?? createGitClient();
-  await stageAndCommitWithHint(
+  await commitIfEnabled(
     context,
-    gitClient,
+    workingOptions,
     [filePath],
     `drctl: correction ${record.id}`,
   );
@@ -367,6 +367,7 @@ export async function reviseDecision(
   options: ReviseOptions = {},
 ): Promise<DecisionWriteResult> {
   const context = ensureContext(options);
+  const workingOptions = withContext(options, context);
   const record = loadDecision(context, id);
   const today = new Date().toISOString().slice(0, 10);
 
@@ -385,10 +386,9 @@ export async function reviseDecision(
   record.changelog = changelog;
 
   const filePath = saveDecision(context, record);
-  const gitClient = options.gitClient ?? createGitClient();
-  await stageAndCommitWithHint(
+  await commitIfEnabled(
     context,
-    gitClient,
+    workingOptions,
     [filePath],
     `drctl: revise ${record.id}`,
   );
@@ -405,6 +405,13 @@ export function listAll(
   return status ? all.filter((r) => r.status === status) : all;
 }
 
+function withContext(options: RepoOptions, context: RepoContext): RepoOptions {
+  if (options.context === context) {
+    return options;
+  }
+  return { ...options, context };
+}
+
 function ensureContext(options: RepoOptions): RepoContext {
   if (options.context) return options.context;
   const resolveOptions: ResolveRepoOptions = {
@@ -416,6 +423,9 @@ function ensureContext(options: RepoOptions): RepoContext {
   }
   if (options.configPath) {
     resolveOptions.configPath = options.configPath;
+  }
+  if (options.gitModeFlag) {
+    resolveOptions.gitModeFlag = options.gitModeFlag;
   }
   return resolveRepoContext(resolveOptions);
 }
@@ -731,6 +741,29 @@ function readDecisionFromFile(filePath: string): DecisionRecord | undefined {
   } catch {
     return undefined;
   }
+}
+
+function notifyGitDisabled(options: RepoOptions, context: RepoContext): void {
+  options.onGitDisabled?.({ context });
+}
+
+async function commitIfEnabled(
+  context: RepoContext,
+  options: RepoOptions,
+  paths: string[],
+  message: string,
+): Promise<void> {
+  if (context.gitMode === "disabled") {
+    notifyGitDisabled(options, context);
+    return;
+  }
+  if (paths.length === 0) {
+    return;
+  }
+  if (!options.gitClient) {
+    options.gitClient = createGitClient();
+  }
+  await stageAndCommitWithHint(context, options.gitClient, paths, message);
 }
 
 async function stageAndCommitWithHint(
