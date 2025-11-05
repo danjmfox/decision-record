@@ -11,23 +11,17 @@ import type { DecisionRecord } from "../core/models.js";
 function stringify(value: unknown): string {
   if (typeof value === "string") return value;
   if (value === undefined || value === null) return "";
-  if (
-    typeof value === "object" &&
-    value !== null &&
-    "toString" in value &&
-    typeof value.toString === "function" &&
-    value.toString !== Object.prototype.toString
-  ) {
-    return value.toString();
+  if (value instanceof Error) {
+    return value.message || value.name;
   }
-  try {
-    return JSON.stringify(value);
-  } catch {
-    if (value instanceof Error && value.message) {
-      return value.message;
+  if (typeof value === "object") {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return "[unserialisable value]";
     }
-    return "[unserialisable value]";
   }
+  return String(value);
 }
 
 describe("cli index commands", () => {
@@ -82,6 +76,10 @@ describe("cli index commands", () => {
     return consoleLogSpy;
   }
 
+  function collectLogLines(): string[] {
+    return getLogSpy().mock.calls.map((call: unknown[]) => stringify(call[0]));
+  }
+
   it("rejects --repo flag usage", async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
     process.argv = [
@@ -132,9 +130,9 @@ describe("cli index commands", () => {
     expect(logSpy).toHaveBeenCalledWith(
       expect.stringMatching(/Template: templates\/meta\.md/),
     );
-    const gitLines = logSpy.mock.calls
-      .map((call: unknown[]) => stringify(call[0]))
-      .filter((line: string) => line.includes("git: disabled"));
+    const gitLines = collectLogLines().filter((line: string) =>
+      line.includes("git: disabled"),
+    );
     expect(gitLines.length).toBeGreaterThan(0);
     expect(consoleWarnSpy).toHaveBeenCalledWith(
       expect.stringMatching(/Repository "missing"/),
@@ -178,9 +176,7 @@ describe("cli index commands", () => {
 
     await import("./index.js");
 
-    const logMessages = getLogSpy().mock.calls.map((call: unknown[]) => {
-      return stringify(call[0]);
-    });
+    const logMessages = collectLogLines();
     expect(
       logMessages.some((msg: string) => /Initialised git repository/.test(msg)),
     ).toBe(true);
@@ -228,9 +224,7 @@ describe("cli index commands", () => {
 
     await import("./index.js");
 
-    const logMessages = getLogSpy().mock.calls.map((call: unknown[]) => {
-      return stringify(call[0]);
-    });
+    const logMessages = collectLogLines();
     expect(
       logMessages.some((msg: string) => /Default repo.*home/.test(msg)),
     ).toBe(true);
@@ -310,9 +304,7 @@ describe("cli index commands", () => {
 
     await import("./index.js");
 
-    const logs = getLogSpy().mock.calls.map((call: unknown[]) =>
-      stringify(call[0]),
-    );
+    const logs = collectLogLines();
     expect(logs.join("\n")).toMatch(/Governance validation/);
     expect(logs.join("\n")).toMatch(/missing-supersede-link/);
     expect(process.exitCode).toBe(1);
@@ -407,9 +399,9 @@ defaultRepo: sandbox
 
     await import("./index.js");
 
-    const gitHints = getLogSpy()
-      .mock.calls.map((call: unknown[]) => stringify(call[0]))
-      .filter((line: string) => line.includes("Git disabled"));
+    const gitHints = collectLogLines().filter((line: string) =>
+      line.includes("Git disabled"),
+    );
     expect(gitHints).toHaveLength(1);
 
     fs.rmSync(tempDir, { recursive: true, force: true });
@@ -450,9 +442,7 @@ defaultRepo: sandbox
 
     await import("./index.js");
 
-    const outputCalls = getLogSpy().mock.calls.map((call: unknown[]) =>
-      stringify(call[0]),
-    );
+    const outputCalls = collectLogLines();
     const jsonPayload = outputCalls.find((msg: string) =>
       msg.trim().startsWith("{"),
     );
@@ -503,12 +493,8 @@ defaultRepo: sandbox
 
     await import("./index.js");
 
-    const logCalls = getLogSpy().mock.calls.map((call: unknown[]) => call[0]);
-    expect(
-      logCalls.some((msg: unknown) =>
-        typeof msg === "string" ? /Generated index/.test(msg) : false,
-      ),
-    ).toBe(true);
+    const logCalls = collectLogLines();
+    expect(logCalls.some((msg) => /Generated index/.test(msg))).toBe(true);
     const indexPath = path.join(repoDir, "index.md");
     expect(fs.existsSync(indexPath)).toBe(true);
     const markdown = fs.readFileSync(indexPath, "utf8");

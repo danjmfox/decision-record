@@ -110,12 +110,7 @@ export async function draftDecision(
   changelog.push({ date: today, note: "Marked as draft" });
   record.changelog = changelog;
   const filePath = saveDecision(context, record);
-  await commitSingleFile(
-    context,
-    workingOptions,
-    filePath,
-    `drctl: draft ${record.id}`,
-  );
+  await commitLifecycle(context, workingOptions, filePath, "draft", record.id);
 
   return { record, filePath, context };
 }
@@ -156,11 +151,12 @@ export async function proposeDecision(
   changelog.push({ date: today, note: "Marked as proposed" });
   record.changelog = changelog;
   const filePath = saveDecision(context, record);
-  await commitSingleFile(
+  await commitLifecycle(
     context,
     workingOptions,
     filePath,
-    `drctl: propose ${record.id}`,
+    "propose",
+    record.id,
   );
 
   return { record, filePath, context };
@@ -209,12 +205,7 @@ export async function acceptDecision(
   changelog.push({ date: today, note: "Marked as accepted" });
   rec.changelog = changelog;
   const filePath = saveDecision(context, rec);
-  await commitSingleFile(
-    context,
-    workingOptions,
-    filePath,
-    `drctl: accept ${rec.id}`,
-  );
+  await commitLifecycle(context, workingOptions, filePath, "accept", rec.id);
   return { record: rec, filePath, context };
 }
 
@@ -232,12 +223,7 @@ export async function rejectDecision(
   changelog.push({ date: today, note: "Marked as rejected" });
   rec.changelog = changelog;
   const filePath = saveDecision(context, rec);
-  await commitSingleFile(
-    context,
-    workingOptions,
-    filePath,
-    `drctl: reject ${rec.id}`,
-  );
+  await commitLifecycle(context, workingOptions, filePath, "reject", rec.id);
   return { record: rec, filePath, context };
 }
 
@@ -255,12 +241,7 @@ export async function deprecateDecision(
   changelog.push({ date: today, note: "Marked as deprecated" });
   rec.changelog = changelog;
   const filePath = saveDecision(context, rec);
-  await commitSingleFile(
-    context,
-    workingOptions,
-    filePath,
-    `drctl: deprecate ${rec.id}`,
-  );
+  await commitLifecycle(context, workingOptions, filePath, "deprecate", rec.id);
   return { record: rec, filePath, context };
 }
 
@@ -279,12 +260,7 @@ export async function retireDecision(
   changelog.push({ date: today, note: "Marked as retired" });
   rec.changelog = changelog;
   const filePath = saveDecision(context, rec);
-  await commitSingleFile(
-    context,
-    workingOptions,
-    filePath,
-    `drctl: retire ${rec.id}`,
-  );
+  await commitLifecycle(context, workingOptions, filePath, "retire", rec.id);
   return { record: rec, filePath, context };
 }
 
@@ -352,11 +328,12 @@ export async function correctionDecision(
   record.changelog = changelog;
 
   const filePath = saveDecision(context, record);
-  await commitSingleFile(
+  await commitLifecycle(
     context,
     workingOptions,
     filePath,
-    `drctl: correction ${record.id}`,
+    "correction",
+    record.id,
   );
 
   return { record, filePath, context };
@@ -386,12 +363,7 @@ export async function reviseDecision(
   record.changelog = changelog;
 
   const filePath = saveDecision(context, record);
-  await commitSingleFile(
-    context,
-    workingOptions,
-    filePath,
-    `drctl: revise ${record.id}`,
-  );
+  await commitLifecycle(context, workingOptions, filePath, "revise", record.id);
 
   return { record, filePath, context };
 }
@@ -771,6 +743,16 @@ async function commitSingleFile(
   message: string,
 ): Promise<void> {
   await commitIfEnabled(context, options, [filePath], message);
+}
+
+function commitLifecycle(
+  context: RepoContext,
+  options: RepoOptions,
+  filePath: string,
+  verb: string,
+  id: string,
+): Promise<void> {
+  return commitSingleFile(context, options, filePath, `drctl: ${verb} ${id}`);
 }
 
 async function stageAndCommitWithHint(
