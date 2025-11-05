@@ -760,9 +760,7 @@ async function commitIfEnabled(
   if (paths.length === 0) {
     return;
   }
-  if (!options.gitClient) {
-    options.gitClient = createGitClient();
-  }
+  options.gitClient ??= createGitClient();
   await stageAndCommitWithHint(context, options.gitClient, paths, message);
 }
 
