@@ -464,8 +464,8 @@ describe("resolveConfigPath edge cases", () => {
     const base = makeTempDir();
     const winStyle = `C:\\decisions\\project`;
     const expected = path
-      .resolve(base, winStyle.replace(/\\/g, path.sep))
-      .replace(/\\/g, path.sep);
+      .resolve(base, winStyle.replaceAll("\\", path.sep))
+      .replaceAll("\\", path.sep);
     expect(resolveConfigPath(winStyle, base)).toBe(expected);
   });
 
