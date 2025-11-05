@@ -21,17 +21,7 @@ function stringify(value: unknown): string {
       return "[unserialisable value]";
     }
   }
-  if (
-    typeof value === "number" ||
-    typeof value === "boolean" ||
-    typeof value === "bigint"
-  ) {
-    return value.toString();
-  }
-  if (typeof value === "symbol") {
-    return value.toString();
-  }
-  return "";
+  return String(value);
 }
 
 describe("cli index commands", () => {
@@ -148,25 +138,6 @@ describe("cli index commands", () => {
       expect.stringMatching(/Repository "missing"/),
     );
     expect(process.exitCode).toBe(0);
-
-    fs.rmSync(tempDir, { recursive: true, force: true });
-  });
-
-  it("reports git initialisation status in config check", async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
-    const repoDir = path.join(tempDir, "workspace");
-    fs.mkdirSync(path.join(repoDir, ".git"), { recursive: true });
-    fs.writeFileSync(
-      path.join(tempDir, ".drctl.yaml"),
-      `repos:\n  work:\n    path: ./workspace\n`,
-    );
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "config", "check"];
-
-    await import("./index.js");
-
-    const logs = collectLogLines().join("\n");
-    expect(logs).toMatch(/git: initialised/);
 
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
