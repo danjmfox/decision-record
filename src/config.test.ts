@@ -405,6 +405,25 @@ repos:
     expect(context.gitModeOverrideCleared).toBe("cli");
   });
 
+  it("normalises domain path objects", () => {
+    const dir = makeTempDir();
+    const repoRoot = path.join(dir, "repo");
+    fs.mkdirSync(path.join(repoRoot, "custom"), { recursive: true });
+    const config = `
+repos:
+  work:
+    path: ./repo
+    domains:
+      personal:
+        directory: custom/personal
+`;
+    fs.writeFileSync(path.join(dir, ".drctl.yaml"), config);
+
+    const context = resolveRepoContext({ cwd: dir, repoFlag: "work" });
+
+    expect(context.domainMap.personal).toBe("custom/personal");
+  });
+
   it("honours DRCTL_CONFIG when no config path is supplied", () => {
     const base = makeTempDir();
     const workspace = path.join(base, "repo");

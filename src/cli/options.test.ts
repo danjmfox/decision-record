@@ -66,6 +66,24 @@ describe("collectRepoOptions", () => {
     expect(disabled.gitModeFlag).toBe("disabled");
   });
 
+  it("ignores git preference when opts accessor missing", () => {
+    const fakeCommand = {
+      parent: undefined,
+      opts: undefined,
+    } as unknown as Command;
+    const options = collectRepoOptions(fakeCommand);
+    expect(options.gitModeFlag).toBeUndefined();
+  });
+
+  it("ignores git preference when opts returns undefined", () => {
+    const fakeCommand = {
+      parent: undefined,
+      opts: () => undefined,
+    } as unknown as Command;
+    const options = collectRepoOptions(fakeCommand);
+    expect(options.gitModeFlag).toBeUndefined();
+  });
+
   it("throws when ensureRepoFlagNotUsed is invoked and --repo is set", () => {
     const program = new Command();
     program.exitOverride();
