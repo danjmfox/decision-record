@@ -434,21 +434,12 @@ function resolveGitMode(options: {
       const overrideSource =
         entry.source === "detected" ? undefined : entry.source;
       if (overrideSource) {
-        const result: {
-          mode: GitMode;
-          source: GitModeSource;
-          overrideCleared: GitModeOverrideSource;
-          detectedGitRoot?: string;
-        } = {
+        return {
           mode: "enabled",
           source: "detected",
           overrideCleared: overrideSource,
           ...(gitRoot ? { detectedGitRoot: gitRoot } : {}),
         };
-        if (gitRoot) {
-          result.detectedGitRoot = gitRoot;
-        }
-        return result;
       }
     }
     return {
@@ -600,6 +591,8 @@ class DiagnosticsCollector {
       gitEnv: null,
       gitConfig: repo.gitMode ?? null,
     });
+    const resolvedGitRoot =
+      gitResolution.detectedGitRoot ?? detectedGitRoot ?? undefined;
     const templateAbsolute =
       repo.defaultTemplate && exists
         ? resolveTemplatePath(repo.root, repo.defaultTemplate)
@@ -625,9 +618,7 @@ class DiagnosticsCollector {
       gitInitialized,
       gitMode: gitResolution.mode,
       gitModeSource: gitResolution.source,
-      ...((gitResolution.detectedGitRoot ?? detectedGitRoot)
-        ? { gitRoot: gitResolution.detectedGitRoot ?? detectedGitRoot }
-        : {}),
+      ...(resolvedGitRoot ? { gitRoot: resolvedGitRoot } : {}),
     });
 
     if (repo.defaultTemplate && exists) {
