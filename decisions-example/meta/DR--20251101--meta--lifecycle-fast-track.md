@@ -2,7 +2,7 @@
 id: DR--20251101--meta--lifecycle-fast-track
 dateCreated: "2025-11-01"
 version: 1.0.1
-status: proposed
+status: superseded
 changeType: correction
 domain: meta
 slug: lifecycle-fast-track
@@ -17,7 +17,11 @@ changelog:
     note: Marked as proposed
   - date: "2025-11-02"
     note: Aligned lifecycle status narrative
-lastEdited: "2025-11-02"
+  - date: "2025-11-05"
+  - date: "2025-11-05"
+    note: Superseded by DR--20251103--meta--auto-accept-transitions
+lastEdited: "2025-11-05"
+supersededBy: DR--20251103--meta--auto-accept-transitions
 ---
 
 # DR--20251101--meta--lifecycle-fast-track

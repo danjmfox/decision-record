@@ -3,7 +3,7 @@ id: DR--20251103--meta--auto-accept-transitions
 dateCreated: "2025-11-03"
 version: 1.0.1
 status: accepted
-changeType: correction
+changeType: supersession
 domain: meta
 slug: auto-accept-transitions
 changelog:
@@ -17,8 +17,11 @@ changelog:
     note: Marked as accepted
   - date: "2025-11-04"
     note: Minor correction
-lastEdited: "2025-11-04"
+  - date: "2025-11-05"
+    note: Supersedes DR--20251101--meta--lifecycle-fast-track
+lastEdited: "2025-11-05"
 dateAccepted: "2025-11-04"
+supersedes: DR--20251101--meta--lifecycle-fast-track
 ---
 
 # DR--20251103--meta--auto-accept-transitions
