@@ -129,6 +129,7 @@ Every command echoes the resolved repo and any file it touches. Example output:
    Source: local-config
    Definition: local
    Config: /Users/me/.drctl.yaml
+   Git: enabled (auto)
    Default domain dir: domains
    Domain overrides: none
 ✅ Created DR--20251030--personal--hydrate (draft)
@@ -146,6 +147,18 @@ Remove the link later with `npm unlink -g decision-record` (or run `npm unlink` 
 - Add `template: templates/meta.md` inside `.drctl.yaml` repo entries to pin long-lived defaults per repository.
 - External templates are copied into `<repo>/templates/` and the relative path is captured in frontmatter as `templateUsed` for provenance.
 - `drctl config check` warns if a configured template is missing or lives outside the repo root, and `drctl propose`/`drctl accept` surface placeholder text before advancing the lifecycle.
+
+### Git-Optional Lifecycle
+
+Not every team can—or wants to—wire git into their decision workflow. `drctl` now honours a git-mode cascade so you can opt out deliberately while keeping changelog hygiene:
+
+- `drctl --no-git …` disables git integration for the current command; `--git` forces git even if the repo looks clean. Both flags can be passed to any subcommand, and the resolved repo summary shows the final mode.
+- Set `DRCTL_GIT=disabled` (or `enabled`) to define your personal default for a shell session.
+- Declare `git: disabled` inside a `.drctl.yaml` repo entry to mark a workspace as manual-commit only. `drctl config check` will record the setting without nagging about `repo bootstrap`.
+- When git is disabled, lifecycle commands still update YAML frontmatter and changelogs but skip staging/commits. The CLI calls this out once per command: look for `ℹ️ Git disabled …` in the output.
+- If git suddenly appears (e.g., you run `drctl repo bootstrap`), `drctl` automatically re-enables git mode, clears any `--no-git` overrides, and logs the override it ignored so you can tidy the config.
+
+Use the cascade to support shared network drives or read-only environments, while still relying on git for mainline repositories.
 
 ## DecisionOps in Practice
 
@@ -214,6 +227,8 @@ For a deeper architectural overview (layers, lifecycle automation, comparisons w
 > `drctl new` scaffolds a record once. Re-run lifecycle commands (`draft`, `accept`, `correction`, `revise`, etc.) to evolve a decision; calling `new` again now reports that the decision already exists.
 >
 > `drctl accept` automatically backfills missing `draft`/`proposed` transitions (with their own commits/changelog entries) so the lifecycle trail is always complete.
+
+Global flags (`--repo`, `--config`, `--git`, `--no-git`) apply to every subcommand. Combine them with env vars (`DRCTL_REPO`, `DRCTL_CONFIG`, `DRCTL_GIT`) for reproducible automation scripts.
 
 Run `drctl governance validate` to audit the current repo’s decision records. Errors set a non-zero exit code so you can wire the command into CI; add `--json` for machine-readable diagnostics.
 
@@ -332,6 +347,17 @@ Place this `.drctl.yaml` in the project root (or reference it via `--config`). B
 - `drctl` aborts if other files are staged; run `git status` first if you expect to batch changes.
 - Avoid `git add`/`git commit` directly on decision records—use `drctl correction`, `drctl revise`, or lifecycle commands so versions and changelog entries remain consistent.
 
+Want a manual workflow instead? Add `git: disabled` to the repo entry:
+
+```yaml
+repos:
+  minutes:
+    path: ./decisions
+    git: disabled
+```
+
+With the flag set, lifecycle commands update frontmatter and changelogs but leave files unstaged. Re-run `drctl repo bootstrap minutes` when you are ready to re-enable git; `drctl` will detect the `.git/` folder and flip the mode automatically.
+
 ### 🔄 Quickstart Commands
 
 Run through the full lifecycle from a blank slate:
@@ -340,7 +366,7 @@ Run through the full lifecycle from a blank slate:
 # Create a new repo entry and set it as default
 npm run dev -- repo new demo ./decisions-demo --default
 
-# Initialise git inside the repo (required for draft/propose/accept)
+# Initialise git inside the repo (or run lifecycle commands with --no-git)
 npm run dev -- repo bootstrap demo
 
 # Double-check configuration

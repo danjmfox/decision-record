@@ -65,6 +65,7 @@ We now articulate DecisionOps parallels explicitly: README highlights agile-frie
 | **Example DR hygiene** | Files under `decisions-example/` are updated exclusively via the appropriate `drctl` lifecycle command (e.g., `drctl correction`, `drctl revise`) so the automation stays exercised.         |
 | **File conventions**   | Use `DR--YYYYMMDD--domain--slug.md` IDs; domain as folder; markdown + YAML frontmatter.                                                                                                      |
 | **Private data**       | `.drctl.yaml` and `decisions/` folders are `.gitignore`d; only `decisions-example/` is public.                                                                                               |
+| **Git optional**       | Opt out per repo via `git: disabled`, per session with `DRCTL_GIT`, or ad-hoc with `--no-git`; the CLI logs the resolved mode and skips commits while keeping changelogs accurate.           |
 | **AI collaboration**   | All reasoning steps remain inspectable; outputs versioned in code, not ephemeral.                                                                                                            |
 | **CLI feedback**       | Commands echo repo context and file paths; `drctl repo` surfaces the resolved workspace on demand.                                                                                           |
 | **Lifecycle flow**     | `drctl new` scaffolds a draft; lifecycle commands (`draft` → `propose` → `accept`) now auto-progress missing states so changelogs capture every transition.                                  |
@@ -189,6 +190,7 @@ home-decisions/
    - [x] Harden `drctl accept` so the git-backed status flow mirrors `draft`/`propose`.
    - [x] Add `drctl reject` and `drctl deprecate` with consistent changelog handling.
    - [x] Implement `drctl supersede`/`drctl retire`, ensuring markdown bodies persist.
+   - [x] Honour git-mode overrides (CLI/env/config) so lifecycle commands run without a git repo (`DR--20251105--meta--git-optional-lifecycle`).
    - [ ] Add regression tests covering body preservation and changelog entries for every transition.
    - [ ] Decide whether lifecycle commands should regenerate or remind about repository indexes.
    - [ ] Provide guardrails for manually-authored decision files (lint/doctor command or stronger governance hints when frontmatter is incomplete).
