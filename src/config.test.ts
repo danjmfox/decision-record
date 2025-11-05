@@ -424,6 +424,18 @@ repos:
     expect(context.domainMap.personal).toBe("custom/personal");
   });
 
+  it("treats scalar config files as empty", () => {
+    const dir = makeTempDir();
+    fs.writeFileSync(path.join(dir, ".drctl.yaml"), "123");
+    const fallbackDir = path.join(dir, "decisions");
+    fs.mkdirSync(fallbackDir, { recursive: true });
+
+    const context = resolveRepoContext({ cwd: dir });
+
+    expect(context.source).toBe("fallback-cwd");
+    expect(context.root).toBe(fallbackDir);
+  });
+
   it("honours DRCTL_CONFIG when no config path is supplied", () => {
     const base = makeTempDir();
     const workspace = path.join(base, "repo");

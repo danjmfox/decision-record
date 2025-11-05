@@ -66,6 +66,19 @@ describe("collectRepoOptions", () => {
     expect(disabled.gitModeFlag).toBe("disabled");
   });
 
+  it("walks parent chain to resolve git preference", () => {
+    const program = new Command();
+    program.exitOverride();
+    program.option("--git");
+    const child = program.command("list");
+    child.action(() => {});
+
+    program.parse(["--git", "list"], { from: "user" });
+
+    const options = collectRepoOptions(child);
+    expect(options.gitModeFlag).toBe("enabled");
+  });
+
   it("ignores git preference when opts accessor missing", () => {
     const fakeCommand = {
       parent: undefined,
