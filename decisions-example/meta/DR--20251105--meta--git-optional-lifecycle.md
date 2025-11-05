@@ -2,7 +2,7 @@
 id: DR--20251105--meta--git-optional-lifecycle
 dateCreated: "2025-11-05"
 version: 1.0.0
-status: proposed
+status: accepted
 changeType: creation
 domain: meta
 slug: git-optional-lifecycle
@@ -13,7 +13,10 @@ changelog:
     note: Marked as draft
   - date: "2025-11-05"
     note: Marked as proposed
+  - date: "2025-11-05"
+    note: Marked as accepted
 lastEdited: "2025-11-05"
+dateAccepted: "2025-11-05"
 ---
 
 # DR--20251105--meta--git-optional-lifecycle
