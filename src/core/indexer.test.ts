@@ -17,6 +17,8 @@ function makeContext(): RepoContext {
     source: "cli",
     name: "Test",
     domainMap: {},
+    gitMode: "disabled",
+    gitModeSource: "detected",
   };
 }
 

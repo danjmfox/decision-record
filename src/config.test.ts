@@ -99,6 +99,7 @@ afterEach(() => {
   }
   delete process.env.DRCTL_CONFIG;
   delete process.env.TEST_DECISIONS_PATH;
+  delete process.env.DRCTL_GIT;
   while (restoreSpies.length > 0) {
     const restore = restoreSpies.pop();
     restore?.();
@@ -115,6 +116,7 @@ afterAll(() => {
     process.env.DRCTL_REPO = originalEnvRepo;
   }
   delete process.env.DRCTL_CONFIG;
+  delete process.env.DRCTL_GIT;
 });
 
 beforeEach(() => {
@@ -122,6 +124,7 @@ beforeEach(() => {
   delete process.env.DRCTL_REPO;
   delete process.env.DRCTL_CONFIG;
   delete process.env.TEST_DECISIONS_PATH;
+  delete process.env.DRCTL_GIT;
 });
 
 describe("resolveRepoContext", () => {
@@ -146,6 +149,26 @@ repos:
     expect(context.defaultDomainDir).toBe("domains");
     expect(context.defaultTemplate).toBe("templates/meta.md");
     expect(context.source).toBe("local-config");
+    expect(context.gitMode).toBe("disabled");
+    expect(context.gitModeSource).toBe("detected");
+  });
+
+  it("detects git mode as enabled when a .git directory exists", () => {
+    const dir = makeTempDir();
+    const repoRoot = path.join(dir, "workspace");
+    fs.mkdirSync(path.join(repoRoot, ".git"), { recursive: true });
+    const config = `
+defaultRepo: work
+repos:
+  work:
+    path: ./workspace
+`;
+    fs.writeFileSync(path.join(dir, ".drctl.yaml"), config);
+
+    const context = resolveRepoContext({ cwd: dir });
+
+    expect(context.gitMode).toBe("enabled");
+    expect(context.gitModeSource).toBe("detected");
   });
 
   it("selects the only configured repo when no default is specified", () => {
@@ -164,6 +187,8 @@ repos:
     expect(context.name).toBe("solo");
     expect(context.root).toBe(path.resolve(repoRoot));
     expect(context.source).toBe("local-config");
+    expect(context.gitMode).toBe("disabled");
+    expect(context.gitModeSource).toBe("detected");
   });
 
   it("prefers CLI path strings when provided", () => {
@@ -178,6 +203,8 @@ repos:
     expect(context.root).toBe(path.resolve(repoPath));
     expect(context.name).toBeUndefined();
     expect(context.source).toBe("cli");
+    expect(context.gitMode).toBe("disabled");
+    expect(context.gitModeSource).toBe("detected");
   });
 
   it("throws when CLI repo alias does not exist", () => {
@@ -192,6 +219,49 @@ repos:
     expect(() => resolveRepoContext({ cwd: dir, repoFlag: "missing" })).toThrow(
       /not found/i,
     );
+  });
+
+  it("respects DRCTL_GIT environment overrides", () => {
+    const dir = makeTempDir();
+    const repoRoot = path.join(dir, "workspace");
+    fs.mkdirSync(repoRoot, { recursive: true });
+    fs.writeFileSync(
+      path.join(dir, ".drctl.yaml"),
+      `
+defaultRepo: work
+repos:
+  work:
+    path: ./workspace
+`,
+    );
+    process.env.DRCTL_GIT = "disabled";
+
+    const context = resolveRepoContext({ cwd: dir });
+
+    expect(context.gitMode).toBe("disabled");
+    expect(context.gitModeSource).toBe("env");
+  });
+
+  it("clears disabled overrides when git is present", () => {
+    const dir = makeTempDir();
+    const repoRoot = path.join(dir, "workspace");
+    fs.mkdirSync(path.join(repoRoot, ".git"), { recursive: true });
+    fs.writeFileSync(
+      path.join(dir, ".drctl.yaml"),
+      `
+defaultRepo: work
+repos:
+  work:
+    path: ./workspace
+`,
+    );
+    process.env.DRCTL_GIT = "disabled";
+
+    const context = resolveRepoContext({ cwd: dir });
+
+    expect(context.gitMode).toBe("enabled");
+    expect(context.gitModeSource).toBe("detected");
+    expect(context.gitModeOverrideCleared).toBe("env");
   });
 
   it("throws when multiple repos exist without explicit selection", () => {

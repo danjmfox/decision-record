@@ -23,6 +23,8 @@ function makeContext(root: string): RepoContext {
     domainMap: {},
     defaultDomainDir: "domains",
     defaultTemplate: "templates/meta.md",
+    gitMode: "disabled",
+    gitModeSource: "detected",
   };
 }
 

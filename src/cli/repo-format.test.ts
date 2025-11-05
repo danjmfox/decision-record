@@ -20,6 +20,8 @@ describe("formatRepoContext", () => {
         personal: "domains/personal",
         work: "domains/work",
       },
+      gitMode: "enabled",
+      gitModeSource: "detected",
     };
 
     const lines = formatRepoContext(context);
@@ -29,6 +31,7 @@ describe("formatRepoContext", () => {
       "   Source: local-config",
       "   Definition: local",
       "   Config: /configs/.drctl.yaml",
+      "   Git: enabled (auto)",
       "   Default domain dir: domains",
       "   Default template: templates/meta.md",
       "   Domain overrides:",
@@ -42,6 +45,8 @@ describe("formatRepoContext", () => {
       root: path.join("/tmp", "workspace"),
       source: "cli",
       domainMap: {},
+      gitMode: "disabled",
+      gitModeSource: "detected",
     };
 
     const lines = formatRepoContext(context);
@@ -51,6 +56,7 @@ describe("formatRepoContext", () => {
       "   Source: cli",
       "   Definition: n/a",
       "   Config: n/a",
+      "   Git: disabled (auto)",
       "   Default domain dir: <domain>",
       "   Default template: (internal default)",
       "   Domain overrides: none",
@@ -63,9 +69,27 @@ describe("formatRepoContext", () => {
       root: path.join("/tmp", "decisions"),
       source: "fallback-home",
       domainMap: {},
+      gitMode: "disabled",
+      gitModeSource: "detected",
     };
 
     const lines = formatRepoContext(context);
     expect(lines.at(-1)).toBe(NOTE);
+  });
+
+  it("includes git override notes when detected", () => {
+    const context: RepoContext = {
+      root: path.join("/tmp", "workspace"),
+      source: "cli",
+      domainMap: {},
+      gitMode: "enabled",
+      gitModeSource: "detected",
+      gitModeOverrideCleared: "env",
+    };
+
+    const lines = formatRepoContext(context);
+    expect(lines).toContain(
+      "   Git note: ignored env disable (git repo detected)",
+    );
   });
 });
