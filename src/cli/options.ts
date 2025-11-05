@@ -62,7 +62,7 @@ function findConfigFlag(
   if (config && typeof config === "string" && config.trim().length > 0) {
     return config;
   }
-  return findConfigFlag(command.parent as Command | undefined);
+  return findConfigFlag(command.parent ?? undefined);
 }
 
 function resolveGitPreference(
@@ -74,7 +74,7 @@ function resolveGitPreference(
     if (preference) {
       return preference;
     }
-    cursor = cursor.parent as Command | undefined;
+    cursor = cursor.parent ?? undefined;
   }
   return undefined;
 }
