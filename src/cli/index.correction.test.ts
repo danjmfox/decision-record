@@ -7,6 +7,7 @@ describe("correction command aliases", () => {
   const originalArgv = process.argv.slice();
   const originalCwd = process.cwd();
   const tempDirs: string[] = [];
+  let stderrSpy: ReturnType<typeof vi.spyOn> | undefined;
 
   afterEach(() => {
     vi.resetModules();
@@ -16,6 +17,8 @@ describe("correction command aliases", () => {
     for (const dir of tempDirs.splice(0, tempDirs.length)) {
       fs.rmSync(dir, { recursive: true, force: true });
     }
+    stderrSpy?.mockRestore();
+    stderrSpy = undefined;
   });
 
   it("routes `drctl correct` to the correction handler", async () => {
@@ -60,6 +63,9 @@ describe("correction command aliases", () => {
     }));
 
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    stderrSpy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
     process.argv = [
       "node",
       "drctl",

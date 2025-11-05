@@ -14,6 +14,7 @@ describe("cli index commands", () => {
   let consoleErrorSpy: any;
   let consoleWarnSpy: any;
   let consoleLogSpy: any;
+  let stderrSpy: ReturnType<typeof vi.spyOn> | undefined;
 
   beforeEach(() => {
     vi.resetModules();
@@ -24,6 +25,9 @@ describe("cli index commands", () => {
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    stderrSpy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
   });
 
   afterEach(() => {
@@ -39,6 +43,8 @@ describe("cli index commands", () => {
     if (consoleLogSpy) {
       consoleLogSpy.mockRestore();
     }
+    stderrSpy?.mockRestore();
+    stderrSpy = undefined;
     process.exitCode = 0;
     process.argv = originalArgv.slice();
     process.chdir(originalCwd);
