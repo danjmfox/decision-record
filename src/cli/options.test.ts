@@ -78,6 +78,7 @@ describe("collectRepoOptions", () => {
     const options = collectRepoOptions(child);
     expect(options.gitModeFlag).toBe("enabled");
   });
+
   it("ignores git preference when opts accessor missing", () => {
     const fakeCommand = {
       parent: undefined,
