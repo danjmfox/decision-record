@@ -345,6 +345,24 @@ repos:
     expect(context.domainMap.personal).toBe("custom/personal");
   });
 
+  it("expands shell-style $VAR tokens in repo paths", () => {
+    const dir = makeTempDir();
+    const repoRoot = path.join(dir, "repo-env");
+    fs.mkdirSync(repoRoot, { recursive: true });
+    process.env.TEST_DECISIONS_PATH = repoRoot;
+    const config = `
+repos:
+  env:
+    path: $TEST_DECISIONS_PATH
+`;
+    fs.writeFileSync(path.join(dir, ".drctl.yaml"), config);
+
+    const context = resolveRepoContext({ cwd: dir, repoFlag: "env" });
+
+    expect(context.root).toBe(repoRoot);
+    expect(context.gitModeSource).toBe("detected");
+  });
+
   it("uses an explicit config path when provided", () => {
     const base = makeTempDir();
     const workspace = path.join(base, "repo");
@@ -363,6 +381,28 @@ repos:
     expect(context.root).toBe(path.resolve(base, "repo"));
     expect(context.name).toBe("demo");
     expect(context.configPath).toBe(configPath);
+  });
+
+  it("honours CLI git flag overrides", () => {
+    const dir = makeTempDir();
+    const repoRoot = path.join(dir, "repo");
+    fs.mkdirSync(path.join(repoRoot, ".git"), { recursive: true });
+    const config = `
+repos:
+  repo:
+    path: ./repo
+`;
+    fs.writeFileSync(path.join(dir, ".drctl.yaml"), config);
+
+    const context = resolveRepoContext({
+      cwd: dir,
+      repoFlag: "repo",
+      gitModeFlag: "disabled",
+    });
+
+    expect(context.gitMode).toBe("enabled");
+    expect(context.gitModeSource).toBe("detected");
+    expect(context.gitModeOverrideCleared).toBe("cli");
   });
 
   it("honours DRCTL_CONFIG when no config path is supplied", () => {

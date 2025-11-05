@@ -94,8 +94,10 @@ describe("cli index commands", () => {
   present:
     path: ./present
     template: templates/meta.md
+    git: disabled
 `,
     );
+    fs.mkdirSync(path.join(tempDir, "present"), { recursive: true });
     process.chdir(tempDir);
     process.argv = ["node", "drctl", "config", "check"];
 
@@ -108,6 +110,10 @@ describe("cli index commands", () => {
     expect(logSpy).toHaveBeenCalledWith(
       expect.stringMatching(/Template: templates\/meta\.md/),
     );
+    const gitLines = logSpy.mock.calls
+      .map((call: unknown[]) => String(call[0] ?? ""))
+      .filter((line: string) => line.includes("git: disabled"));
+    expect(gitLines.length).toBeGreaterThan(0);
     expect(consoleWarnSpy).toHaveBeenCalledWith(
       expect.stringMatching(/Repository "missing"/),
     );
@@ -331,6 +337,58 @@ describe("cli index commands", () => {
       expect.stringMatching(/Governance validation passed/),
     );
     expect(process.exitCode).toBe(0);
+
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("logs a git-disabled hint once during lifecycle commands", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
+    const configPath = path.join(tempDir, ".drctl.yaml");
+    fs.writeFileSync(
+      configPath,
+      `repos:
+  sandbox:
+    path: ./decisions
+    git: disabled
+defaultRepo: sandbox
+`,
+    );
+    process.chdir(tempDir);
+    fs.mkdirSync(path.join(tempDir, "decisions"), { recursive: true });
+
+    const { resolveRepoContext } = await import("../config.js");
+    const context = resolveRepoContext({
+      cwd: tempDir,
+      configPath,
+    });
+    const record: DecisionRecord = {
+      id: "DR--20300101--meta--gitless",
+      dateCreated: "2030-01-01",
+      version: "1.0.0",
+      status: "draft",
+      changeType: "creation",
+      domain: "meta",
+      slug: "gitless",
+      changelog: [{ date: "2030-01-01", note: "Initial creation" }],
+    };
+    saveDecision(context, record, "# body");
+
+    process.argv = [
+      "node",
+      "drctl",
+      "--config",
+      configPath,
+      "--no-git",
+      "draft",
+      record.id,
+    ];
+
+    await import("./index.js");
+
+    const gitHints = getLogSpy()
+      .mock.calls.map((call: unknown[]) => String(call[0] ?? ""))
+      .filter((line: string) => line.includes("Git disabled"));
+    expect(gitHints).toHaveLength(1);
 
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
