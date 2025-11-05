@@ -58,37 +58,60 @@ export function loadDecision(
 export function listDecisions(context: RepoContext): DecisionRecord[] {
   if (!fs.existsSync(context.root)) return [];
   const records: DecisionRecord[] = [];
-  const stack: Array<{ dir: string; domain?: string }> = [
-    { dir: context.root },
-  ];
-
-  while (stack.length > 0) {
-    const current = stack.pop();
-    if (!current) continue;
-    const { dir, domain } = current;
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
-    for (const entry of entries) {
-      if (entry.name.startsWith(".")) continue;
-      const fullPath = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        stack.push(domain ? { dir: fullPath, domain } : { dir: fullPath });
-        continue;
-      }
-      if (!entry.isFile() || !entry.name.endsWith(".md")) continue;
-      try {
-        const { data } = matter.read(fullPath);
-        if (data && typeof data === "object") {
-          const record = data as DecisionRecord;
-          if (!record.domain && domain) {
-            record.domain = domain;
-          }
-          records.push(record);
-        }
-      } catch (error) {
-        // Skip files that fail to parse; they are not treated as decision records.
-      }
-    }
-  }
-
+  traverseDirectory({ dir: context.root }, context, records);
   return records;
+}
+
+function traverseDirectory(
+  current: { dir: string; domain?: string },
+  context: RepoContext,
+  records: DecisionRecord[],
+): void {
+  const stack: Array<{ dir: string; domain?: string }> = [current];
+  while (stack.length > 0) {
+    const next = stack.pop();
+    if (!next) continue;
+    processDirectory(next, context, records, stack);
+  }
+}
+
+function processDirectory(
+  current: { dir: string; domain?: string },
+  context: RepoContext,
+  records: DecisionRecord[],
+  stack: Array<{ dir: string; domain?: string }>,
+): void {
+  const entries = fs.readdirSync(current.dir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (entry.name.startsWith(".")) continue;
+    const fullPath = path.join(current.dir, entry.name);
+    if (entry.isDirectory()) {
+      stack.push(
+        current.domain
+          ? { dir: fullPath, domain: current.domain }
+          : { dir: fullPath },
+      );
+      continue;
+    }
+    if (!entry.isFile() || !entry.name.endsWith(".md")) continue;
+    addDecisionFromFile(fullPath, current.domain, records);
+  }
+}
+
+function addDecisionFromFile(
+  filePath: string,
+  inheritedDomain: string | undefined,
+  records: DecisionRecord[],
+): void {
+  try {
+    const { data } = matter.read(filePath);
+    if (!data || typeof data !== "object") return;
+    const record = data as DecisionRecord;
+    if (!record.domain && inheritedDomain) {
+      record.domain = inheritedDomain;
+    }
+    records.push(record);
+  } catch {
+    // Skip files that fail to parse; they are not treated as decision records.
+  }
 }

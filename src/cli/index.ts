@@ -22,7 +22,9 @@ import {
 import {
   diagnoseConfig,
   resolveRepoContext,
+  type ConfigDiagnostics,
   type RepoContext,
+  type RepoDiagnostic,
   type ResolveRepoOptions,
 } from "../config.js";
 import { formatRepoContext } from "./repo-format.js";
@@ -83,59 +85,8 @@ configCommand
     handleAction(function (this: Command) {
       ensureRepoFlagNotUsed(this, "config check");
       const diagnostics = diagnoseConfig({ cwd: process.cwd() });
-      console.log(`🧭 Working directory: ${diagnostics.cwd}`);
-      console.log(
-        `📄 Local config: ${diagnostics.localConfigPath ?? "not found"}`,
-      );
-      console.log(
-        `🏠 Global config: ${diagnostics.globalConfigPath ?? "not found"}`,
-      );
-      console.log(
-        `⭐ Default repo: ${diagnostics.defaultRepoName ?? "(not set)"}`,
-      );
-
-      if (diagnostics.repos.length > 0) {
-        console.log("📚 Repositories:");
-        for (const repo of diagnostics.repos) {
-          const status = repo.exists ? "✅" : "⚠️";
-          const sourceLabel =
-            repo.definitionSource === "local"
-              ? "local-config"
-              : "global-config";
-          const gitLabel = repo.exists
-            ? repo.gitInitialized
-              ? "git: initialised"
-              : "git: not initialised"
-            : "git: n/a";
-          console.log(
-            `   ${status} ${repo.name} → ${repo.root} (${sourceLabel}, ${gitLabel})`,
-          );
-          if (repo.defaultDomainDir) {
-            console.log(`      Domain root: ${repo.defaultDomainDir}`);
-          }
-          if (repo.defaultTemplate) {
-            console.log(`      Template: ${repo.defaultTemplate}`);
-          }
-        }
-      } else {
-        console.log("📚 Repositories: none");
-      }
-
-      for (const warning of diagnostics.warnings) {
-        console.warn(`⚠️ ${warning}`);
-      }
-      for (const error of diagnostics.errors) {
-        console.error(`❌ ${error}`);
-      }
-
-      if (
-        diagnostics.errors.length === 0 &&
-        diagnostics.warnings.length === 0
-      ) {
-        console.log("✅ Configuration looks good.");
-      }
-
-      if (diagnostics.errors.length > 0) {
+      const hasErrors = reportConfigDiagnostics(diagnostics);
+      if (hasErrors) {
         process.exitCode = 1;
       }
     }),
@@ -418,9 +369,11 @@ program
       commandOptions: { status?: string },
     ) {
       const list = listAll(commandOptions.status, repoOptions);
-      list.forEach((r) =>
-        console.log(`${r.id.padEnd(45)} ${r.status.padEnd(10)} ${r.domain}`),
-      );
+      for (const record of list) {
+        console.log(
+          `${record.id.padEnd(45)} ${record.status.padEnd(10)} ${record.domain}`,
+        );
+      }
     }),
   );
 
@@ -523,6 +476,64 @@ program
       console.log(`📄 Updated: ${result.newFilePath}`);
     }),
   );
+
+function reportConfigDiagnostics(diagnostics: ConfigDiagnostics): boolean {
+  logConfigSummary(diagnostics);
+  logRepositoryList(diagnostics.repos);
+  const hasWarnings = diagnostics.warnings.length > 0;
+  const hasErrors = diagnostics.errors.length > 0;
+  for (const warning of diagnostics.warnings) {
+    console.warn(`⚠️ ${warning}`);
+  }
+  for (const error of diagnostics.errors) {
+    console.error(`❌ ${error}`);
+  }
+  if (!hasErrors && !hasWarnings) {
+    console.log("✅ Configuration looks good.");
+  }
+  return hasErrors;
+}
+
+function logConfigSummary(diagnostics: ConfigDiagnostics): void {
+  console.log(`🧭 Working directory: ${diagnostics.cwd}`);
+  console.log(`📄 Local config: ${diagnostics.localConfigPath ?? "not found"}`);
+  console.log(
+    `🏠 Global config: ${diagnostics.globalConfigPath ?? "not found"}`,
+  );
+  console.log(`⭐ Default repo: ${diagnostics.defaultRepoName ?? "(not set)"}`);
+}
+
+function logRepositoryList(repos: RepoDiagnostic[]): void {
+  if (repos.length === 0) {
+    console.log("📚 Repositories: none");
+    return;
+  }
+  console.log("📚 Repositories:");
+  for (const repo of repos) {
+    logRepositoryEntry(repo);
+  }
+}
+
+function logRepositoryEntry(repo: RepoDiagnostic): void {
+  const status = repo.exists ? "✅" : "⚠️";
+  const sourceLabel =
+    repo.definitionSource === "local" ? "local-config" : "global-config";
+  let gitLabel = "git: n/a";
+  if (repo.exists) {
+    gitLabel = repo.gitInitialized
+      ? "git: initialised"
+      : "git: not initialised";
+  }
+  console.log(
+    `   ${status} ${repo.name} → ${repo.root} (${sourceLabel}, ${gitLabel})`,
+  );
+  if (repo.defaultDomainDir) {
+    console.log(`      Domain root: ${repo.defaultDomainDir}`);
+  }
+  if (repo.defaultTemplate) {
+    console.log(`      Template: ${repo.defaultTemplate}`);
+  }
+}
 
 function resolveRepoOptions(
   command: Command,
