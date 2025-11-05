@@ -12,6 +12,16 @@ export function formatRepoContext(context: RepoContext): string[] {
     `   Config: ${context.configPath ?? "n/a"}`,
   );
 
+  const gitMode = context.gitMode === "enabled" ? "enabled" : "disabled";
+  const gitSourceLabel =
+    context.gitModeSource === "detected" ? "auto" : context.gitModeSource;
+  lines.push(`   Git: ${gitMode} (${gitSourceLabel})`);
+  if (context.gitModeOverrideCleared) {
+    lines.push(
+      `   Git note: ignored ${context.gitModeOverrideCleared} disable (git repo detected)`,
+    );
+  }
+
   const defaultDomain = context.defaultDomainDir ?? "<domain>";
   lines.push(`   Default domain dir: ${defaultDomain}`);
   const defaultTemplate = context.defaultTemplate ?? "(internal default)";

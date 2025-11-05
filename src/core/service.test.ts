@@ -38,6 +38,8 @@ function makeContext(): RepoContext {
     domainMap: {},
     source: "cli",
     name: "test",
+    gitMode: "enabled",
+    gitModeSource: "detected",
   };
 }
 
@@ -384,6 +386,45 @@ describe("service layer", () => {
 
     const stored = fs.readFileSync(first.filePath, "utf8");
     expect(stored).toContain("Keep this content");
+  });
+
+  it("skips git operations when the repo opts out of git", async () => {
+    const context = makeContext();
+    context.gitMode = "disabled";
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const creation = createDecision("meta", "git-optional", { context });
+
+    const draft = await draftDecision(creation.record.id, {
+      context,
+      gitClient,
+    });
+    expect(draft.record.status).toBe("draft");
+
+    const proposed = await proposeDecision(creation.record.id, {
+      context,
+      gitClient,
+    });
+    expect(proposed.record.status).toBe("proposed");
+
+    const accepted = await acceptDecision(creation.record.id, {
+      context,
+      gitClient,
+    });
+    expect(accepted.record.status).toBe("accepted");
+
+    expect(gitClient.stageAndCommit).not.toHaveBeenCalled();
+    const stored = matter.read(creation.filePath);
+    expect(stored.data.status).toBe("accepted");
+    expect(stored.data.changelog).toEqual(
+      expect.arrayContaining([
+        { date: "2025-10-30", note: "Marked as draft" },
+        { date: "2025-10-30", note: "Marked as proposed" },
+        { date: "2025-10-30", note: "Marked as accepted" },
+      ]),
+    );
   });
 
   it("accepts an existing decision, updates changelog, and commits via git", async () => {

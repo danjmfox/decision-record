@@ -37,6 +37,8 @@ describe("collectRepoOptions", () => {
     const program = new Command();
     program.exitOverride();
     program.option("--repo <repo>");
+    program.option("--git");
+    program.option("--no-git");
     const sub = program.command("list");
     sub.action(() => {});
 
@@ -45,6 +47,23 @@ describe("collectRepoOptions", () => {
     const options = collectRepoOptions(sub);
     expect(options.repo).toBeUndefined();
     expect(options.cwd).toBeDefined();
+  });
+
+  it("captures git toggles", () => {
+    const program = new Command();
+    program.exitOverride();
+    program.option("--git");
+    program.option("--no-git");
+    const sub = program.command("list");
+    sub.action(() => {});
+
+    program.parse(["list", "--git"], { from: "user" });
+    const enabled = collectRepoOptions(sub);
+    expect(enabled.gitModeFlag).toBe("enabled");
+
+    program.parse(["list", "--no-git"], { from: "user" });
+    const disabled = collectRepoOptions(sub);
+    expect(disabled.gitModeFlag).toBe("disabled");
   });
 
   it("throws when ensureRepoFlagNotUsed is invoked and --repo is set", () => {

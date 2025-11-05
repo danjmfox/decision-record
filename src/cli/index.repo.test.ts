@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { load as loadYaml } from "js-yaml";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { MockInstance } from "vitest";
 import { saveDecision } from "../core/repository.js";
 import type { RepoContext } from "../config.js";
 import type { DecisionRecord } from "../core/models.js";
@@ -14,7 +15,7 @@ describe("cli index commands", () => {
   let consoleErrorSpy: any;
   let consoleWarnSpy: any;
   let consoleLogSpy: any;
-  let stderrSpy: ReturnType<typeof vi.spyOn> | undefined;
+  let stderrSpy: MockInstance | undefined;
 
   beforeEach(() => {
     vi.resetModules();
@@ -260,6 +261,8 @@ describe("cli index commands", () => {
       source: "cli",
       name: "work",
       domainMap: {},
+      gitMode: "disabled",
+      gitModeSource: "detected",
     };
 
     const badRecord: DecisionRecord = {
@@ -346,6 +349,8 @@ describe("cli index commands", () => {
       source: "cli",
       name: "work",
       domainMap: {},
+      gitMode: "disabled",
+      gitModeSource: "detected",
     };
 
     const invalid: DecisionRecord = {
@@ -395,6 +400,8 @@ describe("cli index commands", () => {
       name: "work",
       source: "cli",
       domainMap: {},
+      gitMode: "disabled",
+      gitModeSource: "detected",
     };
 
     const makeRecord = (domain: string, slug: string): DecisionRecord => ({

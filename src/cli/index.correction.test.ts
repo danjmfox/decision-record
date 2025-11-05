@@ -32,6 +32,8 @@ describe("correction command aliases", () => {
       name: "test",
       source: "cli" as const,
       domainMap: {},
+      gitMode: "disabled" as const,
+      gitModeSource: "detected" as const,
     };
 
     const correctionSpy = vi.fn().mockResolvedValue({
