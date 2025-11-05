@@ -227,6 +227,8 @@ For a deeper architectural overview (layers, lifecycle automation, comparisons w
 > `drctl decision new` scaffolds a record once. Re-run lifecycle commands (`decision draft`, `decision accept`, `decision correction`, `decision revise`, etc.) to evolve a decision; calling `new` again now reports that the decision already exists.
 >
 > `drctl decision accept` automatically backfills missing `draft`/`proposed` transitions (with their own commits/changelog entries) so the lifecycle trail is always complete.
+>
+> `drctl decision revise` and `drctl decision correction` apply content or metadata updates in place—they bump the version and changelog but keep the current lifecycle status. Use supersede/retire when governance requires a fresh acceptance.
 
 > Legacy aliases (e.g. `drctl new`, `drctl draft`) remain temporarily and print a deprecation warning. Update scripts to use the `drctl decision …` form; the top-level lifecycle commands will be removed in a future release.
 
