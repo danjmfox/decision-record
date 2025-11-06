@@ -5,7 +5,7 @@ import { load as loadYaml } from "js-yaml";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MockInstance } from "vitest";
 import { saveDecision } from "../core/repository.js";
-import type { RepoContext } from "../config.js";
+import type { ConfigDiagnostics, RepoContext } from "../config.js";
 import type { DecisionRecord } from "../core/models.js";
 
 function stringify(value: unknown): string {
@@ -218,6 +218,40 @@ describe("cli index commands", () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
+  it("allows repo new with domain dir and default flag", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
+    process.chdir(tempDir);
+    process.argv = [
+      "node",
+      "drctl",
+      "repo",
+      "new",
+      "demo",
+      "./workspace",
+      "--domain-dir",
+      "domains",
+      "--default",
+    ];
+
+    await import("./index.js");
+
+    const logLines = collectLogLines();
+    expect(
+      logLines.some((line: string) => line.includes("Domain directory")),
+    ).toBe(true);
+    expect(
+      logLines.some((line: string) => line.includes("Marked as default repo")),
+    ).toBe(true);
+
+    const config = loadYaml(
+      fs.readFileSync(path.join(tempDir, ".drctl.yaml"), "utf8"),
+    ) as Record<string, any>;
+    expect(config.defaultRepo).toBe("demo");
+    expect(config.repos.demo.defaultDomainDir).toBe("domains");
+
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
   it("mentions config overrides in repo help output", async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
     process.chdir(tempDir);
@@ -257,6 +291,29 @@ describe("cli index commands", () => {
       logMessages.some((msg: string) => /Initialised git repository/.test(msg)),
     ).toBe(true);
     expect(fs.existsSync(path.join(repoDir, ".git"))).toBe(true);
+
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("skips repo bootstrap when git is already initialised", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
+    const repoDir = path.join(tempDir, "workspace");
+    fs.mkdirSync(path.join(repoDir, ".git"), { recursive: true });
+    fs.writeFileSync(
+      path.join(tempDir, ".drctl.yaml"),
+      `repos:\n  work:\n    path: ./workspace\n`,
+    );
+
+    process.chdir(tempDir);
+    process.argv = ["node", "drctl", "repo", "bootstrap", "work"];
+
+    await import("./index.js");
+
+    expect(
+      collectLogLines().some((line: string) =>
+        line.includes("Git already initialised"),
+      ),
+    ).toBe(true);
 
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
@@ -532,6 +589,73 @@ defaultRepo: sandbox
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
+  it("reports config errors via reportConfigDiagnostics helper", async () => {
+    process.env.DRCTL_SKIP_PARSE = "1";
+    const module = (await import("./index.js")) as {
+      reportConfigDiagnostics: (diagnostics: ConfigDiagnostics) => boolean;
+    };
+    const helper = module.reportConfigDiagnostics;
+
+    const diagnostics: ConfigDiagnostics = {
+      cwd: "/tmp/test",
+      warnings: [],
+      errors: ["Repository paths invalid."],
+      repos: [],
+    };
+
+    const result = helper(diagnostics);
+    expect(result).toBe(true);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/Repository paths invalid/),
+    );
+
+    delete process.env.DRCTL_SKIP_PARSE;
+  });
+
+  it("reports warnings via reportConfigDiagnostics helper", async () => {
+    process.env.DRCTL_SKIP_PARSE = "1";
+    const module = (await import("./index.js")) as {
+      reportConfigDiagnostics: (diagnostics: ConfigDiagnostics) => boolean;
+    };
+    const helper = module.reportConfigDiagnostics;
+
+    const diagnostics: ConfigDiagnostics = {
+      cwd: "/tmp/test",
+      warnings: ["Repository missing git init."],
+      errors: [],
+      repos: [],
+    };
+
+    const result = helper(diagnostics);
+    expect(result).toBe(false);
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/Repository missing git init/),
+    );
+
+    delete process.env.DRCTL_SKIP_PARSE;
+  });
+
+  it("confirms success when reportConfigDiagnostics has no warnings or errors", async () => {
+    process.env.DRCTL_SKIP_PARSE = "1";
+    const module = (await import("./index.js")) as {
+      reportConfigDiagnostics: (diagnostics: ConfigDiagnostics) => boolean;
+    };
+    const helper = module.reportConfigDiagnostics;
+
+    const diagnostics: ConfigDiagnostics = {
+      cwd: "/tmp/clean",
+      warnings: [],
+      errors: [],
+      repos: [],
+    };
+
+    const result = helper(diagnostics);
+    expect(result).toBe(false);
+    expect(consoleLogSpy).toHaveBeenCalledWith("✅ Configuration looks good.");
+
+    delete process.env.DRCTL_SKIP_PARSE;
+  });
+
   it("generates an index for the default repository", async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
     const repoDir = path.join(tempDir, "workspace");
@@ -577,6 +701,52 @@ defaultRepo: sandbox
     expect(markdown).toContain("## alpha");
     expect(markdown).toContain("## beta");
 
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("echoes domain dir and default flags when creating repo entries", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
+    const repoDir = path.join(tempDir, "workspace");
+    process.chdir(tempDir);
+    process.argv = [
+      "node",
+      "drctl",
+      "repo",
+      "new",
+      "work",
+      repoDir,
+      "--domain-dir",
+      "domains",
+      "--default",
+    ];
+
+    await import("./index.js");
+
+    const logs = collectLogLines().join("\n");
+    expect(logs).toMatch(/Domain directory: domains/);
+    expect(logs).toMatch(/Marked as default repo/);
+    expect(fs.existsSync(path.join(tempDir, ".drctl.yaml"))).toBe(true);
+
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("reports when repo bootstrap finds an existing git repository", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
+    const repoDir = path.join(tempDir, "workspace");
+    fs.mkdirSync(path.join(repoDir, ".git"), { recursive: true });
+    fs.writeFileSync(
+      path.join(tempDir, ".drctl.yaml"),
+      `repos:\n  work:\n    path: ./workspace\n`,
+    );
+    const gitModule = await import("../core/git.js");
+    const initSpy = vi.spyOn(gitModule, "initGitRepo");
+
+    const logs = await runCli(tempDir, ["repo", "bootstrap", "work"]);
+
+    expect(initSpy).not.toHaveBeenCalled();
+    expect(logs.some((line) => /already initialised/.test(line))).toBe(true);
+
+    initSpy.mockRestore();
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 

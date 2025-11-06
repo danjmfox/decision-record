@@ -614,7 +614,9 @@ program
     legacyDecisionAction("supersede", "supersede", handleDecisionSupersede),
   );
 
-function reportConfigDiagnostics(diagnostics: ConfigDiagnostics): boolean {
+export function reportConfigDiagnostics(
+  diagnostics: ConfigDiagnostics,
+): boolean {
   logConfigSummary(diagnostics);
   logRepositoryList(diagnostics.repos);
   const hasWarnings = diagnostics.warnings.length > 0;
