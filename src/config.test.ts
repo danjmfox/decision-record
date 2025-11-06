@@ -652,6 +652,124 @@ repos:
       expect.stringMatching(/outside the repo root/i),
     );
   });
+
+  it("honours boolean git flags defined in repo config", () => {
+    const dir = makeTempDir();
+    const repoDir = path.join(dir, "workspace");
+    fs.mkdirSync(repoDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(dir, ".drctl.yaml"),
+      `repos:
+  work:
+    path: ./workspace
+    git: true
+`,
+    );
+
+    const diagnostics = diagnoseConfig({ cwd: dir });
+
+    expect(diagnostics.repos).toHaveLength(1);
+    expect(diagnostics.repos[0]?.gitMode).toBe("enabled");
+    expect(diagnostics.repos[0]?.gitModeSource).toBe("config");
+  });
+
+  it("honours string git values defined in repo config", () => {
+    const dir = makeTempDir();
+    const repoDir = path.join(dir, "workspace");
+    fs.mkdirSync(repoDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(dir, ".drctl.yaml"),
+      `repos:
+  work:
+    path: ./workspace
+    git: enabled
+`,
+    );
+
+    const diagnostics = diagnoseConfig({ cwd: dir });
+
+    expect(diagnostics.repos[0]?.gitMode).toBe("enabled");
+    expect(diagnostics.repos[0]?.gitModeSource).toBe("config");
+  });
+
+  it("ignores unrecognised string git values", () => {
+    const dir = makeTempDir();
+    const repoDir = path.join(dir, "workspace");
+    fs.mkdirSync(repoDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(dir, ".drctl.yaml"),
+      `repos:
+  work:
+    path: ./workspace
+    git: maybe
+`,
+    );
+
+    const diagnostics = diagnoseConfig({ cwd: dir });
+
+    expect(diagnostics.repos[0]?.gitModeSource).toBe("detected");
+  });
+
+  it("ignores git values that are neither strings nor booleans", () => {
+    const dir = makeTempDir();
+    const repoDir = path.join(dir, "workspace");
+    fs.mkdirSync(repoDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(dir, ".drctl.yaml"),
+      `repos:
+  work:
+    path: ./workspace
+    git: 123
+`,
+    );
+
+    const diagnostics = diagnoseConfig({ cwd: dir });
+
+    expect(diagnostics.repos[0]?.gitModeSource).toBe("detected");
+  });
+
+  it("ignores domain entries that are not strings or objects", () => {
+    const dir = makeTempDir();
+    const repoRoot = path.join(dir, "repo");
+    fs.mkdirSync(repoRoot, { recursive: true });
+    fs.writeFileSync(
+      path.join(dir, ".drctl.yaml"),
+      `repos:
+  work:
+    path: ./repo
+    domains:
+      invalid: 123
+`,
+    );
+
+    const context = resolveRepoContext({ cwd: dir, repoFlag: "work" });
+
+    expect(context.domainMap.invalid).toBeUndefined();
+  });
+
+  it("accepts absolute template paths without rewriting the value", () => {
+    const dir = makeTempDir();
+    const repoDir = path.join(dir, "workspace");
+    fs.mkdirSync(repoDir, { recursive: true });
+    fs.mkdirSync(path.join(repoDir, ".git"));
+    const templateDir = path.join(repoDir, "templates");
+    fs.mkdirSync(templateDir, { recursive: true });
+    const absoluteTemplate = path.join(templateDir, "absolute.md");
+    fs.writeFileSync(absoluteTemplate, "# Absolute template\n");
+    fs.writeFileSync(
+      path.join(dir, ".drctl.yaml"),
+      `repos:
+  work:
+    path: ./workspace
+    template: ${absoluteTemplate}
+`,
+    );
+
+    const diagnostics = diagnoseConfig({ cwd: dir });
+
+    expect(diagnostics.repos[0]?.defaultTemplate).toBe(absoluteTemplate);
+    expect(diagnostics.warnings).toHaveLength(0);
+  });
 });
 
 describe("resolveConfigPath edge cases", () => {

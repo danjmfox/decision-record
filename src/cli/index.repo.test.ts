@@ -595,9 +595,10 @@ defaultRepo: sandbox
       reportConfigDiagnostics: (diagnostics: ConfigDiagnostics) => boolean;
     };
     const helper = module.reportConfigDiagnostics;
+    const safeCwd = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-config-"));
 
     const diagnostics: ConfigDiagnostics = {
-      cwd: "/tmp/test",
+      cwd: safeCwd,
       warnings: [],
       errors: ["Repository paths invalid."],
       repos: [],
@@ -610,6 +611,7 @@ defaultRepo: sandbox
     );
 
     delete process.env.DRCTL_SKIP_PARSE;
+    fs.rmSync(safeCwd, { recursive: true, force: true });
   });
 
   it("reports warnings via reportConfigDiagnostics helper", async () => {
@@ -618,9 +620,10 @@ defaultRepo: sandbox
       reportConfigDiagnostics: (diagnostics: ConfigDiagnostics) => boolean;
     };
     const helper = module.reportConfigDiagnostics;
+    const safeCwd = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-config-"));
 
     const diagnostics: ConfigDiagnostics = {
-      cwd: "/tmp/test",
+      cwd: safeCwd,
       warnings: ["Repository missing git init."],
       errors: [],
       repos: [],
@@ -633,6 +636,7 @@ defaultRepo: sandbox
     );
 
     delete process.env.DRCTL_SKIP_PARSE;
+    fs.rmSync(safeCwd, { recursive: true, force: true });
   });
 
   it("confirms success when reportConfigDiagnostics has no warnings or errors", async () => {
@@ -641,9 +645,10 @@ defaultRepo: sandbox
       reportConfigDiagnostics: (diagnostics: ConfigDiagnostics) => boolean;
     };
     const helper = module.reportConfigDiagnostics;
+    const safeCwd = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-config-"));
 
     const diagnostics: ConfigDiagnostics = {
-      cwd: "/tmp/clean",
+      cwd: safeCwd,
       warnings: [],
       errors: [],
       repos: [],
@@ -654,6 +659,7 @@ defaultRepo: sandbox
     expect(consoleLogSpy).toHaveBeenCalledWith("✅ Configuration looks good.");
 
     delete process.env.DRCTL_SKIP_PARSE;
+    fs.rmSync(safeCwd, { recursive: true, force: true });
   });
 
   it("generates an index for the default repository", async () => {
