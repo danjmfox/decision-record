@@ -600,8 +600,6 @@ class DiagnosticsCollector {
       gitEnv: null,
       gitConfig: repo.gitMode ?? null,
     });
-    const gitRootForRepo =
-      gitResolution.detectedGitRoot ?? detectedGitRoot ?? undefined;
     const templateAbsolute =
       repo.defaultTemplate && exists
         ? resolveTemplatePath(repo.root, repo.defaultTemplate)
