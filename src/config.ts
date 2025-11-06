@@ -591,8 +591,6 @@ class DiagnosticsCollector {
       gitEnv: null,
       gitConfig: repo.gitMode ?? null,
     });
-    const resolvedGitRoot =
-      gitResolution.detectedGitRoot ?? detectedGitRoot ?? undefined;
     const templateAbsolute =
       repo.defaultTemplate && exists
         ? resolveTemplatePath(repo.root, repo.defaultTemplate)
@@ -618,7 +616,9 @@ class DiagnosticsCollector {
       gitInitialized,
       gitMode: gitResolution.mode,
       gitModeSource: gitResolution.source,
-      ...(resolvedGitRoot ? { gitRoot: resolvedGitRoot } : {}),
+      ...((gitResolution.detectedGitRoot ?? detectedGitRoot)
+        ? { gitRoot: gitResolution.detectedGitRoot ?? detectedGitRoot }
+        : {}),
     });
 
     if (repo.defaultTemplate && exists) {
