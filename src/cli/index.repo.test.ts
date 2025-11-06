@@ -90,6 +90,32 @@ describe("cli index commands", () => {
     return getLogSpy().mock.calls.map((call: unknown[]) => stringify(call[0]));
   }
 
+  function createWorkspaceRepo(options: { gitAtRoot?: boolean } = {}): {
+    tempDir: string;
+    repoDir: string;
+  } {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
+    const repoDir = path.join(tempDir, "workspace");
+    fs.mkdirSync(repoDir, { recursive: true });
+    if (options.gitAtRoot) {
+      fs.mkdirSync(path.join(tempDir, ".git"), { recursive: true });
+    } else {
+      fs.mkdirSync(path.join(repoDir, ".git"), { recursive: true });
+    }
+    fs.writeFileSync(
+      path.join(tempDir, ".drctl.yaml"),
+      `repos:\n  work:\n    path: ./workspace\n`,
+    );
+    return { tempDir, repoDir };
+  }
+
+  async function runCli(tempDir: string, args: string[]): Promise<string[]> {
+    process.chdir(tempDir);
+    process.argv = ["node", "drctl", ...args];
+    await import("./index.js");
+    return collectLogLines();
+  }
+
   it("rejects --repo flag usage", async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
     process.argv = [
@@ -154,19 +180,8 @@ describe("cli index commands", () => {
   });
 
   it("includes git root details when repositories are initialised", async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
-    const repoDir = path.join(tempDir, "workspace");
-    fs.mkdirSync(path.join(repoDir, ".git"), { recursive: true });
-    fs.writeFileSync(
-      path.join(tempDir, ".drctl.yaml"),
-      `repos:\n  work:\n    path: ./workspace\n`,
-    );
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "config", "check"];
-
-    await import("./index.js");
-
-    const logLines = collectLogLines();
+    const { tempDir } = createWorkspaceRepo();
+    const logLines = await runCli(tempDir, ["config", "check"]);
     expect(logLines.some((line: string) => line.includes("Git root:"))).toBe(
       true,
     );
@@ -175,40 +190,16 @@ describe("cli index commands", () => {
   });
 
   it("reports git initialisation status in config check", async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
-    const repoDir = path.join(tempDir, "workspace");
-    fs.mkdirSync(path.join(repoDir, ".git"), { recursive: true });
-    fs.writeFileSync(
-      path.join(tempDir, ".drctl.yaml"),
-      `repos:\n  work:\n    path: ./workspace\n`,
-    );
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "config", "check"];
-
-    await import("./index.js");
-
-    const logs = collectLogLines().join("\n");
+    const { tempDir } = createWorkspaceRepo();
+    const logs = (await runCli(tempDir, ["config", "check"])).join("\n");
     expect(logs).toMatch(/git: initialised/);
 
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
   it("notes inherited git roots when repo show runs inside a parent git repo", async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
-    const workspace = path.join(tempDir, "workspace");
-    fs.mkdirSync(workspace, { recursive: true });
-    fs.mkdirSync(path.join(tempDir, ".git"), { recursive: true });
-    fs.writeFileSync(
-      path.join(tempDir, ".drctl.yaml"),
-      `repos:\n  work:\n    path: ./workspace\n`,
-    );
-
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "repo", "show", "--repo", "work"];
-
-    await import("./index.js");
-
-    const logLines = collectLogLines();
+    const { tempDir } = createWorkspaceRepo({ gitAtRoot: true });
+    const logLines = await runCli(tempDir, ["repo", "show", "--repo", "work"]);
     expect(
       logLines.some(
         (line: string) =>
@@ -221,12 +212,7 @@ describe("cli index commands", () => {
 
   it("prints an empty repository summary when none are configured", async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "config", "check"];
-
-    await import("./index.js");
-
-    const logLines = collectLogLines();
+    const logLines = await runCli(tempDir, ["config", "check"]);
     expect(logLines).toContain("📚 Repositories: none");
 
     fs.rmSync(tempDir, { recursive: true, force: true });
