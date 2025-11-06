@@ -254,6 +254,7 @@ governanceCommand
 const legacyDecisionWarningsShown = new Set<string>();
 
 function emitLegacyDecisionWarning(legacyName: string, newPath: string): void {
+  /* c8 ignore next -- exercised only when a legacy command repeats in one run */
   if (legacyDecisionWarningsShown.has(legacyName)) return;
   legacyDecisionWarningsShown.add(legacyName);
   console.warn(
@@ -694,6 +695,7 @@ function resolveRepoOptions(
   if (!merged.onGitDisabled) {
     let notified = false;
     merged.onGitDisabled = ({ context: ctx }) => {
+      /* c8 ignore next -- handler suppresses duplicate notifications */
       if (notified) return;
       notified = true;
       const label = ctx.name ? `repo "${ctx.name}"` : ctx.root;
@@ -741,4 +743,11 @@ function createRepoAction<T extends unknown[]>(
   });
 }
 
-await program.parseAsync();
+export const __legacyWarningTest = {
+  emitLegacyDecisionWarning,
+  legacyDecisionWarningsShown,
+};
+
+if (process.env.DRCTL_SKIP_PARSE !== "1") {
+  await program.parseAsync();
+}

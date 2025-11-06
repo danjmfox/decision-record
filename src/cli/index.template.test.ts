@@ -375,4 +375,28 @@ describe("cli template-aware flows", () => {
     expect(generateIndex).not.toHaveBeenCalled();
     expect(process.exitCode).toBe(1);
   });
+
+  it("suppresses duplicate legacy command warnings", async () => {
+    process.env.DRCTL_SKIP_PARSE = "1";
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const module = await import("./index.js");
+    const hooks = (
+      module as unknown as {
+        __legacyWarningTest: {
+          emitLegacyDecisionWarning: (legacy: string, target: string) => void;
+          legacyDecisionWarningsShown: Set<string>;
+        };
+      }
+    ).__legacyWarningTest;
+
+    hooks.legacyDecisionWarningsShown.clear();
+    hooks.emitLegacyDecisionWarning("legacy", "drctl decision legacy");
+    hooks.emitLegacyDecisionWarning("legacy", "drctl decision legacy");
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+
+    hooks.legacyDecisionWarningsShown.clear();
+    warnSpy.mockRestore();
+    delete process.env.DRCTL_SKIP_PARSE;
+  });
 });
