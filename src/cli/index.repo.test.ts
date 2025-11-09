@@ -90,23 +90,40 @@ describe("cli index commands", () => {
     return getLogSpy().mock.calls.map((call: unknown[]) => stringify(call[0]));
   }
 
-  function createWorkspaceRepo(options: { gitAtRoot?: boolean } = {}): {
-    tempDir: string;
-    repoDir: string;
-  } {
+  type ConfigSandboxOptions = {
+    repoFolder?: string;
+    createRepoDir?: boolean;
+    initGit?: "repo" | "root";
+  };
+
+  function createConfigSandbox(
+    config: string,
+    options: ConfigSandboxOptions = {},
+  ): { tempDir: string; repoDir: string } {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
-    const repoDir = path.join(tempDir, "workspace");
-    fs.mkdirSync(repoDir, { recursive: true });
-    if (options.gitAtRoot) {
-      fs.mkdirSync(path.join(tempDir, ".git"), { recursive: true });
-    } else {
-      fs.mkdirSync(path.join(repoDir, ".git"), { recursive: true });
+    const repoFolder = options.repoFolder ?? "workspace";
+    const repoDir = path.join(tempDir, repoFolder);
+    if (options.createRepoDir !== false) {
+      fs.mkdirSync(repoDir, { recursive: true });
     }
-    fs.writeFileSync(
-      path.join(tempDir, ".drctl.yaml"),
-      `repos:\n  work:\n    path: ./workspace\n`,
-    );
+    if (options.initGit === "repo") {
+      fs.mkdirSync(path.join(repoDir, ".git"), { recursive: true });
+    } else if (options.initGit === "root") {
+      fs.mkdirSync(path.join(tempDir, ".git"), { recursive: true });
+    }
+    fs.writeFileSync(path.join(tempDir, ".drctl.yaml"), config);
     return { tempDir, repoDir };
+  }
+
+  const BASIC_WORKSPACE_CONFIG = `repos:
+  work:
+    path: ./workspace
+`;
+
+  function createWorkspaceRepo(options: { gitAtRoot?: boolean } = {}) {
+    return createConfigSandbox(BASIC_WORKSPACE_CONFIG, {
+      initGit: options.gitAtRoot ? "root" : "repo",
+    });
   }
 
   async function runCli(tempDir: string, args: string[]): Promise<string[]> {
@@ -273,13 +290,7 @@ describe("cli index commands", () => {
   });
 
   it("bootstraps git repos for configured alias", async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
-    const repoDir = path.join(tempDir, "workspace");
-    fs.mkdirSync(repoDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(tempDir, ".drctl.yaml"),
-      `repos:\n  work:\n    path: ./workspace\n`,
-    );
+    const { tempDir, repoDir } = createConfigSandbox(BASIC_WORKSPACE_CONFIG);
 
     process.chdir(tempDir);
     process.argv = ["node", "drctl", "repo", "bootstrap", "work"];
@@ -296,13 +307,9 @@ describe("cli index commands", () => {
   });
 
   it("skips repo bootstrap when git is already initialised", async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
-    const repoDir = path.join(tempDir, "workspace");
-    fs.mkdirSync(path.join(repoDir, ".git"), { recursive: true });
-    fs.writeFileSync(
-      path.join(tempDir, ".drctl.yaml"),
-      `repos:\n  work:\n    path: ./workspace\n`,
-    );
+    const { tempDir } = createConfigSandbox(BASIC_WORKSPACE_CONFIG, {
+      initGit: "repo",
+    });
 
     process.chdir(tempDir);
     process.argv = ["node", "drctl", "repo", "bootstrap", "work"];
@@ -402,14 +409,14 @@ describe("cli index commands", () => {
   });
 
   it("validates governance issues and reports errors", async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
-    const repoDir = path.join(tempDir, "workspace");
-    fs.mkdirSync(repoDir, { recursive: true });
-    const configPath = path.join(tempDir, ".drctl.yaml");
-    fs.writeFileSync(
-      configPath,
-      `defaultRepo: work\nrepos:\n  work:\n    path: ./workspace\n`,
+    const { tempDir, repoDir } = createConfigSandbox(
+      `defaultRepo: work
+repos:
+  work:
+    path: ./workspace
+`,
     );
+    const configPath = path.join(tempDir, ".drctl.yaml");
 
     const context: RepoContext = {
       root: repoDir,
@@ -446,10 +453,13 @@ describe("cli index commands", () => {
   });
 
   it("fails governance validation when repo root is missing", async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
-    fs.writeFileSync(
-      path.join(tempDir, ".drctl.yaml"),
-      `defaultRepo: ghost\nrepos:\n  ghost:\n    path: ./workspace\n`,
+    const { tempDir } = createConfigSandbox(
+      `defaultRepo: ghost
+repos:
+  ghost:
+    path: ./workspace
+`,
+      { createRepoDir: false },
     );
 
     process.chdir(tempDir);
@@ -467,12 +477,12 @@ describe("cli index commands", () => {
   });
 
   it("prints success message when governance validation passes", async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
-    const repoDir = path.join(tempDir, "workspace");
-    fs.mkdirSync(repoDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(tempDir, ".drctl.yaml"),
-      `defaultRepo: ok\nrepos:\n  ok:\n    path: ./workspace\n`,
+    const { tempDir } = createConfigSandbox(
+      `defaultRepo: ok
+repos:
+  ok:
+    path: ./workspace
+`,
     );
 
     process.chdir(tempDir);
