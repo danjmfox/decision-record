@@ -647,12 +647,14 @@ repos:
     const repoDir = path.join(dir, "workspace");
     fs.mkdirSync(repoDir, { recursive: true });
     fs.mkdirSync(path.join(repoDir, ".git"));
-    const config = `repos:
+    fs.writeFileSync(
+      path.join(dir, ".drctl.yaml"),
+      `repos:
   work:
     path: ./workspace
     template: templates/meta.md
-`;
-    fs.writeFileSync(path.join(dir, ".drctl.yaml"), config);
+`,
+    );
 
     const diagnostics = diagnoseConfig({ cwd: dir });
 
@@ -660,6 +662,27 @@ repos:
     expect(diagnostics.warnings).toContainEqual(
       expect.stringMatching(/Template "templates\/meta\.md" not found/i),
     );
+  });
+
+  it("falls back when the configured default repo alias is missing", () => {
+    const dir = makeTempDir();
+    const repoDir = path.join(dir, "workspace");
+    fs.mkdirSync(repoDir, { recursive: true });
+    const localDecisions = path.join(dir, "decisions");
+    fs.mkdirSync(localDecisions, { recursive: true });
+    fs.writeFileSync(
+      path.join(dir, ".drctl.yaml"),
+      `defaultRepo: missing
+repos:
+  work:
+    path: ./workspace
+`,
+    );
+
+    const context = resolveRepoContext({ cwd: dir });
+
+    expect(context.root).toBe(localDecisions);
+    expect(context.source).toBe("fallback-cwd");
   });
 
   it("warns when the configured template path is outside the repository", () => {
