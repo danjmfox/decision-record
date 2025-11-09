@@ -90,6 +90,35 @@ describe("cli index commands", () => {
     return getLogSpy().mock.calls.map((call: unknown[]) => stringify(call[0]));
   }
 
+  type DiagnosticsOverrides = Partial<ConfigDiagnostics>;
+
+  async function runReportDiagnosticsTest(
+    overrides: DiagnosticsOverrides,
+    verify: (result: boolean) => void,
+  ): Promise<void> {
+    const safeCwd = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-config-"));
+    const diagnostics: ConfigDiagnostics = {
+      cwd: safeCwd,
+      warnings: [],
+      errors: [],
+      repos: [],
+      ...overrides,
+    };
+
+    process.env.DRCTL_SKIP_PARSE = "1";
+    try {
+      const module = (await import("./index.js")) as {
+        reportConfigDiagnostics: (diagnostics: ConfigDiagnostics) => boolean;
+      };
+      const helper = module.reportConfigDiagnostics;
+      const result = helper(diagnostics);
+      verify(result);
+    } finally {
+      delete process.env.DRCTL_SKIP_PARSE;
+      fs.rmSync(safeCwd, { recursive: true, force: true });
+    }
+  }
+
   type ConfigSandboxOptions = {
     repoFolder?: string;
     createRepoDir?: boolean;
@@ -558,76 +587,36 @@ defaultRepo: sandbox
   });
 
   it("reports config errors via reportConfigDiagnostics helper", async () => {
-    process.env.DRCTL_SKIP_PARSE = "1";
-    const module = (await import("./index.js")) as {
-      reportConfigDiagnostics: (diagnostics: ConfigDiagnostics) => boolean;
-    };
-    const helper = module.reportConfigDiagnostics;
-    const safeCwd = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-config-"));
-
-    const diagnostics: ConfigDiagnostics = {
-      cwd: safeCwd,
-      warnings: [],
-      errors: ["Repository paths invalid."],
-      repos: [],
-    };
-
-    const result = helper(diagnostics);
-    expect(result).toBe(true);
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      expect.stringMatching(/Repository paths invalid/),
+    await runReportDiagnosticsTest(
+      { errors: ["Repository paths invalid."] },
+      (result) => {
+        expect(result).toBe(true);
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          expect.stringMatching(/Repository paths invalid/),
+        );
+      },
     );
-
-    delete process.env.DRCTL_SKIP_PARSE;
-    fs.rmSync(safeCwd, { recursive: true, force: true });
   });
 
   it("reports warnings via reportConfigDiagnostics helper", async () => {
-    process.env.DRCTL_SKIP_PARSE = "1";
-    const module = (await import("./index.js")) as {
-      reportConfigDiagnostics: (diagnostics: ConfigDiagnostics) => boolean;
-    };
-    const helper = module.reportConfigDiagnostics;
-    const safeCwd = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-config-"));
-
-    const diagnostics: ConfigDiagnostics = {
-      cwd: safeCwd,
-      warnings: ["Repository missing git init."],
-      errors: [],
-      repos: [],
-    };
-
-    const result = helper(diagnostics);
-    expect(result).toBe(false);
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
-      expect.stringMatching(/Repository missing git init/),
+    await runReportDiagnosticsTest(
+      { warnings: ["Repository missing git init."] },
+      (result) => {
+        expect(result).toBe(false);
+        expect(consoleWarnSpy).toHaveBeenCalledWith(
+          expect.stringMatching(/Repository missing git init/),
+        );
+      },
     );
-
-    delete process.env.DRCTL_SKIP_PARSE;
-    fs.rmSync(safeCwd, { recursive: true, force: true });
   });
 
   it("confirms success when reportConfigDiagnostics has no warnings or errors", async () => {
-    process.env.DRCTL_SKIP_PARSE = "1";
-    const module = (await import("./index.js")) as {
-      reportConfigDiagnostics: (diagnostics: ConfigDiagnostics) => boolean;
-    };
-    const helper = module.reportConfigDiagnostics;
-    const safeCwd = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-config-"));
-
-    const diagnostics: ConfigDiagnostics = {
-      cwd: safeCwd,
-      warnings: [],
-      errors: [],
-      repos: [],
-    };
-
-    const result = helper(diagnostics);
-    expect(result).toBe(false);
-    expect(consoleLogSpy).toHaveBeenCalledWith("✅ Configuration looks good.");
-
-    delete process.env.DRCTL_SKIP_PARSE;
-    fs.rmSync(safeCwd, { recursive: true, force: true });
+    await runReportDiagnosticsTest({}, (result) => {
+      expect(result).toBe(false);
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        "✅ Configuration looks good.",
+      );
+    });
   });
 
   it("generates an index for the default repository", async () => {
