@@ -252,13 +252,10 @@ describe("cli index commands", () => {
 
   it("mentions config overrides in repo help output", async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
-    process.chdir(tempDir);
     const stdoutSpy = vi
       .spyOn(process.stdout, "write")
       .mockImplementation(() => true);
-    process.argv = ["node", "drctl", "repo", "--help"];
-
-    await import("./index.js");
+    await runCli(tempDir, ["repo", "--help"]);
 
     const output = stdoutSpy.mock.calls
       .map((call: unknown[]) => stringify(call[0]))
@@ -308,18 +305,13 @@ describe("cli index commands", () => {
     const configPath = path.join(configDir, "shared.yaml");
     fs.writeFileSync(configPath, `repos:\n  shared:\n    path: ./workspace\n`);
 
-    process.chdir(otherCwd);
-    process.argv = [
-      "node",
-      "drctl",
+    await runCli(otherCwd, [
       "--config",
       configPath,
       "repo",
       "bootstrap",
       "shared",
-    ];
-
-    await import("./index.js");
+    ]);
 
     expect(fs.existsSync(path.join(repoDir, ".git"))).toBe(true);
 
@@ -334,10 +326,7 @@ describe("cli index commands", () => {
       `defaultRepo: work\nrepos:\n  work:\n    path: ./work\n  home:\n    path: ./home\n`,
     );
 
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "repo", "switch", "home"];
-
-    await import("./index.js");
+    await runCli(tempDir, ["repo", "switch", "home"]);
 
     const logMessages = collectLogLines();
     expect(
@@ -360,18 +349,7 @@ describe("cli index commands", () => {
       `defaultRepo: work\nrepos:\n  work:\n    path: ./work\n  home:\n    path: ./home\n`,
     );
 
-    process.chdir(otherCwd);
-    process.argv = [
-      "node",
-      "drctl",
-      "--config",
-      configPath,
-      "repo",
-      "switch",
-      "home",
-    ];
-
-    await import("./index.js");
+    await runCli(otherCwd, ["--config", configPath, "repo", "switch", "home"]);
 
     const parsed = loadYaml(fs.readFileSync(configPath, "utf8")) as Record<
       string,
@@ -391,7 +369,6 @@ repos:
     path: ./workspace
 `,
     );
-    const configPath = path.join(tempDir, ".drctl.yaml");
 
     const context: RepoContext = {
       root: repoDir,
@@ -476,7 +453,6 @@ repos:
 defaultRepo: sandbox
 `,
     );
-    process.chdir(tempDir);
     fs.mkdirSync(path.join(tempDir, "decisions"), { recursive: true });
 
     const { resolveRepoContext } = await import("../config.js");
@@ -496,17 +472,13 @@ defaultRepo: sandbox
     };
     saveDecision(context, record, "# body");
 
-    process.argv = [
-      "node",
-      "drctl",
+    await runCli(tempDir, [
       "--config",
       configPath,
       "--no-git",
       "draft",
       record.id,
-    ];
-
-    await import("./index.js");
+    ]);
 
     const gitHints = collectLogLines().filter((line: string) =>
       line.includes("Git disabled"),
@@ -546,10 +518,7 @@ defaultRepo: sandbox
     };
     saveDecision(context, invalid, "# body");
 
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "governance", "validate", "--json"];
-
-    await import("./index.js");
+    await runCli(tempDir, ["governance", "validate", "--json"]);
 
     const outputCalls = collectLogLines();
     const jsonPayload = outputCalls.find((msg: string) =>
@@ -670,10 +639,7 @@ defaultRepo: sandbox
     saveDecision(context, makeRecord("alpha", "first"), "# alpha first");
     saveDecision(context, makeRecord("beta", "second"), "# beta second");
 
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "index"];
-
-    await import("./index.js");
+    await runCli(tempDir, ["index"]);
 
     const logCalls = collectLogLines();
     expect(logCalls.some((msg) => /Generated index/.test(msg))).toBe(true);
@@ -689,10 +655,7 @@ defaultRepo: sandbox
   it("echoes domain dir and default flags when creating repo entries", async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
     const repoDir = path.join(tempDir, "workspace");
-    process.chdir(tempDir);
-    process.argv = [
-      "node",
-      "drctl",
+    await runCli(tempDir, [
       "repo",
       "new",
       "work",
@@ -700,9 +663,7 @@ defaultRepo: sandbox
       "--domain-dir",
       "domains",
       "--default",
-    ];
-
-    await import("./index.js");
+    ]);
 
     const logs = collectLogLines().join("\n");
     expect(logs).toMatch(/Domain directory: domains/);
@@ -739,10 +700,7 @@ defaultRepo: sandbox
       `defaultRepo: ghost\nrepos:\n  ghost:\n    path: ./workspace\n`,
     );
 
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "index"];
-
-    await import("./index.js");
+    await runCli(tempDir, ["index"]);
 
     const errorSpy = consoleErrorSpy;
     expect(errorSpy).toHaveBeenCalledWith(
@@ -757,19 +715,14 @@ defaultRepo: sandbox
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
     const configPath = path.join(tempDir, "custom.yaml");
     fs.writeFileSync(configPath, "repos:\n");
-    process.chdir(tempDir);
-    process.argv = [
-      "node",
-      "drctl",
+    await runCli(tempDir, [
       "--config",
       configPath,
       "repo",
       "new",
       "alias",
       "./repo",
-    ];
-
-    await import("./index.js");
+    ]);
 
     const parsed = loadYaml(fs.readFileSync(configPath, "utf8")) as Record<
       string,
@@ -786,10 +739,7 @@ defaultRepo: sandbox
       path.join(tempDir, ".drctl.yaml"),
       `repos:\n  work:\n    path: ./workspace\n`,
     );
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "repo", "new", "docs", "./workspace"];
-
-    await import("./index.js");
+    await runCli(tempDir, ["repo", "new", "docs", "./workspace"]);
 
     expect(process.exitCode).toBe(1);
     const errorSpy = consoleErrorSpy;
@@ -811,10 +761,7 @@ defaultRepo: sandbox
     const configPath = path.join(tempDir, "env-config.yaml");
     fs.writeFileSync(configPath, "repos:\n");
     process.env.DRCTL_CONFIG = configPath;
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "repo", "new", "alias", "./repo"];
-
-    await import("./index.js");
+    await runCli(tempDir, ["repo", "new", "alias", "./repo"]);
 
     const parsed = loadYaml(fs.readFileSync(configPath, "utf8")) as Record<
       string,

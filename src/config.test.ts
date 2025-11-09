@@ -663,7 +663,7 @@ repos:
   });
 
   it("warns when the configured template path is outside the repository", () => {
-    const { dir, repoDir } = setupRepoFixture({
+    const { dir } = setupRepoFixture({
       initialiseGit: true,
       extraLines: ["    template: ../external/custom.md"],
     });
