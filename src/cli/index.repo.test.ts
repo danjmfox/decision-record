@@ -182,6 +182,29 @@ describe("cli index commands", () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
+  it("exits with code 1 when config check reports errors", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
+    vi.doMock("../config.js", async () => {
+      const actual =
+        await vi.importActual<typeof import("../config.js")>("../config.js");
+      return {
+        ...actual,
+        diagnoseConfig: () => ({
+          cwd: tempDir,
+          warnings: [],
+          errors: ["Config broken"],
+          repos: [],
+        }),
+      };
+    });
+
+    await runCli(tempDir, ["config", "check"]);
+
+    expect(process.exitCode).toBe(1);
+    vi.doUnmock("../config.js");
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
   it("includes git root details when repositories are initialised", async () => {
     const { tempDir } = createWorkspaceRepo();
     const logLines = await runCli(tempDir, ["config", "check"]);
