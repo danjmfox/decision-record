@@ -135,18 +135,7 @@ describe("cli index commands", () => {
 
   it("rejects --repo flag usage", async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
-    process.argv = [
-      "node",
-      "drctl",
-      "repo",
-      "new",
-      "--repo",
-      "foo",
-      "alias",
-      tempDir,
-    ];
-
-    await import("./index.js");
+    await runCli(tempDir, ["repo", "new", "--repo", "foo", "alias", tempDir]);
 
     const errorSpy = consoleErrorSpy;
     expect(errorSpy).toHaveBeenCalledWith(
@@ -172,10 +161,7 @@ describe("cli index commands", () => {
 `,
     );
     fs.mkdirSync(path.join(tempDir, "present"), { recursive: true });
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "config", "check"];
-
-    await import("./index.js");
+    await runCli(tempDir, ["config", "check"]);
 
     const logSpy = getLogSpy();
     expect(logSpy).toHaveBeenCalledWith(
@@ -237,10 +223,7 @@ describe("cli index commands", () => {
 
   it("allows repo new with domain dir and default flag", async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
-    process.chdir(tempDir);
-    process.argv = [
-      "node",
-      "drctl",
+    await runCli(tempDir, [
       "repo",
       "new",
       "demo",
@@ -248,9 +231,7 @@ describe("cli index commands", () => {
       "--domain-dir",
       "domains",
       "--default",
-    ];
-
-    await import("./index.js");
+    ]);
 
     const logLines = collectLogLines();
     expect(
@@ -292,10 +273,7 @@ describe("cli index commands", () => {
   it("bootstraps git repos for configured alias", async () => {
     const { tempDir, repoDir } = createConfigSandbox(BASIC_WORKSPACE_CONFIG);
 
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "repo", "bootstrap", "work"];
-
-    await import("./index.js");
+    await runCli(tempDir, ["repo", "bootstrap", "work"]);
 
     const logMessages = collectLogLines();
     expect(
@@ -311,10 +289,7 @@ describe("cli index commands", () => {
       initGit: "repo",
     });
 
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "repo", "bootstrap", "work"];
-
-    await import("./index.js");
+    await runCli(tempDir, ["repo", "bootstrap", "work"]);
 
     expect(
       collectLogLines().some((line: string) =>
@@ -439,10 +414,7 @@ repos:
     };
     saveDecision(context, badRecord, "Body");
 
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "governance", "validate"];
-
-    await import("./index.js");
+    await runCli(tempDir, ["governance", "validate"]);
 
     const logs = collectLogLines();
     expect(logs.join("\n")).toMatch(/Governance validation/);
@@ -462,10 +434,7 @@ repos:
       { createRepoDir: false },
     );
 
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "governance", "validate"];
-
-    await import("./index.js");
+    await runCli(tempDir, ["governance", "validate"]);
 
     const errorSpy = consoleErrorSpy;
     expect(errorSpy).toHaveBeenCalledWith(
@@ -485,10 +454,7 @@ repos:
 `,
     );
 
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "governance", "validate"];
-
-    await import("./index.js");
+    await runCli(tempDir, ["governance", "validate"]);
 
     expect(getLogSpy()).toHaveBeenCalledWith(
       expect.stringMatching(/Governance validation passed/),
