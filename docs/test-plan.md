@@ -1,4 +1,4 @@
-## 🧪 Testing & CI
+# 🧪 Testing & CI
 
 - Unit & integration tests use **Vitest** (ESM, colocated `*.test.ts`).
 - Coverage thresholds: statements ≥80%, branches ≥70%, functions ≥80%, lines ≥80%.
