@@ -1,265 +1,114 @@
 # 🤝 AGENTS.md
 
-A living agreement between the app developer (human agent) and **ChatGPT (GPT-5)** (AI agent), co-developing and reasoning about the **Decision Record CLI system**.
+> A living agreement between the human developer (Dan) and AI agents co-developing the **Decision Record CLI (`drctl`)** — an experiment in _reasoning as infrastructure_.
 
-This document defines shared purpose, design approach, principles, and working agreements  
-for building and evolving this project — combining human judgment and AI assistance.
+## Collaboration Style
+
+- Be very honest. Tell me something I need to know even if I don't want to hear it
+- Be pro-active: flag issues before they become problems
+- Be succinct
+- Use **calm, concise reasoning**
+- Reflect uncertainty explicitly
+- Prefer exploration before convergence
+- Record substantive insights in Decision Records (`drctl decision new meta ...`)
+- Keep command logs visible — avoid hidden reasoning
+- Use ascii diagrams where appropriate
+
+## Chat Shortcuts
+
+I use shortcuts to communicate with you, to save me typing time and save you token parsing.
+
+e.g. `/cc` should be considered to mean `propose a series of 1 or more git add and commit commands to reflect the logical changesets we've made`
+
+→ [chat-shortcuts.md](./docs/chat-shortcuts.md)
+
+## Specialist Knowledge
+
+Refer to these sections when relevant:
+
+- [project.md](./docs/project.md) — project overview
+- [refactoring-process.md](./docs/refactoring-process.md) — refactoring guidance
+- [tdd-process.md](./docs/tdd-process.md) — TDD workflow
+- [tech-stack.md](./docs/tech-stack.md) — tech and tools
+- [test-plan.md](./docs/test-plan.md) — testing and coverage
+- [typescript-style.md](./docs/typescript-style.md) — coding conventions
+- [release.md](./docs/release.md) — release-it workflow, tagging, post-release steps
+- [README.md](./README.md) — quickstart commands and documentation index
 
 ---
 
-## 🎯 Purpose
+## ⚙️ Setup & Commands
 
-To co-create a **lightweight, open, auditable system** for recording, tracking, and evolving key decisions —  
-integrating principles from agile delivery, knowledge management, and reasoning hygiene (Annie Duke).
+### Install & Build
 
-This system (codename: `drctl`) should:
+```bash
+npm install
+npm run build
+```
 
-- Make reasoning and context _visible and versioned_
-- Be _useful both personally and organisationally_
-- Enable _multi-repo configuration_ (e.g., work, home)
-- Balance _openness_ (public CLI) with _privacy_ (personal data separation)
-- Embody _clarity, calm, and systemic thinking_
+### Dev & Test
 
-For more information, refer to [meta/DR--20251029--meta--decision-policy.md](decisions-example/meta/DR--20251029--meta--decision-policy.md) which, as well as acting as an example, is also the core reasoning behind this project.
+```bash
+npm dev              # Start local dev mode
+npm test             # Run all tests
+npm test:coverage    # Run with V8 coverage
+npx trunk check      # Lint, type, and policy checks
+```
+
+### Release
+
+```bash
+npm run release      # Uses release-it + conventional commits
+```
+
+See [docs/release.md](./docs/release.md) for prerequisites, validation steps, and troubleshooting before running the command.
 
 ---
 
-## 🧩 Current Goals
+## 🧱 Code Structure
 
-| Area               | Objective                                                                            | Status         |
-| ------------------ | ------------------------------------------------------------------------------------ | -------------- |
-| **CLI Core**       | Support full DR lifecycle (new → draft → propose → accept → revise → retire)         | ✅ Implemented |
-| **Config System**  | Support `.drctl.yaml` with named repositories (`work`, `home`) and domain subfolders | 🔄 In progress |
-| **Repo Structure** | Separate app (`decision-record`) and data repos (`work-decisions`, `home-decisions`) | ✅ Agreed      |
-| **Examples**       | Include `decisions-example/` folder for demos and tests                              | ✅ Done        |
-| **Documentation**  | Maintain `README.md` (user guide) and `AGENTS.md` (process guide)                    | 🧭 Ongoing     |
-| **Automation**     | Future: `drctl index`, `drctl diff`, `drctl sync`                                    | 🧠 Planned     |
+| Path                     | Purpose                                    |
+| ------------------------ | ------------------------------------------ |
+| `src/cli/index.ts`       | CLI entry point                            |
+| `src/config.ts`          | Config loader (multi-repo `.drctl.yaml`)   |
+| `src/core/service.ts`    | High-level lifecycle actions               |
+| `src/core/repository.ts` | Persistence layer for Markdown frontmatter |
+| `src/core/versioning.ts` | Semantic version bumping                   |
+| `src/core/git.ts`        | Git integration layer                      |
+| `decisions-example/`     | Example decision records for testing/demo  |
+
+See also: [ARCHITECTURE.md](./ARCHITECTURE.md)
+and meta decision record [DR--20251101--meta--architecture-overview](decisions-example/meta/DR--20251101--meta--architecture-overview.md).
 
 ---
 
 ## 🧠 Design Principles
 
-| Principle                      | Description                                                                                  |
-| ------------------------------ | -------------------------------------------------------------------------------------------- |
-| **Reasoning is code**          | Decisions are first-class, version-controlled artefacts.                                     |
-| **Separation of concerns**     | App logic, configuration, and decision data live in distinct repos.                          |
-| **Progressive disclosure**     | Defaults work out of the box; advanced config scales with need.                              |
-| **Trust through transparency** | Every design choice has a Decision Record (meta-governance).                                 |
-| **Human-AI collaboration**     | Maintain calm, reflective, evidence-based dialogue — no performative authority.              |
-| **Future-proofing**            | File-based today; API, n8n, and UI integrations tomorrow.                                    |
-| **DecisionOps framing**        | Align drctl with agile + governance practices per `DR--20251101--meta--decisionops-framing`. |
-| **Single-source scaffolding**  | `drctl decision new` runs once; lifecycle commands own every subsequent change.              |
+1. **Reasoning is code** — Decisions are first-class, versioned artefacts.
+2. **Separation of concerns** — App, config, and data live in distinct repos.
+3. **Progressive disclosure** — Simple defaults; complexity scales by need.
+4. **Trust through transparency** — Each architectural choice has a DR.
+5. **Human–AI collaboration** — Calm, reflective, non-performative dialogue.
+6. **DecisionOps mindset** — Treat decision flow as a testable system.
+7. **Future-proofing** — File-based now; API + n8n + UI integration later.
 
 ---
 
-We now articulate DecisionOps parallels explicitly: README highlights agile-friendly flow/TDD analogies, while governance guidance emphasises validation and lineage. This keeps both audiences aligned with the same reasoning system.
+## 🧩 Working Agreements
 
-## ⚙️ Working Agreements
-
-| Topic                  | Agreement                                                                                                                                                                                                                                                                                                                                                  |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Source control**     | `decision-record` (public GitHub) contains code and examples; actual DRs live in private repos (`work-decisions`, `home-decisions`).                                                                                                                                                                                                                       |
-| **Configuration**      | `.drctl.yaml` supports multiple named repos, optional domain mappings, and default templates.                                                                                                                                                                                                                                                              |
-| **Development**        | Use `tsx` + `Commander.js` for CLI; logic separated from CLI interface for future API/UI reuse; run `npx trunk check` for linting, formatting, and supply-chain scans.                                                                                                                                                                                     |
-| **Decision records**   | Each architectural choice (for this app) is captured in a `DR--YYYYMMDD--meta--*.md`.                                                                                                                                                                                                                                                                      |
-| **Example DR hygiene** | Files under `decisions-example/` are updated exclusively via the appropriate `drctl decision` lifecycle command (e.g., `drctl decision correction`, `drctl decision revise`) so the automation stays exercised.                                                                                                                                            |
-| **File conventions**   | Use `DR--YYYYMMDD--domain--slug.md` IDs; domain as folder; markdown + YAML frontmatter.                                                                                                                                                                                                                                                                    |
-| **Private data**       | `.drctl.yaml` and `decisions/` folders are `.gitignore`d; only `decisions-example/` is public.                                                                                                                                                                                                                                                             |
-| **Git optional**       | Opt out per repo via `git: disabled`, per session with `DRCTL_GIT`, or ad-hoc with `--no-git`; the CLI logs the resolved mode and skips commits while keeping changelogs accurate.                                                                                                                                                                         |
-| **AI collaboration**   | All reasoning steps remain inspectable; outputs versioned in code, not ephemeral.                                                                                                                                                                                                                                                                          |
-| **CLI feedback**       | Commands echo repo context and file paths; `drctl repo` surfaces the resolved workspace on demand.                                                                                                                                                                                                                                                         |
-| **Lifecycle flow**     | `drctl decision new` scaffolds a draft; lifecycle commands (`decision draft` → `decision propose` → `decision accept`) now auto-progress missing states so changelogs capture every transition. Revisions/corrections bump versions and changelog entries in place without reopening acceptance; supersede/retire when governance requires a new decision. |
-| **Branch protection**  | All work lands through feature branches + PRs; main is protected (reviews + CI/CodeQL/Scorecard/dependency-review required; no direct pushes or force-pushes).                                                                                                                                                                                             |
-| **Build artefacts**    | `dist/` is git-ignored; package via `npm run build` + `npm pack` per [DR--20251102--meta--build-artifacts-strategy](decisions-example/meta/DR--20251102--meta--build-artifacts-strategy.md).                                                                                                                                                               |
-| **Releases**           | `npm run release` (release-it) drives version bumps + GitHub releases; export `GITHUB_TOKEN` locally, publish to npm manually when ready.                                                                                                                                                                                                                  |
+| Topic               | Agreement                                                                                            |
+| ------------------- | ---------------------------------------------------------------------------------------------------- |
+| **Repos**           | `decision-record` (public) holds code; private repos store DRs (`work-decisions`, `home-decisions`). |
+| **Config**          | `.drctl.yaml` supports multiple named repos and domain folders.                                      |
+| **Privacy**         | `.drctl.yaml` and `decisions/` are `.gitignore`d.                                                    |
+| **Git optionality** | Disable via `git: disabled`, `DRCTL_GIT`, or `--no-git`.                                             |
+| **Lifecycle flow**  | Commands auto-progress lifecycle states; changelogs track every transition.                          |
+| **Branching**       | Protected main; feature branches + PRs only.                                                         |
+| **Automation**      | Future: `drctl index`, `drctl diff`, `drctl sync`.                                                   |
 
 ---
 
-### 🔐 Supply-chain Notes
-
-- GitHub dependency-review workflow blocks PRs that introduce known vulnerable dependencies.
-
-- Track advisory-driven overrides (e.g. `@conventional-changelog/git-client` 2.5.1+, `tmp` 0.2.4+) in `package.json` so Scorecard’s Vulnerabilities check stays green until upstream deps release patched majors.
-
-### 🧪 Testing Strategy
-
-- Prefer colocated test files (`*.test.ts`) alongside the modules they cover.
-- Use Vitest for fast, ESM-friendly unit and integration tests.
-- Write tests first (TDD-style) whenever practical; code changes should land with corresponding coverage.
-- Coverage runs via Vitest's V8 provider (`npm run test:coverage`).
-
----
-
-### 📓 Documentation Rhythm
-
-- When README.md is updated, mirror relevant context in AGENTS.md so both guides stay in sync.
-
----
-
-### 🧱 Code Structure (Current)
-
-| Path                     | Purpose                                                             |
-| ------------------------ | ------------------------------------------------------------------- |
-| `src/cli/index.ts`       | CLI entry point with shared repo middleware delegating to services. |
-| `src/cli/options.ts`     | Normalises global flags (`--repo`, `--config`) for subcommands.     |
-| `src/cli/repo-format.ts` | Formats repo context information for display/logging.               |
-| `src/cli/repo-manage.ts` | Helpers for updating `.drctl.yaml` repo entries.                    |
-| `src/config.ts`          | Multi-layer config loader resolving repo and domain directories.    |
-| `src/core/repository.ts` | Persistence layer writing/reading Markdown frontmatter files.       |
-| `src/core/indexer.ts`    | Markdown index generation grouped by domain.                        |
-| `src/core/service.ts`    | High-level actions (create/list/accept) that thread repo context.   |
-| `src/core/governance.ts` | Repository validation and hygiene checks.                           |
-| `src/core/git.ts`        | Thin git client for staging/committing lifecycle changes.           |
-| `src/core/validation.ts` | Shared schema/record validation helpers.                            |
-| `src/core/versioning.ts` | Semantic version bump helper.                                       |
-| `src/types/js-yaml.d.ts` | Minimal type declaration for js-yaml loader.                        |
-| `decisions-example/`     | Example decision records used for demos and tests.                  |
-
-Refer to [ARCHITECTURE.md](./ARCHITECTURE.md) for the layered overview and reasoning captured in [DR--20251101--meta--architecture-overview](decisions-example/meta/DR--20251101--meta--architecture-overview.md).
-
-#### Embedded Decision Workflows
-
-- Teams may embed decision records inside existing repositories (e.g., `./decisions/`). Configure `.drctl.yaml` with an alias such as:
-
-  ```yaml
-  repos:
-    project-decisions:
-      path: ./decisions
-      defaultDomainDir: domains
-  defaultRepo: project-decisions
-  ```
-
-- Run lifecycle commands with a clean staging area; drctl commits the files it changes.
-- drctl aborts when other files are staged, so contributors should check `git status` before running commands if they expect to batch changes.
-- Communicate with delivery teams about CI behaviour—pipelines can ignore commits whose messages start with `drctl:` if desired.
-- Prefer `drctl decision correction` / `drctl decision revise` / other lifecycle commands over manual `git add`/`git commit` when touching decision records so metadata stays in sync.
-
----
-
-### 🔐 Gitignore Baseline
-
-Add these entries to keep personal workspaces private while collaborating publicly:
-
-```bash
-# drctl workspaces
-.drctl.yaml
-.drctl.yml
-decisions/
-work-decisions/
-home-decisions/
-```
-
----
-
-## 🧱 Implementation Steps
-
-1. **Repository Logic (Next Up)**
-   - [x] Update `repository.ts` to honour per-repo domain folders from config.
-   - [x] Auto-create domain subfolders when writing records.
-   - [x] Add an `index` generator that aggregates across configured repos.
-   - [x] Prevent duplicate repo aliases pointing at the same filesystem path.
-   - [x] Support configurable templates (CLI/env/config cascade + frontmatter provenance).
-   - [ ] Generate repo/domain `index.md` files with linked decision records.
-   - [ ] Enable hierarchical navigation between config → repo → domain → DR.
-
-2. **Examples & Documentation**
-   - [x] Add a README note clarifying `decisions-example/` as the default demo workspace.
-   - [x] Document build artefact strategy and packaging workflow (README, AGENTS, DR--20251102--meta--build-artifacts-strategy).
-   - [ ] Capture the multi-repo config design in `DR--20251030--meta--multi-repo-config.md`.
-   - [ ] Continue treating `AGENTS.md` as the canonical collaboration record (update as decisions land).
-   - [ ] Restructure docs (split README, add JSDoc-style references, explore publishing DRs as browsable HTML).
-
-3. **Automation & Integrations (Future)**
-   - [x] Establish CI pipeline (GitHub Actions build + test).
-   - [x] Trial automated release tooling (`release-it` with conventional changelog + GitHub releases).
-   - [x] Add OpenSSF Scorecard workflow to surface supply-chain health.
-   - [ ] Implement `drctl export` JSON metadata command.
-   - [ ] Implement `drctl diff` to compare decision metadata across repos or revisions.
-   - [ ] Add REST API and dashboard layer.
-   - [ ] Support remote DR syncing via `git` or API calls.
-   - [ ] Explore n8n automation for scheduled reviews.
-
-4. **Completed**
-   - [x] Multi-repo config resolution + `--repo` flag support.
-   - [x] `drctl config check` diagnostics.
-   - [x] Example decision records relocated to `decisions-example/meta/...`.
-   - [x] Community-first docs (`CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`, `SECURITY.md`, `SUPPORT.md`).
-   - [x] Per-repo governance validation command (`drctl governance validate`).
-
-5. **Lifecycle Automation (Current Focus)**
-   - [x] Harden `drctl decision accept` so the git-backed status flow mirrors `decision draft`/`decision propose`.
-   - [x] Add `drctl decision reject` and `drctl decision deprecate` with consistent changelog handling.
-   - [x] Implement `drctl decision supersede`/`drctl decision retire`, ensuring markdown bodies persist.
-   - [x] Honour git-mode overrides (CLI/env/config) so lifecycle commands run without a git repo (`DR--20251105--meta--git-optional-lifecycle`).
-   - [ ] Add regression tests covering body preservation and changelog entries for every transition.
-   - [ ] Decide whether lifecycle commands should regenerate or remind about repository indexes.
-   - [ ] Provide guardrails for manually-authored decision files (lint/doctor command or stronger governance hints when frontmatter is incomplete).
-   - [x] Restructure lifecycle commands under a `drctl decision` subcommand group for clearer CLI organisation (legacy shims emit deprecation warnings).
-
-6. **Reliability & Modernisation (Planned)**
-   - [ ] Generate signed release provenance and SBOMs alongside `npm pack`, archiving them in CI artifacts.
-   - [ ] Expand CI coverage to run key smoke tests on macOS and Windows runners in addition to Linux.
-   - [ ] Wire lifecycle regression suites into CI so every state transition is exercised end-to-end before merge.
-   - [ ] Automate repository index refresh or surface actionable reminders after lifecycle commands complete.
-   - [ ] Publish structured metadata outputs (JSON feeds, knowledge-graph hooks) so telemetry, dashboards, or governance tooling can ingest DR state safely.
-   - [ ] Stand up scheduled governance validation (e.g., via n8n) to detect drift in long-lived repositories.
-   - [ ] Strengthen contributor onboarding with CODEOWNERS, curated project boards, and DR-friendly issue templates.
-   - [ ] Refactor test suites with clearer `describe` groupings and shared helpers to improve readability and reuse.
-   - [ ] Add Snyk security scanning to CI alongside existing supply-chain checks.
-
----
-
-### 🔄 Working Rhythm
-
-- Default to **test-first TDD**: add or update a failing test before implementing behaviour, then make the smallest change to go green, refactor, and commit.
-- Start every change on a fresh branch (e.g. `feat/...`), capture DRs/tests/docs, and open a PR; main stays clean via branch protection + squash merges.
-- Keep the tree green: run the relevant `npm test` scope before every commit.
-- Follow **trunk-based development**: ship incremental, focused changes; avoid long-lived branches.
-- Use **conventional commits** for each logical change (e.g. `feat:`, `fix:`, `test:`).
-- If a change spans multiple concerns, split into multiple TDD cycles and commits.
-- Ensure each logical changeset meets the coverage thresholds defined in `vitest.config.ts` (statements ≥80%, branches ≥70%, functions ≥80%, lines ≥80%) before proposing a push.
-- Run tests from the repository root with no residual `DRCTL_*` environment variables set; the Vitest setup will fail fast if `cwd` drifts or `DRCTL_TEMPLATE` is present.
-
-#### Branch + PR loop
-
-1. Branch from `main` (`git checkout -b feat/...`).
-2. Capture any new Decision Record (if the change warrants it) before coding.
-3. TDD the behaviour (add failing test → code → refactor).
-4. Update docs/AGENTS/DRs as part of the same branch.
-5. Commit with conventional messages; push the branch.
-6. Open a PR; wait for CI + dependency review + CodeQL + Scorecard + approvals, then merge via GitHub “Rebase and merge” (squash only for rescue cleanups) and delete the branch.
-
-### 🔄 Quickstart (from a new repo)
-
-```bash
-# Add a repo entry and make it default
-npm run dev -- repo new demo ./decisions-demo --default
-
-# Initialise git in the repo
-npm run dev -- repo bootstrap demo
-
-# Sanity check config
-npm run dev -- config check
-
-# Create, propose, and accept a decision (replace <id> with the generated ID)
-npm run dev -- decision new meta initial-guardrails
-npm run dev -- decision list
-npm run dev -- decision draft <id>
-npm run dev -- decision propose <id>
-npm run dev -- decision accept <id>
-
-# Regenerate the index
-npm run dev -- index
-```
-
----
-
-### 🗂️ Sample `.drctl.yaml` Locations
-
-- **Local project override**: place a `.drctl.yaml` at the repo root (`./.drctl.yaml`) to define project-specific repo aliases.
-- **Global defaults**: use `~/.drctl.yaml` or `~/.config/drctl/drconfig.yaml` for personal fallbacks shared across projects.
-
-Each config should define named repos and optional domain folders, for example:
+## 🧰 Example `.drctl.yaml`
 
 ```yaml
 defaultRepo: work
@@ -274,42 +123,55 @@ repos:
       family: family
 ```
 
-- **Override order**: an explicit `--config <path>` flag wins, then `DRCTL_CONFIG`, then the nearest `.drctl.yaml`, then global fallbacks. Use `--config`/`DRCTL_CONFIG` when writing to shared configs from another workspace.
+Override order:
+`--config` → `DRCTL_CONFIG` → nearest `.drctl.yaml` → global defaults (`~/.config/drctl/drconfig.yaml`).
 
 ---
 
-## 🧭 Communication Style
+## 🔒 Security & Supply Chain
 
-- Calm, concise, reflective reasoning.
-- Use STARL or system-thinking narratives for context-heavy examples.
-- Encourage iteration and exploration — **no premature convergence**.
-- Maintain a “decision hygiene” mindset — capture uncertainty explicitly.
-
----
-
-## 📘 References & Inspirations
-
-- Annie Duke — _How to Decide_ (decision hygiene & calibration)
-- Cynefin Framework — complexity-aware sense-making
-- ADR pattern — software architecture decision records
-- Modern knowledge tools: Obsidian, TheBrain, n8n, Notion
-- Open-source ethics and inner development goals
+- GitHub dependency review blocks vulnerable deps.
+- Track overrides in `package.json` for known advisories.
+- `dist/` is git-ignored; built via `npm run build && npm pack`.
 
 ---
 
 ## 📅 Meta-History
 
-Please maintain this to ensure we have a good record of major changes:
-
-| Date           | Event                                                                             |
-| -------------- | --------------------------------------------------------------------------------- |
-| **2025-10-29** | Initial Decision Record Policy (`DR--20251029--meta--decision-policy`) created.   |
-| **2025-10-30** | Multi-repo `.drctl.yaml` config pattern agreed.                                   |
-| **2025-10-31** | AGENTS.md introduced as meta-collaboration record.                                |
-| **2025-11-02** | Continuous integration pipeline added (`.github/workflows/ci.yml`).               |
-| **2025-11-02** | Build artefact strategy adopted (`DR--20251102--meta--build-artifacts-strategy`). |
-| **2025-11-02** | `release-it` introduced for conventional changelog-driven releases.               |
+| Date           | Change                                              |
+| -------------- | --------------------------------------------------- |
+| **2025-10-29** | Initial policy: Decision Record structure defined.  |
+| **2025-10-30** | Multi-repo `.drctl.yaml` pattern agreed.            |
+| **2025-10-31** | AGENTS.md introduced for co-development guidance.   |
+| **2025-11-02** | CI pipeline and build artefact strategy added.      |
+| **2025-11-02** | `release-it` adopted for changelog-driven releases. |
 
 ---
 
-> _“This project is a living experiment in reasoning as infrastructure.”_
+## 📚 Inspirations
+
+- Annie Duke — _How to Decide_
+- Cynefin — complexity-aware sense-making
+- ADR pattern — architectural decision records
+- Obsidian / TheBrain — knowledge graphs
+- Open-source ethics + inner development goals
+
+---
+
+> _"Reasoning and software co-evolve here."_
+
+---
+
+### ✅ Why this format
+
+This file follows the open **[agents.md](https://agents.md)** convention: a predictable, agent-readable place for build/test/code/communication guidance — complementing human-focused docs (`README.md`).
+
+For details, see:
+
+- [Project Overview](docs/project.md)
+- [Refactoring Process](docs/refactoring-process.md)
+- [Test-Driven Development](docs/tdd-process.md)
+- [TypeScript Style](docs/typescript-style.md)
+- [Tech Stack](docs/tech-stack.md)
+- [Test Plan](docs/test-plan.md)
+- [Chat Shortcuts](docs/chat-shortcuts.md)
