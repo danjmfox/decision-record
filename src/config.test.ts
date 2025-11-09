@@ -26,6 +26,38 @@ function makeTempDir(): string {
   return dir;
 }
 
+type RepoFixtureOptions = {
+  repoFolder?: string;
+  extraLines?:
+    | string[]
+    | ((context: { dir: string; repoDir: string }) => string[]);
+  initialiseGit?: boolean;
+};
+
+function setupRepoFixture(options: RepoFixtureOptions = {}): {
+  dir: string;
+  repoDir: string;
+} {
+  const dir = makeTempDir();
+  const repoFolder = options.repoFolder ?? "workspace";
+  const repoDir = path.join(dir, repoFolder);
+  fs.mkdirSync(repoDir, { recursive: true });
+  if (options.initialiseGit) {
+    fs.mkdirSync(path.join(repoDir, ".git"), { recursive: true });
+  }
+  const extraLines =
+    typeof options.extraLines === "function"
+      ? options.extraLines({ dir, repoDir })
+      : (options.extraLines ?? []);
+  const extraBlock = extraLines.length > 0 ? `\n${extraLines.join("\n")}` : "";
+  const config = `repos:
+  work:
+    path: ./${repoFolder}${extraBlock}
+`;
+  fs.writeFileSync(path.join(dir, ".drctl.yaml"), config);
+  return { dir, repoDir };
+}
+
 function withMockedHome<T>(homePath: string, run: () => T): T {
   const spy = vi.spyOn(os, "homedir").mockReturnValue(homePath);
   restoreSpies.push(() => spy.mockRestore());
@@ -631,20 +663,14 @@ repos:
   });
 
   it("warns when the configured template path is outside the repository", () => {
-    const dir = makeTempDir();
-    const repoDir = path.join(dir, "workspace");
-    fs.mkdirSync(repoDir, { recursive: true });
-    fs.mkdirSync(path.join(repoDir, ".git"));
+    const { dir, repoDir } = setupRepoFixture({
+      initialiseGit: true,
+      extraLines: ["    template: ../external/custom.md"],
+    });
     const externalDir = path.join(dir, "external");
     fs.mkdirSync(externalDir, { recursive: true });
     const externalTemplate = path.join(externalDir, "custom.md");
     fs.writeFileSync(externalTemplate, "# External Template\n", "utf8");
-    const config = `repos:
-  work:
-    path: ./workspace
-    template: ../external/custom.md
-`;
-    fs.writeFileSync(path.join(dir, ".drctl.yaml"), config);
 
     const diagnostics = diagnoseConfig({ cwd: dir });
 
@@ -654,17 +680,9 @@ repos:
   });
 
   it("honours boolean git flags defined in repo config", () => {
-    const dir = makeTempDir();
-    const repoDir = path.join(dir, "workspace");
-    fs.mkdirSync(repoDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(dir, ".drctl.yaml"),
-      `repos:
-  work:
-    path: ./workspace
-    git: true
-`,
-    );
+    const { dir } = setupRepoFixture({
+      extraLines: ["    git: true"],
+    });
 
     const diagnostics = diagnoseConfig({ cwd: dir });
 
@@ -674,17 +692,9 @@ repos:
   });
 
   it("honours string git values defined in repo config", () => {
-    const dir = makeTempDir();
-    const repoDir = path.join(dir, "workspace");
-    fs.mkdirSync(repoDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(dir, ".drctl.yaml"),
-      `repos:
-  work:
-    path: ./workspace
-    git: enabled
-`,
-    );
+    const { dir } = setupRepoFixture({
+      extraLines: ["    git: enabled"],
+    });
 
     const diagnostics = diagnoseConfig({ cwd: dir });
 
@@ -693,17 +703,9 @@ repos:
   });
 
   it("ignores unrecognised string git values", () => {
-    const dir = makeTempDir();
-    const repoDir = path.join(dir, "workspace");
-    fs.mkdirSync(repoDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(dir, ".drctl.yaml"),
-      `repos:
-  work:
-    path: ./workspace
-    git: maybe
-`,
-    );
+    const { dir } = setupRepoFixture({
+      extraLines: ["    git: maybe"],
+    });
 
     const diagnostics = diagnoseConfig({ cwd: dir });
 
@@ -711,17 +713,9 @@ repos:
   });
 
   it("ignores git values that are neither strings nor booleans", () => {
-    const dir = makeTempDir();
-    const repoDir = path.join(dir, "workspace");
-    fs.mkdirSync(repoDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(dir, ".drctl.yaml"),
-      `repos:
-  work:
-    path: ./workspace
-    git: 123
-`,
-    );
+    const { dir } = setupRepoFixture({
+      extraLines: ["    git: 123"],
+    });
 
     const diagnostics = diagnoseConfig({ cwd: dir });
 
@@ -729,18 +723,10 @@ repos:
   });
 
   it("ignores domain entries that are not strings or objects", () => {
-    const dir = makeTempDir();
-    const repoRoot = path.join(dir, "repo");
-    fs.mkdirSync(repoRoot, { recursive: true });
-    fs.writeFileSync(
-      path.join(dir, ".drctl.yaml"),
-      `repos:
-  work:
-    path: ./repo
-    domains:
-      invalid: 123
-`,
-    );
+    const { dir } = setupRepoFixture({
+      repoFolder: "repo",
+      extraLines: ["    domains:", "      invalid: 123"],
+    });
 
     const context = resolveRepoContext({ cwd: dir, repoFlag: "work" });
 
@@ -748,22 +734,16 @@ repos:
   });
 
   it("accepts absolute template paths without rewriting the value", () => {
-    const dir = makeTempDir();
-    const repoDir = path.join(dir, "workspace");
-    fs.mkdirSync(repoDir, { recursive: true });
-    fs.mkdirSync(path.join(repoDir, ".git"));
+    const { dir, repoDir } = setupRepoFixture({
+      initialiseGit: true,
+      extraLines: ({ repoDir }) => [
+        `    template: ${path.join(repoDir, "templates", "absolute.md")}`,
+      ],
+    });
     const templateDir = path.join(repoDir, "templates");
     fs.mkdirSync(templateDir, { recursive: true });
     const absoluteTemplate = path.join(templateDir, "absolute.md");
     fs.writeFileSync(absoluteTemplate, "# Absolute template\n");
-    fs.writeFileSync(
-      path.join(dir, ".drctl.yaml"),
-      `repos:
-  work:
-    path: ./workspace
-    template: ${absoluteTemplate}
-`,
-    );
 
     const diagnostics = diagnoseConfig({ cwd: dir });
 
