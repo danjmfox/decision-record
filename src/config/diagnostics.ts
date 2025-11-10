@@ -5,9 +5,8 @@ import type {
   NormalizedRepo,
   RepoDiagnostic,
 } from "./types.js";
-import { resolveGitMode } from "./git-mode.js";
+import { resolveGitMode, findGitRoot } from "./git-mode.js";
 import { resolveTemplatePath } from "./path-utils.js";
-import { findGitRoot } from "./git-mode.js";
 
 export class DiagnosticsCollector {
   private readonly warnings: string[] = [];

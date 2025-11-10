@@ -4,17 +4,13 @@ import { Command } from "commander";
 import packageJson from "../../package.json" with { type: "json" };
 import { resolveContext, type RepoOptions } from "../core/service.js";
 import {
-  resolveRepoContext,
   type ConfigDiagnostics,
   type RepoContext,
   type RepoDiagnostic,
 } from "../config.js";
 import { formatRepoContext } from "./repo-format.js";
 import { collectRepoOptions } from "./options.js";
-import {
-  registerDecisionCommands,
-  legacyWarningTest,
-} from "./decision-command.js";
+import { registerDecisionCommands } from "./decision-command.js";
 import { registerRepoCommands } from "./repo-command.js";
 import { registerConfigCommands } from "./config-command.js";
 import { registerGovernanceCommands } from "./governance-command.js";
@@ -38,6 +34,8 @@ program.option("--repo <repo>", "target repo alias or path");
 program.option("--config <config>", "path to drctl configuration file");
 program.option("--git", "force git-backed lifecycle commands (default: auto)");
 program.option("--no-git", "disable git integration for lifecycle commands");
+
+export { legacyWarningTest as __legacyWarningTest } from "./decision-command.js";
 
 export function reportConfigDiagnostics(
   diagnostics: ConfigDiagnostics,
@@ -189,8 +187,6 @@ registerGovernanceCommands({
 });
 
 registerDecisionCommands({ program, createRepoAction });
-
-export const __legacyWarningTest = legacyWarningTest;
 
 if (process.env.DRCTL_SKIP_PARSE !== "1") {
   await program.parseAsync();

@@ -18,6 +18,7 @@ export function resolveGitMode(options: ResolveGitModeOptions): {
   const gitRoot = findGitRoot(options.root);
   const gitExists = Boolean(gitRoot);
   const detected: GitMode = gitExists ? "enabled" : "disabled";
+  const gitInfo = gitRoot ? { detectedGitRoot: gitRoot } : {};
 
   const cascade: Array<{ value: GitMode | null; source: GitModeSource }> = [
     { value: options.gitFlag, source: "cli" },
@@ -25,31 +26,31 @@ export function resolveGitMode(options: ResolveGitModeOptions): {
     { value: options.gitConfig, source: "config" },
   ];
 
-  for (const entry of cascade) {
-    if (!entry.value) continue;
-    if (entry.value === "disabled" && gitExists) {
-      const overrideSource =
-        entry.source === "detected" ? undefined : entry.source;
-      if (overrideSource) {
-        return {
-          mode: "enabled",
-          source: "detected",
-          overrideCleared: overrideSource,
-          ...(gitRoot ? { detectedGitRoot: gitRoot } : {}),
-        };
-      }
-    }
+  const override = cascade.find(
+    (entry): entry is { value: GitMode; source: GitModeSource } =>
+      entry.value !== null,
+  );
+
+  if (!override) {
+    return { mode: detected, source: "detected", ...gitInfo };
+  }
+
+  const overrideSource =
+    override.source === "detected" ? undefined : override.source;
+
+  if (override.value === "disabled" && gitExists && overrideSource) {
     return {
-      mode: entry.value,
-      source: entry.source,
-      ...(gitRoot ? { detectedGitRoot: gitRoot } : {}),
+      mode: "enabled",
+      source: "detected",
+      overrideCleared: overrideSource,
+      ...gitInfo,
     };
   }
 
   return {
-    mode: detected,
-    source: "detected",
-    ...(gitRoot ? { detectedGitRoot: gitRoot } : {}),
+    mode: override.value,
+    source: override.source,
+    ...gitInfo,
   };
 }
 
