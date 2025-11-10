@@ -2,7 +2,7 @@
 id: DR--20251110--meta--decision-index-ux
 dateCreated: "2025-11-10"
 version: 1.0.0
-status: draft
+status: proposed
 changeType: creation
 domain: meta
 slug: decision-index-ux
@@ -15,6 +15,8 @@ changelog:
     note: Marked as proposed
   - date: "2025-11-10"
     note: Marked as draft
+  - date: "2025-11-10"
+    note: Marked as proposed
 lastEdited: "2025-11-10"
 ---
 
