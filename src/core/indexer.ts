@@ -105,8 +105,10 @@ function buildMarkdown(
   if (decorated.length === 0) {
     sections.push(["_(No decisions match the current filters.)_", ""]);
   } else {
-    sections.push(renderUpcomingReviewsSection(decorated, upcomingWindow));
-    sections.push(renderDomainCatalogueSection(decorated));
+    sections.push(
+      renderUpcomingReviewsSection(decorated, upcomingWindow),
+      renderDomainCatalogueSection(decorated),
+    );
     if (options.includeKanban !== false) {
       sections.push(renderKanbanSection(decorated));
     }
