@@ -1,4 +1,5 @@
 export type DecisionStatus =
+  | "new"
   | "draft"
   | "proposed"
   | "accepted"
