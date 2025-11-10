@@ -29,5 +29,6 @@ In particular, look out for these common issues, and refactor code appropriately
 
 - Refactor incrementally; avoid speculative generalisation
 - Confirm structural changes align with architectural DRs
+- When touching the CLI or lifecycle layers, keep the boundaries introduced in [DR--20251110--meta--modularise-large-files](../decisions-example/meta/DR--20251110--meta--modularise-large-files.md): add new subcommands under `src/cli/*-command.ts` and new lifecycle cases under the appropriate `service.*.ts` module/tests.
 
 See also [TDD Process](./tdd-process.md)

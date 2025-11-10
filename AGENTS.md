@@ -67,15 +67,22 @@ See [docs/release.md](./docs/release.md) for prerequisites, validation steps, an
 
 ## 🧱 Code Structure
 
-| Path                     | Purpose                                                            |
-| ------------------------ | ------------------------------------------------------------------ |
-| `src/cli/index.ts`       | CLI entry point                                                    |
-| `src/config/`            | Config loader modules (`types`, `paths`, `git-mode`, orchestrator) |
-| `src/core/service.ts`    | High-level lifecycle actions                                       |
-| `src/core/repository.ts` | Persistence layer for Markdown frontmatter                         |
-| `src/core/versioning.ts` | Semantic version bumping                                           |
-| `src/core/git.ts`        | Git integration layer                                              |
-| `decisions-example/`     | Example decision records for testing/demo                          |
+| Path                                 | Purpose                                                                        |
+| ------------------------------------ | ------------------------------------------------------------------------------ |
+| `src/cli/index.ts`                   | CLI bootstrap, shared options, repo logging                                    |
+| `src/cli/decision-command.ts`        | Decision + lifecycle subcommands (new, draft, propose, accept, etc.)           |
+| `src/cli/repo-command.ts`            | Repo scaffolding + inspection commands                                         |
+| `src/cli/config-command.ts`          | `drctl config …` diagnostics wiring                                            |
+| `src/cli/governance-command.ts`      | Governance/validation surface                                                  |
+| `src/config/`                        | Config loader modules (`types`, `paths`, `git-mode`, diagnostics orchestrator) |
+| `src/core/service.ts`                | High-level lifecycle actions                                                   |
+| `src/core/templates.ts`              | Template resolution/copy hygiene                                               |
+| `src/core/repository.ts`             | Persistence layer for Markdown frontmatter                                     |
+| `src/core/versioning.ts`             | Semantic version bumping                                                       |
+| `src/core/git.ts`                    | Git integration layer                                                          |
+| `src/core/service.lifecycle.test.ts` | Lifecycle-focused Vitest suite (see DR--20251110)                              |
+| `src/core/service.templates.test.ts` | Template-focused Vitest suite                                                  |
+| `decisions-example/`                 | Example decision records for testing/demo                                      |
 
 See also: [ARCHITECTURE.md](./ARCHITECTURE.md)
 and meta decision record [DR--20251101--meta--architecture-overview](decisions-example/meta/DR--20251101--meta--architecture-overview.md).
@@ -138,13 +145,14 @@ Override order:
 
 ## 📅 Meta-History
 
-| Date           | Change                                              |
-| -------------- | --------------------------------------------------- |
-| **2025-10-29** | Initial policy: Decision Record structure defined.  |
-| **2025-10-30** | Multi-repo `.drctl.yaml` pattern agreed.            |
-| **2025-10-31** | AGENTS.md introduced for co-development guidance.   |
-| **2025-11-02** | CI pipeline and build artefact strategy added.      |
-| **2025-11-02** | `release-it` adopted for changelog-driven releases. |
+| Date           | Change                                                                                      |
+| -------------- | ------------------------------------------------------------------------------------------- |
+| **2025-10-29** | Initial policy: Decision Record structure defined.                                          |
+| **2025-10-30** | Multi-repo `.drctl.yaml` pattern agreed.                                                    |
+| **2025-10-31** | AGENTS.md introduced for co-development guidance.                                           |
+| **2025-11-02** | CI pipeline and build artefact strategy added.                                              |
+| **2025-11-02** | `release-it` adopted for changelog-driven releases.                                         |
+| **2025-11-10** | CLI/service/test modularisation implemented per DR--20251110--meta--modularise-large-files. |
 
 ---
 

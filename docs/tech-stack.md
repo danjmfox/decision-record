@@ -14,9 +14,19 @@
 
 ```bash
 src/
-cli/
-core/
-types/
+  cli/
+    index.ts                 # bootstrap + shared options
+    decision-command.ts      # decision/lifecycle commands
+    repo-command.ts          # repo utilities
+    config-command.ts        # config diagnostics
+    governance-command.ts    # governance flows
+  core/
+    service.ts               # lifecycle orchestration
+    templates.ts             # template hygiene + provenance
+    service.lifecycle.test.ts
+    service.templates.test.ts
+    service.test.ts
+  types/
 decisions-example/
 docs/
 ```
