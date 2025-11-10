@@ -25,6 +25,11 @@ lint:
     - prettier@3.6.2
     - trufflehog@3.90.12
     - yamllint@1.37.1
+  ignore:
+    - name: decision template placeholders
+      tools: [prettier, markdownlint]
+      paths:
+        - decisions-example/decision-record-template.md
 actions:
   enabled:
     - trunk-announce
