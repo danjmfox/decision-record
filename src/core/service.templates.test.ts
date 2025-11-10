@@ -264,7 +264,7 @@ describe("service templates and creation", () => {
       .mockImplementationOnce(() => {
         throw new Error("unreadable");
       })
-      .mockImplementation(realRead as typeof fs.readFileSync);
+      .mockImplementation(realRead);
 
     const result = createDecision("meta", "default-fallback", {
       context,

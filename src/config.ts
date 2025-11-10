@@ -6,19 +6,12 @@ import {
   resolvePath,
   looksLikePath,
   selectFallbackRoot,
-  resolveTemplatePath,
 } from "./config/path-utils.js";
-import {
-  coerceGitMode,
-  findGitRoot,
-  resolveGitMode,
-} from "./config/git-mode.js";
+import { coerceGitMode, resolveGitMode } from "./config/git-mode.js";
 import { DiagnosticsCollector } from "./config/diagnostics.js";
 import type {
   ConfigDiagnostics,
   GitMode,
-  GitModeOverrideSource,
-  GitModeSource,
   NormalizedConfigLayer,
   NormalizedRepo,
   RawDomainConfig,
@@ -26,7 +19,6 @@ import type {
   RawRepoConfig,
   RepoContext,
   RepoDefinitionSource,
-  RepoDiagnostic,
   RepoResolutionSource,
   ResolveRepoOptions,
 } from "./config/types.js";
