@@ -50,7 +50,7 @@ Common lifecycle and repo operations (full explanations live in [docs/project.md
 
 | Command                                                                                  | Purpose                                                                                                |
 | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `drctl decision new <domain> <slug>`                                                     | Create a draft Decision Record                                                                         |
+| `drctl decision new <domain> <slug>`                                                     | Capture a `new` Decision Record (unstaged until promoted)                                              |
 | `drctl decision draft / propose / accept / reject / deprecate / retire / supersede`      | Advance lifecycle with git-integrated commits                                                          |
 | `drctl decision correction`                                                              | Apply patch update. Lifecycle state is not changed                                                     |
 | `drctl decision revise`                                                                  | revise id with a note …                                                                                |
@@ -64,7 +64,7 @@ Common lifecycle and repo operations (full explanations live in [docs/project.md
 
 Legacy top-level lifecycle verbs remain hidden aliases; the canonical surface is `drctl decision …`.
 
-Lifecycle commands automatically back-fill missing states per [DR--20251103--meta--auto-accept-transitions](decisions-example/meta/DR--20251103--meta--auto-accept-transitions.md). For example, running `drctl decision accept` on a legacy record whose frontmatter still says `status: "new"` will record the draft → proposed transitions (with changelog notes and git commits) before marking it accepted, so workflow history stays intact without extra manual commands.
+Lifecycle commands automatically back-fill missing states per [DR--20251103--meta--auto-accept-transitions](decisions-example/meta/DR--20251103--meta--auto-accept-transitions.md). Newly created records intentionally start in `status: "new"` and remain unstaged; the first lifecycle action (`drctl decision draft`, or a higher-level command such as `drctl decision accept`) records the draft/proposed transitions, stages the file if git is enabled, and then applies the requested state. This keeps the git history aligned with the changelog without forcing extra manual steps.
 
 ### Decision Index Output
 

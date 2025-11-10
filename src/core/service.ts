@@ -50,7 +50,7 @@ export function createDecision(
     id: generateId(domain, slug),
     dateCreated: today,
     version: "1.0.0",
-    status: "draft",
+    status: "new",
     changeType: "creation",
     domain,
     slug,
@@ -101,7 +101,7 @@ export async function proposeDecision(
 ): Promise<DecisionWriteResult> {
   const context = ensureContext(options);
   const workingOptions = withContext(options, context);
-  let record = loadDecision(context, id);
+  let record = await ensureDraftedStatus(id, workingOptions);
 
   if (!isProposableStatus(record.status)) {
     throw new Error(
@@ -148,18 +148,13 @@ export async function acceptDecision(
 ): Promise<DecisionWriteResult> {
   const context = ensureContext(options);
   const workingOptions = withContext(options, context);
-  let rec = loadDecision(context, id);
+  let rec = await ensureDraftedStatus(id, workingOptions);
   let warningsHandled = false;
 
   if (!isAcceptableStatus(rec.status)) {
-    if (isLegacyNewStatus(rec.status)) {
-      await draftDecision(id, workingOptions);
-      rec = loadDecision(context, id);
-    } else {
-      throw new Error(
-        `Cannot accept decision "${id}" from status "${rec.status}". Use the appropriate lifecycle command first.`,
-      );
-    }
+    throw new Error(
+      `Cannot accept decision "${id}" from status "${rec.status}". Use the appropriate lifecycle command first.`,
+    );
   }
 
   if (rec.status === "draft" && !hasChangelogNote(rec, "Marked as draft")) {
@@ -362,9 +357,12 @@ export function listAll(
   return status ? all.filter((r) => r.status === status) : all;
 }
 
-function withContext(options: RepoOptions, context: RepoContext): RepoOptions {
+function withContext(
+  options: RepoOptions,
+  context: RepoContext,
+): RepoOptions & { context: RepoContext } {
   if (options.context === context) {
-    return options;
+    return options as RepoOptions & { context: RepoContext };
   }
   return { ...options, context };
 }
@@ -435,8 +433,16 @@ function hasChangelogNote(record: DecisionRecord, note: string): boolean {
   return (record.changelog ?? []).some((entry) => entry.note === note);
 }
 
-function isLegacyNewStatus(status: unknown): boolean {
-  return typeof status === "string" && status.toLowerCase() === "new";
+async function ensureDraftedStatus(
+  id: string,
+  options: RepoOptions & { context: RepoContext },
+): Promise<DecisionRecord> {
+  let record = loadDecision(options.context, id);
+  if (record.status !== "new") {
+    return record;
+  }
+  await draftDecision(id, options);
+  return loadDecision(options.context, id);
 }
 
 function isAcceptableStatus(status: DecisionStatus): boolean {

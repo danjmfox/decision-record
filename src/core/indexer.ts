@@ -5,6 +5,7 @@ import { listDecisions, getDecisionPath } from "./repository.js";
 import type { DecisionRecord, DecisionStatus } from "./models.js";
 
 const STATUS_ORDER: DecisionStatus[] = [
+  "new",
   "draft",
   "proposed",
   "accepted",
