@@ -4,6 +4,7 @@ import path from "node:path";
 import matter from "gray-matter";
 import { describe, expect, it, vi } from "vitest";
 import * as configModule from "../config.js";
+import type { RepoContext } from "../config.js";
 import {
   acceptDecision,
   correctionDecision,
@@ -20,11 +21,7 @@ import {
   resolveContext,
 } from "./service.js";
 import * as gitModule from "./git.js";
-import {
-  makeContext,
-  toPosix,
-  setupServiceTestEnv,
-} from "./service.test-helpers.js";
+import { makeContext, setupServiceTestEnv } from "./service.test-helpers.js";
 
 setupServiceTestEnv();
 

@@ -5,7 +5,7 @@ import { afterAll, beforeAll, vi } from "vitest";
 import type { RepoContext } from "../config.js";
 
 const tempRoots: string[] = [];
-let consoleWarnSpy: ReturnType<typeof vi.spyOn> | undefined;
+let consoleWarnSpy: { mockRestore: () => void } | undefined;
 
 export function makeContext(): RepoContext {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-service-test-"));
