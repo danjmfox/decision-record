@@ -29,7 +29,7 @@ export interface RepoContext {
   gitMode: GitMode;
   gitModeSource: GitModeSource;
   gitModeOverrideCleared?: GitModeOverrideSource;
-  gitRoot?: string;
+  gitRoot?: string | undefined;
 }
 
 export interface RepoDiagnostic {
@@ -44,7 +44,7 @@ export interface RepoDiagnostic {
   gitInitialized: boolean;
   gitMode: GitMode;
   gitModeSource: GitModeSource;
-  gitRoot?: string;
+  gitRoot?: string | undefined;
 }
 
 export interface ConfigDiagnostics {
@@ -434,48 +434,26 @@ function resolveGitMode(options: {
       const overrideSource =
         entry.source === "detected" ? undefined : entry.source;
       if (overrideSource) {
-        const result: {
-          mode: GitMode;
-          source: GitModeSource;
-          overrideCleared: GitModeOverrideSource;
-          detectedGitRoot?: string;
-        } = {
+        return {
           mode: "enabled",
           source: "detected",
           overrideCleared: overrideSource,
+          ...(gitRoot ? { detectedGitRoot: gitRoot } : {}),
         };
-        if (gitRoot) {
-          result.detectedGitRoot = gitRoot;
-        }
-        return result;
       }
     }
-    const result: {
-      mode: GitMode;
-      source: GitModeSource;
-      detectedGitRoot?: string;
-    } = {
+    return {
       mode: entry.value,
       source: entry.source,
+      ...(gitRoot ? { detectedGitRoot: gitRoot } : {}),
     };
-    if (gitRoot) {
-      result.detectedGitRoot = gitRoot;
-    }
-    return result;
   }
 
-  const result: {
-    mode: GitMode;
-    source: GitModeSource;
-    detectedGitRoot?: string;
-  } = {
+  return {
     mode: detected,
     source: "detected",
+    ...(gitRoot ? { detectedGitRoot: gitRoot } : {}),
   };
-  if (gitRoot) {
-    result.detectedGitRoot = gitRoot;
-  }
-  return result;
 }
 
 function sourceFromRepo(repo: NormalizedRepo): RepoResolutionSource {
@@ -490,9 +468,7 @@ function findGitRoot(start: string): string | undefined {
       return current;
     }
     const parent = path.dirname(current);
-    if (parent === current) {
-      return undefined;
-    }
+    if (parent === current) return undefined;
     current = parent;
   }
 }
@@ -615,8 +591,6 @@ class DiagnosticsCollector {
       gitEnv: null,
       gitConfig: repo.gitMode ?? null,
     });
-    const gitRootForRepo =
-      gitResolution.detectedGitRoot ?? detectedGitRoot ?? undefined;
     const templateAbsolute =
       repo.defaultTemplate && exists
         ? resolveTemplatePath(repo.root, repo.defaultTemplate)
@@ -642,7 +616,9 @@ class DiagnosticsCollector {
       gitInitialized,
       gitMode: gitResolution.mode,
       gitModeSource: gitResolution.source,
-      ...(gitRootForRepo ? { gitRoot: gitRootForRepo } : {}),
+      ...((gitResolution.detectedGitRoot ?? detectedGitRoot)
+        ? { gitRoot: gitResolution.detectedGitRoot ?? detectedGitRoot }
+        : {}),
     });
 
     if (repo.defaultTemplate && exists) {

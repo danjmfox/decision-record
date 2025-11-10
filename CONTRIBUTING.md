@@ -43,6 +43,32 @@ Thank you for investing time in improving `drctl`. This project is a collaborati
 - Update documentation (`README.md`, `AGENTS.md`, or relevant decision records) whenever behaviour or workflow changes.
 - Before submitting a PR, run a final `npm test` and `npm run build` (if applicable) to confirm the tree is clean.
 
+## Working with AI
+
+I tend to start each AI chat with the following, to remind it of our key agreements without filling up the context window unnecessarily:
+
+```md
+# Chat #{n}
+
+Refresh your knowledge of this project, comparing documentation against actual implementation, with special attention to:
+
+- `./AGENTS.md` and the supporting files in `./docs`
+- `./README.md`
+- The decision records in `./decision-examples/meta` that are the actual decisions guiding this project
+- The `./TODO.md` for future ideas
+
+Next challenge:
+{...}
+```
+
+It seems to respond well to the clarity that the DRs provide.
+
+### Command Shortcuts
+
+Note the [chat shortcuts](./docs/chat-shortcuts.md).
+
+- `/pc` is particularly useful.
+
 ## Project Norms
 
 - **Repository resolution**: the CLI uses shared middleware to resolve repo context. When adding new commands, thread the repo context using `createRepoAction`.
@@ -64,7 +90,7 @@ Thank you for investing time in improving `drctl`. This project is a collaborati
 
 - Search open issues first to avoid duplicates.
 - Provide as much context as possible: environment, steps to reproduce, expected vs. actual behaviour, and any relevant logs.
-- If the issue relates to decision policy or governance, consider capturing it as a Decision Record proposal (`drctl new meta ...`) and link it in the issue.
+- If the issue relates to decision policy or governance, consider capturing it as a Decision Record proposal (`drctl decision new meta ...`) and link it in the issue.
 
 ## Code of Conduct
 

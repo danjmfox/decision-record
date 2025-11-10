@@ -23,11 +23,8 @@ export function formatRepoContext(context: RepoContext): string[] {
   }
   if (context.gitRoot) {
     const normalizedGitRoot = path.normalize(context.gitRoot);
-    if (normalizedRoot === normalizedGitRoot) {
-      lines.push(`   Git root: ${normalizedGitRoot}`);
-    } else {
-      lines.push(`   Git root: ${normalizedGitRoot} (inherited)`);
-    }
+    const suffix = normalizedRoot === normalizedGitRoot ? "" : " (inherited)";
+    lines.push(`   Git root: ${normalizedGitRoot}${suffix}`);
   }
 
   const defaultDomain = context.defaultDomainDir ?? "<domain>";
