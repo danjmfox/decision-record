@@ -654,12 +654,14 @@ defaultRepo: sandbox
     await runCli(tempDir, ["index"]);
 
     const logCalls = collectLogLines();
-    expect(logCalls.some((msg) => /Generated index/.test(msg))).toBe(true);
+    expect(logCalls.some((msg) => /Generated index:/i.test(msg))).toBe(true);
     const indexPath = path.join(repoDir, "index.md");
     expect(fs.existsSync(indexPath)).toBe(true);
     const markdown = fs.readFileSync(indexPath, "utf8");
-    expect(markdown).toContain("## alpha");
-    expect(markdown).toContain("## beta");
+    expect(markdown).toContain("## Summary");
+    expect(markdown).toContain("## Domain Catalogues");
+    expect(markdown).toContain("### alpha");
+    expect(markdown).toContain("### beta");
 
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
