@@ -5,7 +5,7 @@ import { load as loadYaml } from "js-yaml";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MockInstance } from "vitest";
 import { saveDecision } from "../core/repository.js";
-import type { RepoContext } from "../config.js";
+import type { ConfigDiagnostics, RepoContext } from "../config.js";
 import type { DecisionRecord } from "../core/models.js";
 
 function stringify(value: unknown): string {
@@ -90,20 +90,81 @@ describe("cli index commands", () => {
     return getLogSpy().mock.calls.map((call: unknown[]) => stringify(call[0]));
   }
 
+  type DiagnosticsOverrides = Partial<ConfigDiagnostics>;
+
+  async function runReportDiagnosticsTest(
+    overrides: DiagnosticsOverrides,
+    verify: (result: boolean) => void,
+  ): Promise<void> {
+    const safeCwd = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-config-"));
+    const diagnostics: ConfigDiagnostics = {
+      cwd: safeCwd,
+      warnings: [],
+      errors: [],
+      repos: [],
+      ...overrides,
+    };
+
+    process.env.DRCTL_SKIP_PARSE = "1";
+    try {
+      const module = (await import("./index.js")) as {
+        reportConfigDiagnostics: (diagnostics: ConfigDiagnostics) => boolean;
+      };
+      const helper = module.reportConfigDiagnostics;
+      const result = helper(diagnostics);
+      verify(result);
+    } finally {
+      delete process.env.DRCTL_SKIP_PARSE;
+      fs.rmSync(safeCwd, { recursive: true, force: true });
+    }
+  }
+
+  type ConfigSandboxOptions = {
+    repoFolder?: string;
+    createRepoDir?: boolean;
+    initGit?: "repo" | "root";
+  };
+
+  function createConfigSandbox(
+    config: string,
+    options: ConfigSandboxOptions = {},
+  ): { tempDir: string; repoDir: string } {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
+    const repoFolder = options.repoFolder ?? "workspace";
+    const repoDir = path.join(tempDir, repoFolder);
+    if (options.createRepoDir !== false) {
+      fs.mkdirSync(repoDir, { recursive: true });
+    }
+    if (options.initGit === "repo") {
+      fs.mkdirSync(path.join(repoDir, ".git"), { recursive: true });
+    } else if (options.initGit === "root") {
+      fs.mkdirSync(path.join(tempDir, ".git"), { recursive: true });
+    }
+    fs.writeFileSync(path.join(tempDir, ".drctl.yaml"), config);
+    return { tempDir, repoDir };
+  }
+
+  const BASIC_WORKSPACE_CONFIG = `repos:
+  work:
+    path: ./workspace
+`;
+
+  function createWorkspaceRepo(options: { gitAtRoot?: boolean } = {}) {
+    return createConfigSandbox(BASIC_WORKSPACE_CONFIG, {
+      initGit: options.gitAtRoot ? "root" : "repo",
+    });
+  }
+
+  async function runCli(tempDir: string, args: string[]): Promise<string[]> {
+    process.chdir(tempDir);
+    process.argv = ["node", "drctl", ...args];
+    await import("./index.js");
+    return collectLogLines();
+  }
+
   it("rejects --repo flag usage", async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
-    process.argv = [
-      "node",
-      "drctl",
-      "repo",
-      "new",
-      "--repo",
-      "foo",
-      "alias",
-      tempDir,
-    ];
-
-    await import("./index.js");
+    await runCli(tempDir, ["repo", "new", "--repo", "foo", "alias", tempDir]);
 
     const errorSpy = consoleErrorSpy;
     expect(errorSpy).toHaveBeenCalledWith(
@@ -124,14 +185,12 @@ describe("cli index commands", () => {
   present:
     path: ./present
     template: templates/meta.md
+    defaultDomainDir: domains
     git: disabled
 `,
     );
     fs.mkdirSync(path.join(tempDir, "present"), { recursive: true });
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "config", "check"];
-
-    await import("./index.js");
+    await runCli(tempDir, ["config", "check"]);
 
     const logSpy = getLogSpy();
     expect(logSpy).toHaveBeenCalledWith(
@@ -152,34 +211,103 @@ describe("cli index commands", () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it("reports git initialisation status in config check", async () => {
+  it("exits with code 1 when config check reports errors", async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
-    const repoDir = path.join(tempDir, "workspace");
-    fs.mkdirSync(path.join(repoDir, ".git"), { recursive: true });
-    fs.writeFileSync(
-      path.join(tempDir, ".drctl.yaml"),
-      `repos:\n  work:\n    path: ./workspace\n`,
+    vi.doMock("../config.js", async () => {
+      const actual =
+        await vi.importActual<typeof import("../config.js")>("../config.js");
+      return {
+        ...actual,
+        diagnoseConfig: () => ({
+          cwd: tempDir,
+          warnings: [],
+          errors: ["Config broken"],
+          repos: [],
+        }),
+      };
+    });
+
+    await runCli(tempDir, ["config", "check"]);
+
+    expect(process.exitCode).toBe(1);
+    vi.doUnmock("../config.js");
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("includes git root details when repositories are initialised", async () => {
+    const { tempDir } = createWorkspaceRepo();
+    const logLines = await runCli(tempDir, ["config", "check"]);
+    expect(logLines.some((line: string) => line.includes("Git root:"))).toBe(
+      true,
     );
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "config", "check"];
 
-    await import("./index.js");
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
 
-    const logs = collectLogLines().join("\n");
+  it("reports git initialisation status in config check", async () => {
+    const { tempDir } = createWorkspaceRepo();
+    const logs = (await runCli(tempDir, ["config", "check"])).join("\n");
     expect(logs).toMatch(/git: initialised/);
+
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("notes inherited git roots when repo show runs inside a parent git repo", async () => {
+    const { tempDir } = createWorkspaceRepo({ gitAtRoot: true });
+    const logLines = await runCli(tempDir, ["repo", "show", "--repo", "work"]);
+    expect(
+      logLines.some(
+        (line: string) =>
+          line.includes("Git root:") && line.trim().endsWith("(inherited)"),
+      ),
+    ).toBe(true);
+
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("prints an empty repository summary when none are configured", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
+    const logLines = await runCli(tempDir, ["config", "check"]);
+    expect(logLines).toContain("📚 Repositories: none");
+
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("allows repo new with domain dir and default flag", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
+    await runCli(tempDir, [
+      "repo",
+      "new",
+      "demo",
+      "./workspace",
+      "--domain-dir",
+      "domains",
+      "--default",
+    ]);
+
+    const logLines = collectLogLines();
+    expect(
+      logLines.some((line: string) => line.includes("Domain directory")),
+    ).toBe(true);
+    expect(
+      logLines.some((line: string) => line.includes("Marked as default repo")),
+    ).toBe(true);
+
+    const config = loadYaml(
+      fs.readFileSync(path.join(tempDir, ".drctl.yaml"), "utf8"),
+    ) as Record<string, any>;
+    expect(config.defaultRepo).toBe("demo");
+    expect(config.repos.demo.defaultDomainDir).toBe("domains");
 
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
   it("mentions config overrides in repo help output", async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
-    process.chdir(tempDir);
     const stdoutSpy = vi
       .spyOn(process.stdout, "write")
       .mockImplementation(() => true);
-    process.argv = ["node", "drctl", "repo", "--help"];
-
-    await import("./index.js");
+    await runCli(tempDir, ["repo", "--help"]);
 
     const output = stdoutSpy.mock.calls
       .map((call: unknown[]) => stringify(call[0]))
@@ -192,24 +320,31 @@ describe("cli index commands", () => {
   });
 
   it("bootstraps git repos for configured alias", async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
-    const repoDir = path.join(tempDir, "workspace");
-    fs.mkdirSync(repoDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(tempDir, ".drctl.yaml"),
-      `repos:\n  work:\n    path: ./workspace\n`,
-    );
+    const { tempDir, repoDir } = createConfigSandbox(BASIC_WORKSPACE_CONFIG);
 
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "repo", "bootstrap", "work"];
-
-    await import("./index.js");
+    await runCli(tempDir, ["repo", "bootstrap", "work"]);
 
     const logMessages = collectLogLines();
     expect(
       logMessages.some((msg: string) => /Initialised git repository/.test(msg)),
     ).toBe(true);
     expect(fs.existsSync(path.join(repoDir, ".git"))).toBe(true);
+
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("skips repo bootstrap when git is already initialised", async () => {
+    const { tempDir } = createConfigSandbox(BASIC_WORKSPACE_CONFIG, {
+      initGit: "repo",
+    });
+
+    await runCli(tempDir, ["repo", "bootstrap", "work"]);
+
+    expect(
+      collectLogLines().some((line: string) =>
+        line.includes("Git already initialised"),
+      ),
+    ).toBe(true);
 
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
@@ -222,18 +357,13 @@ describe("cli index commands", () => {
     const configPath = path.join(configDir, "shared.yaml");
     fs.writeFileSync(configPath, `repos:\n  shared:\n    path: ./workspace\n`);
 
-    process.chdir(otherCwd);
-    process.argv = [
-      "node",
-      "drctl",
+    await runCli(otherCwd, [
       "--config",
       configPath,
       "repo",
       "bootstrap",
       "shared",
-    ];
-
-    await import("./index.js");
+    ]);
 
     expect(fs.existsSync(path.join(repoDir, ".git"))).toBe(true);
 
@@ -248,10 +378,7 @@ describe("cli index commands", () => {
       `defaultRepo: work\nrepos:\n  work:\n    path: ./work\n  home:\n    path: ./home\n`,
     );
 
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "repo", "switch", "home"];
-
-    await import("./index.js");
+    await runCli(tempDir, ["repo", "switch", "home"]);
 
     const logMessages = collectLogLines();
     expect(
@@ -274,18 +401,7 @@ describe("cli index commands", () => {
       `defaultRepo: work\nrepos:\n  work:\n    path: ./work\n  home:\n    path: ./home\n`,
     );
 
-    process.chdir(otherCwd);
-    process.argv = [
-      "node",
-      "drctl",
-      "--config",
-      configPath,
-      "repo",
-      "switch",
-      "home",
-    ];
-
-    await import("./index.js");
+    await runCli(otherCwd, ["--config", configPath, "repo", "switch", "home"]);
 
     const parsed = loadYaml(fs.readFileSync(configPath, "utf8")) as Record<
       string,
@@ -298,13 +414,12 @@ describe("cli index commands", () => {
   });
 
   it("validates governance issues and reports errors", async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
-    const repoDir = path.join(tempDir, "workspace");
-    fs.mkdirSync(repoDir, { recursive: true });
-    const configPath = path.join(tempDir, ".drctl.yaml");
-    fs.writeFileSync(
-      configPath,
-      `defaultRepo: work\nrepos:\n  work:\n    path: ./workspace\n`,
+    const { tempDir, repoDir } = createConfigSandbox(
+      `defaultRepo: work
+repos:
+  work:
+    path: ./workspace
+`,
     );
 
     const context: RepoContext = {
@@ -328,10 +443,7 @@ describe("cli index commands", () => {
     };
     saveDecision(context, badRecord, "Body");
 
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "governance", "validate"];
-
-    await import("./index.js");
+    await runCli(tempDir, ["governance", "validate"]);
 
     const logs = collectLogLines();
     expect(logs.join("\n")).toMatch(/Governance validation/);
@@ -342,16 +454,16 @@ describe("cli index commands", () => {
   });
 
   it("fails governance validation when repo root is missing", async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
-    fs.writeFileSync(
-      path.join(tempDir, ".drctl.yaml"),
-      `defaultRepo: ghost\nrepos:\n  ghost:\n    path: ./workspace\n`,
+    const { tempDir } = createConfigSandbox(
+      `defaultRepo: ghost
+repos:
+  ghost:
+    path: ./workspace
+`,
+      { createRepoDir: false },
     );
 
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "governance", "validate"];
-
-    await import("./index.js");
+    await runCli(tempDir, ["governance", "validate"]);
 
     const errorSpy = consoleErrorSpy;
     expect(errorSpy).toHaveBeenCalledWith(
@@ -363,18 +475,15 @@ describe("cli index commands", () => {
   });
 
   it("prints success message when governance validation passes", async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
-    const repoDir = path.join(tempDir, "workspace");
-    fs.mkdirSync(repoDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(tempDir, ".drctl.yaml"),
-      `defaultRepo: ok\nrepos:\n  ok:\n    path: ./workspace\n`,
+    const { tempDir } = createConfigSandbox(
+      `defaultRepo: ok
+repos:
+  ok:
+    path: ./workspace
+`,
     );
 
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "governance", "validate"];
-
-    await import("./index.js");
+    await runCli(tempDir, ["governance", "validate"]);
 
     expect(getLogSpy()).toHaveBeenCalledWith(
       expect.stringMatching(/Governance validation passed/),
@@ -396,7 +505,6 @@ describe("cli index commands", () => {
 defaultRepo: sandbox
 `,
     );
-    process.chdir(tempDir);
     fs.mkdirSync(path.join(tempDir, "decisions"), { recursive: true });
 
     const { resolveRepoContext } = await import("../config.js");
@@ -416,17 +524,13 @@ defaultRepo: sandbox
     };
     saveDecision(context, record, "# body");
 
-    process.argv = [
-      "node",
-      "drctl",
+    await runCli(tempDir, [
       "--config",
       configPath,
       "--no-git",
       "draft",
       record.id,
-    ];
-
-    await import("./index.js");
+    ]);
 
     const gitHints = collectLogLines().filter((line: string) =>
       line.includes("Git disabled"),
@@ -466,10 +570,7 @@ defaultRepo: sandbox
     };
     saveDecision(context, invalid, "# body");
 
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "governance", "validate", "--json"];
-
-    await import("./index.js");
+    await runCli(tempDir, ["governance", "validate", "--json"]);
 
     const outputCalls = collectLogLines();
     const jsonPayload = outputCalls.find((msg: string) =>
@@ -483,6 +584,39 @@ defaultRepo: sandbox
     expect(process.exitCode).toBe(1);
 
     fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("reports config errors via reportConfigDiagnostics helper", async () => {
+    await runReportDiagnosticsTest(
+      { errors: ["Repository paths invalid."] },
+      (result) => {
+        expect(result).toBe(true);
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          expect.stringMatching(/Repository paths invalid/),
+        );
+      },
+    );
+  });
+
+  it("reports warnings via reportConfigDiagnostics helper", async () => {
+    await runReportDiagnosticsTest(
+      { warnings: ["Repository missing git init."] },
+      (result) => {
+        expect(result).toBe(false);
+        expect(consoleWarnSpy).toHaveBeenCalledWith(
+          expect.stringMatching(/Repository missing git init/),
+        );
+      },
+    );
+  });
+
+  it("confirms success when reportConfigDiagnostics has no warnings or errors", async () => {
+    await runReportDiagnosticsTest({}, (result) => {
+      expect(result).toBe(false);
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        "✅ Configuration looks good.",
+      );
+    });
   });
 
   it("generates an index for the default repository", async () => {
@@ -517,10 +651,7 @@ defaultRepo: sandbox
     saveDecision(context, makeRecord("alpha", "first"), "# alpha first");
     saveDecision(context, makeRecord("beta", "second"), "# beta second");
 
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "index"];
-
-    await import("./index.js");
+    await runCli(tempDir, ["index"]);
 
     const logCalls = collectLogLines();
     expect(logCalls.some((msg) => /Generated index/.test(msg))).toBe(true);
@@ -533,6 +664,47 @@ defaultRepo: sandbox
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
+  it("echoes domain dir and default flags when creating repo entries", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
+    const repoDir = path.join(tempDir, "workspace");
+    await runCli(tempDir, [
+      "repo",
+      "new",
+      "work",
+      repoDir,
+      "--domain-dir",
+      "domains",
+      "--default",
+    ]);
+
+    const logs = collectLogLines().join("\n");
+    expect(logs).toMatch(/Domain directory: domains/);
+    expect(logs).toMatch(/Marked as default repo/);
+    expect(fs.existsSync(path.join(tempDir, ".drctl.yaml"))).toBe(true);
+
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("reports when repo bootstrap finds an existing git repository", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
+    const repoDir = path.join(tempDir, "workspace");
+    fs.mkdirSync(path.join(repoDir, ".git"), { recursive: true });
+    fs.writeFileSync(
+      path.join(tempDir, ".drctl.yaml"),
+      `repos:\n  work:\n    path: ./workspace\n`,
+    );
+    const gitModule = await import("../core/git.js");
+    const initSpy = vi.spyOn(gitModule, "initGitRepo");
+
+    const logs = await runCli(tempDir, ["repo", "bootstrap", "work"]);
+
+    expect(initSpy).not.toHaveBeenCalled();
+    expect(logs.some((line) => /already initialised/.test(line))).toBe(true);
+
+    initSpy.mockRestore();
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
   it("reports missing repo root when running index", async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
     fs.writeFileSync(
@@ -540,10 +712,7 @@ defaultRepo: sandbox
       `defaultRepo: ghost\nrepos:\n  ghost:\n    path: ./workspace\n`,
     );
 
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "index"];
-
-    await import("./index.js");
+    await runCli(tempDir, ["index"]);
 
     const errorSpy = consoleErrorSpy;
     expect(errorSpy).toHaveBeenCalledWith(
@@ -558,19 +727,14 @@ defaultRepo: sandbox
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-cli-test-"));
     const configPath = path.join(tempDir, "custom.yaml");
     fs.writeFileSync(configPath, "repos:\n");
-    process.chdir(tempDir);
-    process.argv = [
-      "node",
-      "drctl",
+    await runCli(tempDir, [
       "--config",
       configPath,
       "repo",
       "new",
       "alias",
       "./repo",
-    ];
-
-    await import("./index.js");
+    ]);
 
     const parsed = loadYaml(fs.readFileSync(configPath, "utf8")) as Record<
       string,
@@ -587,10 +751,7 @@ defaultRepo: sandbox
       path.join(tempDir, ".drctl.yaml"),
       `repos:\n  work:\n    path: ./workspace\n`,
     );
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "repo", "new", "docs", "./workspace"];
-
-    await import("./index.js");
+    await runCli(tempDir, ["repo", "new", "docs", "./workspace"]);
 
     expect(process.exitCode).toBe(1);
     const errorSpy = consoleErrorSpy;
@@ -612,10 +773,7 @@ defaultRepo: sandbox
     const configPath = path.join(tempDir, "env-config.yaml");
     fs.writeFileSync(configPath, "repos:\n");
     process.env.DRCTL_CONFIG = configPath;
-    process.chdir(tempDir);
-    process.argv = ["node", "drctl", "repo", "new", "alias", "./repo"];
-
-    await import("./index.js");
+    await runCli(tempDir, ["repo", "new", "alias", "./repo"]);
 
     const parsed = loadYaml(fs.readFileSync(configPath, "utf8")) as Record<
       string,

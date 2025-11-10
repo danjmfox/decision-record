@@ -700,7 +700,11 @@ function shouldSkipEntry(entry: fs.Dirent): boolean {
 }
 
 function isDecisionFileEntry(entry: fs.Dirent): boolean {
-  return entry.isFile() && entry.name.endsWith(".md");
+  return (
+    entry.isFile() &&
+    entry.name.endsWith(".md") &&
+    entry.name.startsWith("DR--")
+  );
 }
 
 function readDecisionFromFile(filePath: string): DecisionRecord | undefined {
@@ -733,7 +737,14 @@ async function commitIfEnabled(
     return;
   }
   options.gitClient ??= createGitClient();
-  await stageAndCommitWithHint(context, options.gitClient, paths, message);
+  const gitCwd = context.gitRoot ?? context.root;
+  await stageAndCommitWithHint(
+    context,
+    options.gitClient,
+    gitCwd,
+    paths,
+    message,
+  );
 }
 
 async function commitSingleFile(
@@ -758,26 +769,28 @@ function commitLifecycle(
 async function stageAndCommitWithHint(
   context: RepoContext,
   gitClient: GitClient,
+  gitCwd: string,
   paths: string[],
   message: string,
 ) {
-  const staged = await getStagedFiles(context.root);
+  const staged = await getStagedFiles(gitCwd);
   if (staged.length > 0) {
     const list = staged.join(", ");
     throw new Error(
-      `Staging area contains unrelated changes in ${context.root}: ${list}. Commit or reset them before running drctl.`,
+      `Staging area contains unrelated changes in ${gitCwd}: ${list}. Commit or reset them before running drctl.`,
     );
   }
   try {
     await gitClient.stageAndCommit(paths, {
-      cwd: context.root,
+      cwd: gitCwd,
       message,
     });
   } catch (error) {
     if (isNotGitRepoError(error)) {
+      const displayRoot = context.gitRoot ?? context.root;
       const hintTarget = context.name
-        ? `repo "${context.name}" (${context.root})`
-        : context.root;
+        ? `repo "${context.name}" (${displayRoot})`
+        : displayRoot;
       const bootstrap = context.name
         ? `drctl repo bootstrap ${context.name}`
         : `git init`;
