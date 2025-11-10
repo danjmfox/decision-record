@@ -152,9 +152,14 @@ export async function acceptDecision(
   let warningsHandled = false;
 
   if (!isAcceptableStatus(rec.status)) {
-    throw new Error(
-      `Cannot accept decision "${id}" from status "${rec.status}". Use the appropriate lifecycle command first.`,
-    );
+    if (isLegacyNewStatus(rec.status)) {
+      await draftDecision(id, workingOptions);
+      rec = loadDecision(context, id);
+    } else {
+      throw new Error(
+        `Cannot accept decision "${id}" from status "${rec.status}". Use the appropriate lifecycle command first.`,
+      );
+    }
   }
 
   if (rec.status === "draft" && !hasChangelogNote(rec, "Marked as draft")) {
@@ -428,6 +433,10 @@ function readDecisionFromFile(filePath: string): DecisionRecord | undefined {
 
 function hasChangelogNote(record: DecisionRecord, note: string): boolean {
   return (record.changelog ?? []).some((entry) => entry.note === note);
+}
+
+function isLegacyNewStatus(status: unknown): boolean {
+  return typeof status === "string" && status.toLowerCase() === "new";
 }
 
 function isAcceptableStatus(status: DecisionStatus): boolean {
