@@ -58,334 +58,336 @@ afterAll(() => {
 });
 
 describe("service layer", () => {
-  it("creates a decision record and persists markdown", () => {
-    const context = makeContext();
-    const result = createDecision("personal", "hydrate", {
-      context,
-      confidence: 0.6,
-    });
+  describe("creation and templates", () => {
+    it("creates a decision record and persists markdown", () => {
+      const context = makeContext();
+      const result = createDecision("personal", "hydrate", {
+        context,
+        confidence: 0.6,
+      });
 
-    expect(result.record.id).toBe("DR--20251030--personal--hydrate");
-    expect(result.record.status).toBe("draft");
-    expect(result.record.confidence).toBe(0.6);
+      expect(result.record.id).toBe("DR--20251030--personal--hydrate");
+      expect(result.record.status).toBe("draft");
+      expect(result.record.confidence).toBe(0.6);
 
-    const expectedPath = path.join(
-      context.root,
-      "personal",
-      `${result.record.id}.md`,
-    );
-    expect(fs.existsSync(expectedPath)).toBe(true);
-    expect(result.filePath).toBe(expectedPath);
-
-    const stored = listAll(undefined, { context });
-    expect(stored).toHaveLength(1);
-    const storedRecord = stored[0];
-    expect(storedRecord).toBeDefined();
-    expect(storedRecord?.id).toBe(result.record.id);
-    expect(storedRecord?.status).toBe("draft");
-  });
-
-  it("uses a configured template when creating a decision", () => {
-    const context = makeContext();
-    context.defaultTemplate = "templates/meta.md";
-    const templatePath = path.join(context.root, "templates", "meta.md");
-    fs.mkdirSync(path.dirname(templatePath), { recursive: true });
-    const templateBody = [
-      "# Custom Template Heading",
-      "",
-      "## Section",
-      "",
-      "Fill me in",
-      "",
-    ].join("\n");
-    fs.writeFileSync(templatePath, templateBody, "utf8");
-
-    const result = createDecision("meta", "with-template", { context });
-
-    const stored = fs.readFileSync(result.filePath, "utf8");
-    expect(stored).toContain("Custom Template Heading");
-    const parsed = matter.read(result.filePath);
-    expect(parsed.data.templateUsed).toBe("templates/meta.md");
-  });
-
-  it("prefers an explicit template path over defaults", () => {
-    const context = makeContext();
-    context.defaultTemplate = "templates/default.md";
-    const defaultTemplatePath = path.join(
-      context.root,
-      "templates",
-      "default.md",
-    );
-    fs.mkdirSync(path.dirname(defaultTemplatePath), { recursive: true });
-    fs.writeFileSync(defaultTemplatePath, "# Default Template\n", "utf8");
-    const externalTemplate = path.join(os.tmpdir(), "custom-template.md");
-    fs.writeFileSync(
-      externalTemplate,
-      ["# External Template", "", "Body content", ""].join("\n"),
-      "utf8",
-    );
-
-    const result = createDecision("meta", "override-template", {
-      context,
-      templatePath: externalTemplate,
-    });
-
-    const stored = fs.readFileSync(result.filePath, "utf8");
-    expect(stored).toContain("# External Template");
-    const parsed = matter.read(result.filePath);
-    const expectedTemplateWithinRepo = path.join(
-      context.root,
-      "templates",
-      path.basename(externalTemplate),
-    );
-    expect(fs.existsSync(expectedTemplateWithinRepo)).toBe(true);
-    expect(parsed.data.templateUsed).toBe(
-      toPosix(path.relative(context.root, expectedTemplateWithinRepo)),
-    );
-    expect(fs.readFileSync(expectedTemplateWithinRepo, "utf8")).toContain(
-      "# External Template",
-    );
-  });
-
-  it("generates unique filenames when external templates share a name", () => {
-    const context = makeContext();
-    const sharedTemplate = path.join(os.tmpdir(), "duplicate-template.md");
-
-    fs.writeFileSync(
-      sharedTemplate,
-      ["# Duplicate Template", "", "Content A", ""].join("\n"),
-      "utf8",
-    );
-
-    const first = createDecision("meta", "duplicate-a", {
-      context,
-      templatePath: sharedTemplate,
-    });
-
-    const firstParsed = matter.read(first.filePath);
-    expect(firstParsed.data.templateUsed).toBe(
-      toPosix(
-        path.relative(
-          context.root,
-          path.join(context.root, "templates", path.basename(sharedTemplate)),
-        ),
-      ),
-    );
-
-    fs.writeFileSync(
-      sharedTemplate,
-      ["# Duplicate Template", "", "Content B", ""].join("\n"),
-      "utf8",
-    );
-
-    const second = createDecision("meta", "duplicate-b", {
-      context,
-      templatePath: sharedTemplate,
-    });
-
-    const secondParsed = matter.read(second.filePath);
-    expect(secondParsed.data.templateUsed).toBe(
-      toPosix(
-        path.relative(
-          context.root,
-          path.join(context.root, "templates", "duplicate-template-2.md"),
-        ),
-      ),
-    );
-    expect(
-      fs.readFileSync(
-        path.join(context.root, "templates", "duplicate-template-2.md"),
-        "utf8",
-      ),
-    ).toContain("Content B");
-  });
-
-  it("falls back to the env template when provided", () => {
-    const context = makeContext();
-    const envTemplatePath = path.join(os.tmpdir(), "env-template.md");
-    fs.writeFileSync(
-      envTemplatePath,
-      ["# Env Template", "", "Body text", ""].join("\n"),
-      "utf8",
-    );
-
-    const result = createDecision("meta", "env-template", {
-      context,
-      envTemplate: envTemplatePath,
-    });
-
-    const stored = fs.readFileSync(result.filePath, "utf8");
-    expect(stored).toContain("# Env Template");
-    const parsed = matter.read(result.filePath);
-    const expectedTemplateWithinRepo = path.join(
-      context.root,
-      "templates",
-      path.basename(envTemplatePath),
-    );
-    expect(fs.existsSync(expectedTemplateWithinRepo)).toBe(true);
-    expect(parsed.data.templateUsed).toBe(
-      toPosix(path.relative(context.root, expectedTemplateWithinRepo)),
-    );
-  });
-
-  it("expands home directories when resolving template candidates", () => {
-    const context = makeContext();
-    const homeDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-home-"));
-    const homedirSpy = vi.spyOn(os, "homedir").mockReturnValue(homeDir);
-
-    const homeTemplate = path.join(homeDir, "home-template.md");
-    fs.writeFileSync(homeTemplate, "# Home Template", "utf8");
-
-    process.env.DRCTL_TEMPLATE = "~/home-template.md";
-
-    const result = createDecision("meta", "home-template", {
-      context,
-    });
-
-    const parsed = matter.read(result.filePath);
-    expect(parsed.data.templateUsed).toBe(
-      toPosix(
-        path.relative(
-          context.root,
-          path.join(context.root, "templates", "home-template.md"),
-        ),
-      ),
-    );
-    homedirSpy.mockRestore();
-  });
-
-  it("skips home-directory candidates that are directories", () => {
-    const context = makeContext();
-    const homeDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-home-dir-"));
-    const homedirSpy = vi.spyOn(os, "homedir").mockReturnValue(homeDir);
-
-    context.defaultTemplate = "templates/fallback.md";
-    const fallbackPath = path.join(context.root, context.defaultTemplate);
-    fs.mkdirSync(path.dirname(fallbackPath), { recursive: true });
-    fs.writeFileSync(fallbackPath, "# Fallback Template", "utf8");
-
-    process.env.DRCTL_TEMPLATE = "~";
-
-    const result = createDecision("meta", "home-dir", {
-      context,
-    });
-
-    const parsed = matter.read(result.filePath);
-    expect(parsed.data.templateUsed).toBe(
-      toPosix(path.relative(context.root, fallbackPath)),
-    );
-    homedirSpy.mockRestore();
-  });
-
-  it("reuses existing copied templates when external content is unchanged", () => {
-    const context = makeContext();
-    const externalTemplate = path.join(os.tmpdir(), "reused-template.md");
-    fs.writeFileSync(externalTemplate, "# Reused Template\n", "utf8");
-
-    const first = createDecision("meta", "reused-template-a", {
-      context,
-      templatePath: externalTemplate,
-    });
-    const firstParsed = matter.read(first.filePath);
-    const expectedRelative = toPosix(
-      path.relative(
+      const expectedPath = path.join(
         context.root,
-        path.join(context.root, "templates", path.basename(externalTemplate)),
-      ),
-    );
-    expect(firstParsed.data.templateUsed).toBe(expectedRelative);
+        "personal",
+        `${result.record.id}.md`,
+      );
+      expect(fs.existsSync(expectedPath)).toBe(true);
+      expect(result.filePath).toBe(expectedPath);
 
-    // Write the same content again to leave the file unchanged.
-    fs.writeFileSync(externalTemplate, "# Reused Template\n", "utf8");
-
-    const second = createDecision("meta", "reused-template-b", {
-      context,
-      templatePath: externalTemplate,
-    });
-    const secondParsed = matter.read(second.filePath);
-    expect(secondParsed.data.templateUsed).toBe(expectedRelative);
-    // Ensure no duplicate copies were created.
-    const templatesDir = path.join(context.root, "templates");
-    const files = fs
-      .readdirSync(templatesDir)
-      .filter((name) => name.startsWith("reused-template"));
-    expect(files).toEqual([path.basename(externalTemplate)]);
-  });
-
-  it("skips template candidates that are directories before selecting the next option", () => {
-    const context = makeContext();
-    const dirTemplate = path.join(context.root, "templates", "dir-template");
-    fs.mkdirSync(dirTemplate, { recursive: true });
-
-    const fileTemplate = path.join(
-      context.root,
-      "templates",
-      "file-template.md",
-    );
-    fs.writeFileSync(fileTemplate, "# File Template", "utf8");
-
-    const result = createDecision("meta", "fallback-template", {
-      context,
-      templatePath: dirTemplate,
-      envTemplate: fileTemplate,
+      const stored = listAll(undefined, { context });
+      expect(stored).toHaveLength(1);
+      const storedRecord = stored[0];
+      expect(storedRecord).toBeDefined();
+      expect(storedRecord?.id).toBe(result.record.id);
+      expect(storedRecord?.status).toBe("draft");
     });
 
-    const parsed = matter.read(result.filePath);
-    expect(parsed.data.templateUsed).toBe(
-      toPosix(
+    it("uses a configured template when creating a decision", () => {
+      const context = makeContext();
+      context.defaultTemplate = "templates/meta.md";
+      const templatePath = path.join(context.root, "templates", "meta.md");
+      fs.mkdirSync(path.dirname(templatePath), { recursive: true });
+      const templateBody = [
+        "# Custom Template Heading",
+        "",
+        "## Section",
+        "",
+        "Fill me in",
+        "",
+      ].join("\n");
+      fs.writeFileSync(templatePath, templateBody, "utf8");
+
+      const result = createDecision("meta", "with-template", { context });
+
+      const stored = fs.readFileSync(result.filePath, "utf8");
+      expect(stored).toContain("Custom Template Heading");
+      const parsed = matter.read(result.filePath);
+      expect(parsed.data.templateUsed).toBe("templates/meta.md");
+    });
+
+    it("prefers an explicit template path over defaults", () => {
+      const context = makeContext();
+      context.defaultTemplate = "templates/default.md";
+      const defaultTemplatePath = path.join(
+        context.root,
+        "templates",
+        "default.md",
+      );
+      fs.mkdirSync(path.dirname(defaultTemplatePath), { recursive: true });
+      fs.writeFileSync(defaultTemplatePath, "# Default Template\n", "utf8");
+      const externalTemplate = path.join(os.tmpdir(), "custom-template.md");
+      fs.writeFileSync(
+        externalTemplate,
+        ["# External Template", "", "Body content", ""].join("\n"),
+        "utf8",
+      );
+
+      const result = createDecision("meta", "override-template", {
+        context,
+        templatePath: externalTemplate,
+      });
+
+      const stored = fs.readFileSync(result.filePath, "utf8");
+      expect(stored).toContain("# External Template");
+      const parsed = matter.read(result.filePath);
+      const expectedTemplateWithinRepo = path.join(
+        context.root,
+        "templates",
+        path.basename(externalTemplate),
+      );
+      expect(fs.existsSync(expectedTemplateWithinRepo)).toBe(true);
+      expect(parsed.data.templateUsed).toBe(
+        toPosix(path.relative(context.root, expectedTemplateWithinRepo)),
+      );
+      expect(fs.readFileSync(expectedTemplateWithinRepo, "utf8")).toContain(
+        "# External Template",
+      );
+    });
+
+    it("generates unique filenames when external templates share a name", () => {
+      const context = makeContext();
+      const sharedTemplate = path.join(os.tmpdir(), "duplicate-template.md");
+
+      fs.writeFileSync(
+        sharedTemplate,
+        ["# Duplicate Template", "", "Content A", ""].join("\n"),
+        "utf8",
+      );
+
+      const first = createDecision("meta", "duplicate-a", {
+        context,
+        templatePath: sharedTemplate,
+      });
+
+      const firstParsed = matter.read(first.filePath);
+      expect(firstParsed.data.templateUsed).toBe(
+        toPosix(
+          path.relative(
+            context.root,
+            path.join(context.root, "templates", path.basename(sharedTemplate)),
+          ),
+        ),
+      );
+
+      fs.writeFileSync(
+        sharedTemplate,
+        ["# Duplicate Template", "", "Content B", ""].join("\n"),
+        "utf8",
+      );
+
+      const second = createDecision("meta", "duplicate-b", {
+        context,
+        templatePath: sharedTemplate,
+      });
+
+      const secondParsed = matter.read(second.filePath);
+      expect(secondParsed.data.templateUsed).toBe(
+        toPosix(
+          path.relative(
+            context.root,
+            path.join(context.root, "templates", "duplicate-template-2.md"),
+          ),
+        ),
+      );
+      expect(
+        fs.readFileSync(
+          path.join(context.root, "templates", "duplicate-template-2.md"),
+          "utf8",
+        ),
+      ).toContain("Content B");
+    });
+
+    it("falls back to the env template when provided", () => {
+      const context = makeContext();
+      const envTemplatePath = path.join(os.tmpdir(), "env-template.md");
+      fs.writeFileSync(
+        envTemplatePath,
+        ["# Env Template", "", "Body text", ""].join("\n"),
+        "utf8",
+      );
+
+      const result = createDecision("meta", "env-template", {
+        context,
+        envTemplate: envTemplatePath,
+      });
+
+      const stored = fs.readFileSync(result.filePath, "utf8");
+      expect(stored).toContain("# Env Template");
+      const parsed = matter.read(result.filePath);
+      const expectedTemplateWithinRepo = path.join(
+        context.root,
+        "templates",
+        path.basename(envTemplatePath),
+      );
+      expect(fs.existsSync(expectedTemplateWithinRepo)).toBe(true);
+      expect(parsed.data.templateUsed).toBe(
+        toPosix(path.relative(context.root, expectedTemplateWithinRepo)),
+      );
+    });
+
+    it("expands home directories when resolving template candidates", () => {
+      const context = makeContext();
+      const homeDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-home-"));
+      const homedirSpy = vi.spyOn(os, "homedir").mockReturnValue(homeDir);
+
+      const homeTemplate = path.join(homeDir, "home-template.md");
+      fs.writeFileSync(homeTemplate, "# Home Template", "utf8");
+
+      process.env.DRCTL_TEMPLATE = "~/home-template.md";
+
+      const result = createDecision("meta", "home-template", {
+        context,
+      });
+
+      const parsed = matter.read(result.filePath);
+      expect(parsed.data.templateUsed).toBe(
+        toPosix(
+          path.relative(
+            context.root,
+            path.join(context.root, "templates", "home-template.md"),
+          ),
+        ),
+      );
+      homedirSpy.mockRestore();
+    });
+
+    it("skips home-directory candidates that are directories", () => {
+      const context = makeContext();
+      const homeDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-home-dir-"));
+      const homedirSpy = vi.spyOn(os, "homedir").mockReturnValue(homeDir);
+
+      context.defaultTemplate = "templates/fallback.md";
+      const fallbackPath = path.join(context.root, context.defaultTemplate);
+      fs.mkdirSync(path.dirname(fallbackPath), { recursive: true });
+      fs.writeFileSync(fallbackPath, "# Fallback Template", "utf8");
+
+      process.env.DRCTL_TEMPLATE = "~";
+
+      const result = createDecision("meta", "home-dir", {
+        context,
+      });
+
+      const parsed = matter.read(result.filePath);
+      expect(parsed.data.templateUsed).toBe(
+        toPosix(path.relative(context.root, fallbackPath)),
+      );
+      homedirSpy.mockRestore();
+    });
+
+    it("reuses existing copied templates when external content is unchanged", () => {
+      const context = makeContext();
+      const externalTemplate = path.join(os.tmpdir(), "reused-template.md");
+      fs.writeFileSync(externalTemplate, "# Reused Template\n", "utf8");
+
+      const first = createDecision("meta", "reused-template-a", {
+        context,
+        templatePath: externalTemplate,
+      });
+      const firstParsed = matter.read(first.filePath);
+      const expectedRelative = toPosix(
         path.relative(
           context.root,
-          path.join(context.root, "templates", "file-template.md"),
+          path.join(context.root, "templates", path.basename(externalTemplate)),
         ),
-      ),
-    );
-  });
+      );
+      expect(firstParsed.data.templateUsed).toBe(expectedRelative);
 
-  it("falls back to the default template when custom files cannot be read", () => {
-    const context = makeContext();
-    const fileTemplate = path.join(
-      context.root,
-      "templates",
-      "file-template.md",
-    );
-    fs.mkdirSync(path.dirname(fileTemplate), { recursive: true });
-    fs.writeFileSync(fileTemplate, "# File Template", "utf8");
+      // Write the same content again to leave the file unchanged.
+      fs.writeFileSync(externalTemplate, "# Reused Template\n", "utf8");
 
-    const readSpy = vi
-      .spyOn(fs, "readFileSync")
-      .mockImplementationOnce(() => {
-        throw new Error("unreadable");
-      })
-      .mockImplementationOnce(fs.readFileSync);
-
-    const result = createDecision("meta", "unreadable-template", {
-      context,
-      templatePath: fileTemplate,
+      const second = createDecision("meta", "reused-template-b", {
+        context,
+        templatePath: externalTemplate,
+      });
+      const secondParsed = matter.read(second.filePath);
+      expect(secondParsed.data.templateUsed).toBe(expectedRelative);
+      // Ensure no duplicate copies were created.
+      const templatesDir = path.join(context.root, "templates");
+      const files = fs
+        .readdirSync(templatesDir)
+        .filter((name) => name.startsWith("reused-template"));
+      expect(files).toEqual([path.basename(externalTemplate)]);
     });
 
-    const parsed = matter.read(result.filePath);
-    expect(parsed.data.templateUsed).toBeUndefined();
-    expect(readSpy).toHaveBeenCalled();
-    readSpy.mockRestore();
-  });
+    it("skips template candidates that are directories before selecting the next option", () => {
+      const context = makeContext();
+      const dirTemplate = path.join(context.root, "templates", "dir-template");
+      fs.mkdirSync(dirTemplate, { recursive: true });
 
-  it("does not overwrite an existing decision when creating again", () => {
-    const context = makeContext();
-    const first = createDecision("meta", "duplicate-check", { context });
+      const fileTemplate = path.join(
+        context.root,
+        "templates",
+        "file-template.md",
+      );
+      fs.writeFileSync(fileTemplate, "# File Template", "utf8");
 
-    fs.writeFileSync(
-      first.filePath,
-      matter.stringify("# Body\n\nKeep this content", {
-        ...first.record,
-      }),
-    );
+      const result = createDecision("meta", "fallback-template", {
+        context,
+        templatePath: dirTemplate,
+        envTemplate: fileTemplate,
+      });
 
-    expect(() =>
-      createDecision("meta", "duplicate-check", { context }),
-    ).toThrow(/already exists/i);
+      const parsed = matter.read(result.filePath);
+      expect(parsed.data.templateUsed).toBe(
+        toPosix(
+          path.relative(
+            context.root,
+            path.join(context.root, "templates", "file-template.md"),
+          ),
+        ),
+      );
+    });
 
-    const stored = fs.readFileSync(first.filePath, "utf8");
-    expect(stored).toContain("Keep this content");
+    it("falls back to the default template when custom files cannot be read", () => {
+      const context = makeContext();
+      const fileTemplate = path.join(
+        context.root,
+        "templates",
+        "file-template.md",
+      );
+      fs.mkdirSync(path.dirname(fileTemplate), { recursive: true });
+      fs.writeFileSync(fileTemplate, "# File Template", "utf8");
+
+      const readSpy = vi
+        .spyOn(fs, "readFileSync")
+        .mockImplementationOnce(() => {
+          throw new Error("unreadable");
+        })
+        .mockImplementationOnce(fs.readFileSync);
+
+      const result = createDecision("meta", "unreadable-template", {
+        context,
+        templatePath: fileTemplate,
+      });
+
+      const parsed = matter.read(result.filePath);
+      expect(parsed.data.templateUsed).toBeUndefined();
+      expect(readSpy).toHaveBeenCalled();
+      readSpy.mockRestore();
+    });
+
+    it("does not overwrite an existing decision when creating again", () => {
+      const context = makeContext();
+      const first = createDecision("meta", "duplicate-check", { context });
+
+      fs.writeFileSync(
+        first.filePath,
+        matter.stringify("# Body\n\nKeep this content", {
+          ...first.record,
+        }),
+      );
+
+      expect(() =>
+        createDecision("meta", "duplicate-check", { context }),
+      ).toThrow(/already exists/i);
+
+      const stored = fs.readFileSync(first.filePath, "utf8");
+      expect(stored).toContain("Keep this content");
+    });
   });
 
   it("skips git operations when the repo opts out of git", async () => {
