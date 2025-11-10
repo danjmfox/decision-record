@@ -55,10 +55,10 @@
     "@release-it/conventional-changelog": "^10.0.1",
     "conventional-commits-parser": "^6.2.1",
     "@types/node": "^24.10.0",
-    "@vitest/coverage-v8": "^4.0.6",
+    "@vitest/coverage-v8": "^4.0.8",
     "commitizen": "^4.3.1",
     "cz-conventional-changelog": "^3.3.0",
-    "release-it": "^19.0.5",
+    "release-it": "^19.0.6",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "vitest": "^4.0.5"
