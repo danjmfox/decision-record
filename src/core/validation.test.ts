@@ -84,20 +84,34 @@ describe("governance validation (per-repo)", () => {
     );
   });
 
-  it("flags illegal status transitions", () => {
+  it("flags unknown change types", () => {
     const invalid: DecisionRecord = {
       ...base,
-      id: "DR--20240101--meta--bad-status",
-      status: "accepted",
-      changeType: "creation",
+      id: "DR--20240101--meta--bad-change-type",
+      changeType: "unknown" as DecisionRecord["changeType"],
     };
     const result = issues([invalid]);
     expect(result).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           code: "invalid-change-type",
-          recordId: "DR--20240101--meta--bad-status",
+          recordId: "DR--20240101--meta--bad-change-type",
         }),
+      ]),
+    );
+  });
+
+  it("allows creation change type after acceptance", () => {
+    const accepted: DecisionRecord = {
+      ...base,
+      id: "DR--20240101--meta--accepted",
+      status: "accepted",
+      changeType: "creation",
+    };
+    const result = issues([accepted]);
+    expect(result).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "invalid-change-type" }),
       ]),
     );
   });

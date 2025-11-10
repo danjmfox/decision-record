@@ -1229,4 +1229,30 @@ describe("service layer", () => {
       expect(entry.record).toHaveProperty("status");
     }
   });
+
+  it("ignores template and index markdown files when collecting decisions", () => {
+    const context = makeContext();
+    const created = createDecision("meta", "record", { context });
+    const indexPath = path.join(context.root, "index.md");
+    fs.writeFileSync(indexPath, "# Index\n");
+    const templatePath = path.join(context.root, "decision-record-template.md");
+    fs.writeFileSync(
+      templatePath,
+      [
+        "---",
+        'id: "{{ id }}"',
+        'status: "{{ status }}"',
+        "---",
+        "",
+        "# Template",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const collected = collectDecisions(context);
+
+    expect(collected).toEqual([
+      expect.objectContaining({ record: expect.objectContaining(created.record) }),
+    ]);
+  });
 });

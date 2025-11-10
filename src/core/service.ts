@@ -700,7 +700,11 @@ function shouldSkipEntry(entry: fs.Dirent): boolean {
 }
 
 function isDecisionFileEntry(entry: fs.Dirent): boolean {
-  return entry.isFile() && entry.name.endsWith(".md");
+  return (
+    entry.isFile() &&
+    entry.name.endsWith(".md") &&
+    entry.name.startsWith("DR--")
+  );
 }
 
 function readDecisionFromFile(filePath: string): DecisionRecord | undefined {
