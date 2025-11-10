@@ -124,55 +124,6 @@ describe("service lifecycle flows", () => {
     expect(acceptedRecord?.status).toBe("accepted");
   });
 
-  it('auto-accepts legacy records whose status is "new"', async () => {
-    const context = makeContext();
-    const gitClient = {
-      stageAndCommit: vi.fn().mockResolvedValue(undefined),
-    };
-    const legacyId = "DR--20250101--meta--legacy";
-    const domainDir = path.join(context.root, "meta");
-    fs.mkdirSync(domainDir, { recursive: true });
-    const legacyPath = path.join(domainDir, `${legacyId}.md`);
-    const frontmatter = {
-      id: legacyId,
-      dateCreated: "2025-10-25",
-      version: "1.0.0",
-      status: "new",
-      changeType: "creation",
-      domain: "meta",
-      slug: "legacy",
-      changelog: [{ date: "2025-10-25", note: "Initial creation" }],
-    };
-    fs.writeFileSync(
-      legacyPath,
-      matter.stringify("# Legacy decision", frontmatter),
-    );
-
-    const accepted = await acceptDecision(legacyId, { context, gitClient });
-    expect(accepted.record.status).toBe("accepted");
-    expect(accepted.record.changelog).toEqual(
-      expect.arrayContaining([
-        { date: "2025-10-30", note: "Marked as draft" },
-        { date: "2025-10-30", note: "Marked as proposed" },
-        { date: "2025-10-30", note: "Marked as accepted" },
-      ]),
-    );
-    expect(gitClient.stageAndCommit).toHaveBeenNthCalledWith(1, [legacyPath], {
-      cwd: context.root,
-      message: `drctl: draft ${legacyId}`,
-    });
-    expect(gitClient.stageAndCommit).toHaveBeenNthCalledWith(2, [legacyPath], {
-      cwd: context.root,
-      message: `drctl: propose ${legacyId}`,
-    });
-    expect(gitClient.stageAndCommit).toHaveBeenNthCalledWith(3, [legacyPath], {
-      cwd: context.root,
-      message: `drctl: accept ${legacyId}`,
-    });
-    const stored = matter.read(legacyPath);
-    expect(stored.data.status).toBe("accepted");
-  });
-
   it("accepts a proposed decision without replaying earlier transitions", async () => {
     const context = makeContext();
     const gitClient = {

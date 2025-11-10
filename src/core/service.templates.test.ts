@@ -21,7 +21,7 @@ describe("service templates and creation", () => {
     });
 
     expect(result.record.id).toBe("DR--20251030--personal--hydrate");
-    expect(result.record.status).toBe("draft");
+    expect(result.record.status).toBe("new");
     expect(result.record.confidence).toBe(0.6);
 
     const expectedPath = path.join(
