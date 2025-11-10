@@ -115,4 +115,22 @@ describe("governance validation (per-repo)", () => {
       ]),
     );
   });
+
+  it("rejects creation change type once deprecated", () => {
+    const deprecated: DecisionRecord = {
+      ...base,
+      id: "DR--20240101--meta--deprecated",
+      status: "deprecated",
+      changeType: "creation",
+    };
+    const result = issues([deprecated]);
+    expect(result).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "invalid-change-type",
+          recordId: "DR--20240101--meta--deprecated",
+        }),
+      ]),
+    );
+  });
 });

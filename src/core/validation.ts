@@ -118,6 +118,23 @@ function validateChangeType(record: DecisionRecord): ValidationIssue[] {
       },
     ];
   }
+  if (
+    record.changeType === "creation" &&
+    record.status !== "draft" &&
+    record.status !== "proposed" &&
+    record.status !== "accepted"
+  ) {
+    return [
+      {
+        code: "invalid-change-type",
+        recordId: record.id,
+        severity: "error",
+        message:
+          'Records with changeType "creation" must remain in draft, proposed, or accepted status.',
+        details: { status: record.status, changeType: record.changeType },
+      },
+    ];
+  }
   return [];
 }
 
