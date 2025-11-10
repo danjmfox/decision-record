@@ -9,6 +9,7 @@ The CLI enables:
 - Full decision lifecycle (`new → draft → propose → accept → revise → retire`)
 - Multi-repo configuration (`work`, `home`, etc.) backed by the modular `src/config/` stack
 - Modular CLI surfaces (decision, repo, config, governance) that share a single bootstrap in `src/cli/index.ts`
+- Dashboard-style `drctl index` output with summary metrics, review radar, per-domain catalogues, and Kanban groupings (see DR--20251110--meta--decision-index-ux)
 - Clear separation between app (public) and personal decision data (private)
 - Calm, transparent, systemic collaboration between human and AI
 

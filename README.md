@@ -48,21 +48,32 @@ npm run dev -- --help
 
 Common lifecycle and repo operations (full explanations live in [docs/project.md](docs/project.md)):
 
-| Command                                                                             | Purpose                                                                                         |
-| ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `drctl decision new <domain> <slug>`                                                | Create a draft Decision Record                                                                  |
-| `drctl decision draft / propose / accept / reject / deprecate / retire / supersede` | Advance lifecycle with git-integrated commits                                                   |
-| `drctl decision correction`                                                         | Apply patch update. Lifecycle state is not changed                                              |
-| `drctl decision revise`                                                             | revise id with a note …                                                                         |
-| `drctl decision list --status accepted`                                             | Inspect records                                                                                 |
-| `drctl repo show`                                                                   | Display resolved repository context                                                             |
-| `drctl repo new <alias> <path> [--domain-dir <dir>] [--default]`                    | Register repositories in `.drctl.yaml`                                                          |
-| `drctl repo bootstrap <alias>`                                                      | Initialise git (auto no-op if already initialised)                                              |
-| `drctl config check`                                                                | Validate local/global configs via the modular `src/config/` pipeline and warn about missing git |
-| `drctl index`                                                                       | Regenerate Markdown index                                                                       |
-| `drctl governance validate [--json]`                                                | Run structural checks across a repo                                                             |
+| Command                                                                                  | Purpose                                                                                                |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `drctl decision new <domain> <slug>`                                                     | Create a draft Decision Record                                                                         |
+| `drctl decision draft / propose / accept / reject / deprecate / retire / supersede`      | Advance lifecycle with git-integrated commits                                                          |
+| `drctl decision correction`                                                              | Apply patch update. Lifecycle state is not changed                                                     |
+| `drctl decision revise`                                                                  | revise id with a note …                                                                                |
+| `drctl decision list --status accepted`                                                  | Inspect records                                                                                        |
+| `drctl repo show`                                                                        | Display resolved repository context                                                                    |
+| `drctl repo new <alias> <path> [--domain-dir <dir>] [--default]`                         | Register repositories in `.drctl.yaml`                                                                 |
+| `drctl repo bootstrap <alias>`                                                           | Initialise git (auto no-op if already initialised)                                                     |
+| `drctl config check`                                                                     | Validate local/global configs via the modular `src/config/` pipeline and warn about missing git        |
+| `drctl index [--status <status...>] [--upcoming <days>] [--no-kanban] [--output <file>]` | Generate the dashboard-style Markdown index (summary metrics, review radar, per-domain tables, Kanban) |
+| `drctl governance validate [--json]`                                                     | Run structural checks across a repo                                                                    |
 
 Legacy top-level lifecycle verbs remain hidden aliases; the canonical surface is `drctl decision …`.
+
+### Decision Index Output
+
+`drctl index` now produces a multi-section Markdown report per [DR--20251110--meta--decision-index-ux](decisions-example/meta/DR--20251110--meta--decision-index-ux.md):
+
+- **Summary dashboard** with aggregate metrics, status counts, and the five most recently updated decisions.
+- **Upcoming reviews** table that highlights overdue items plus anything with a `reviewDate` inside the configurable `--upcoming` window (default 30 days).
+- **Domain catalogues** listing every decision with linked title/ID, lifecycle status, dates, confidence, tags, and lineage helpers.
+- **Status Kanban** grouping Draft → Accepted → Deprecated → Superseded → Rejected → Retired/Archived entries for at-a-glance flow checks (toggle via `--no-kanban`).
+
+Use `--status <status...>` to narrow the view, `--output <file>` / `--title <text>` for custom renders, and combine them with lifecycle commands to keep repos navigable.
 
 ---
 
