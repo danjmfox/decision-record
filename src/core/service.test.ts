@@ -1252,7 +1252,9 @@ describe("service layer", () => {
     const collected = collectDecisions(context);
 
     expect(collected).toEqual([
-      expect.objectContaining({ record: expect.objectContaining(created.record) }),
+      expect.objectContaining({
+        record: expect.objectContaining(created.record),
+      }),
     ]);
   });
 });

@@ -49,6 +49,7 @@ I tend to start each AI chat with the following, to remind it of our key agreeme
 
 ```md
 # Chat #{n}
+
 Refresh your knowledge of this project, comparing documentation against actual implementation, with special attention to:
 
 - `./AGENTS.md` and the supporting files in `./docs`
