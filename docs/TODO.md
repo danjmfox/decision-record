@@ -8,8 +8,8 @@
    - [x] Add an `index` generator that aggregates across configured repos.
    - [x] Prevent duplicate repo aliases pointing at the same filesystem path.
    - [x] Support configurable templates (CLI/env/config cascade + frontmatter provenance).
-   - [ ] Generate repo/domain `index.md` files with linked decision records.
-   - [ ] Enable hierarchical navigation between config → repo → domain → DR.
+   - [x] Expand repo index output with summary metrics, per-domain catalogues, review radar, and Kanban (DR--20251110--meta--decision-index-ux).
+   - [ ] Enable hierarchical navigation between config → repo → domain → DR across multiple repos (beyond the Markdown index).
 
 2. **Examples & Documentation**
    - [x] Add a README note clarifying `decisions-example/` as the default demo workspace.
