@@ -26,7 +26,8 @@ The CLI adopts a layered approach:
 
 3. **Repository & Configuration Layers**
    - `src/core/repository.ts` handles filesystem reads/writes using `gray-matter` for frontmatter parsing.
-   - `src/config.ts` resolves repositories using a layered strategy: CLI flag → `DRCTL_CONFIG` → nearest `.drctl.yaml` → global config candidates → fallback directories. Diagnostics surface issues such as missing repos or duplicate aliases (see [DR--20251101--meta--multi-repo-config-routing](decisions-example/meta/DR--20251101--meta--multi-repo-config-routing.md)).
+
+- `src/config/` hosts the repo-resolution pipeline: `types.ts` shares structs, `path-utils.ts` handles env/tilde expansion, `git-mode.ts` encapsulates detection, `diagnostics.ts` produces config check output, and `config.ts` orchestrates the layered strategy (CLI flag → `DRCTL_CONFIG` → nearest `.drctl.yaml` → global defaults → fallbacks). See [DR--20251101--meta--multi-repo-config-routing](decisions-example/meta/DR--20251101--meta--multi-repo-config-routing.md) and [DR--20251110--meta--modularise-large-files](decisions-example/meta/DR--20251110--meta--modularise-large-files.md).
 
 4. **Git Integration (`src/core/git.ts`)**
    - Thin wrapper around `git add/commit`.
