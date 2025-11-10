@@ -41,4 +41,4 @@ Create a **lightweight, auditable CLI** for managing Decision Records — treati
 - [Tech Stack](tech-stack.md)
 - [Refactoring Process](refactoring-process.md)
 - [TDD Process](tdd-process.md)
-- Refer to the ground rules in [AGENTS.md]([../AGENTS.md) for wider context
+- Refer to the ground rules in [AGENTS.md](../AGENTS.md) for wider context

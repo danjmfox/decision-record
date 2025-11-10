@@ -54,7 +54,7 @@ Root-level commands will be removed after telemetry confirms adoption. Until the
 
 ## 🔁 Lifecycle
 
-Status: `draft`. Change type: `creation`. Promote after deprecation messaging beds in and shims are scheduled for removal.
+Status: `accepted`. Change type: `creation`. Track telemetry before planning shim removal.
 
 ## 🧩 Reasoning
 

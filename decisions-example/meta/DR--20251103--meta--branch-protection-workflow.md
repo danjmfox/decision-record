@@ -51,7 +51,7 @@ Institutionalise a branch-protection workflow:
 
 ## 🔁 Lifecycle
 
-Status: `draft` (lifecycle commands pending in this environment). Change type: `creation`.
+Status: `accepted`. Change type: `creation`.
 
 ## 🧩 Reasoning
 

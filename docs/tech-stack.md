@@ -4,7 +4,7 @@
 | --------------- | --------------------------------- | ------------------------------------- |
 | Language        | TypeScript (strict, ESM)          | Strong typing, modern tooling         |
 | CLI Framework   | Commander.js                      | Declarative commands                  |
-| Build           | tsx + pnpm                        | Fast iteration, lightweight packaging |
+| Build           | tsx + npm                         | Fast iteration, lightweight packaging |
 | Tests           | Vitest                            | Unit/integration testing              |
 | Lint            | Trunk                             | Unified lint & policy checks          |
 | Versioning      | release-it + conventional commits | Automated changelog & releases        |

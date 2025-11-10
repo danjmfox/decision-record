@@ -14,12 +14,12 @@
 2. **Examples & Documentation**
    - [x] Add a README note clarifying `decisions-example/` as the default demo workspace.
    - [x] Document build artefact strategy and packaging workflow (README, AGENTS, DR--20251102--meta--build-artifacts-strategy).
-   - [ ] Capture the multi-repo config design in `DR--20251030--meta--multi-repo-config.md`.
+   - [ ] Capture the multi-repo config design in `DR--20251101--meta--multi-repo-config-routing`.
    - [ ] Continue treating `AGENTS.md` as the canonical collaboration record (update as decisions land).
    - [ ] Restructure docs (split README, add JSDoc-style references, explore publishing DRs as browsable HTML).
 
 3. **Automation & Integrations (Future)**
-   - [x] Establish CI pipeline (GitHub Actions build + test).
+   - [x] Establish CI pipeline (GitHub Actions build + test).`
    - [x] Trial automated release tooling (`release-it` with conventional changelog + GitHub releases).
    - [x] Add OpenSSF Scorecard workflow to surface supply-chain health.
    - [ ] Implement `drctl export` JSON metadata command.

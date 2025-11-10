@@ -1198,18 +1198,20 @@ describe("service layer", () => {
   });
 
   it("resolves context using provided configPath", () => {
+    const mockRoot = path.join(os.tmpdir(), "drctl-service-mock-root");
+    const mockConfigPath = path.join(os.tmpdir(), "drctl-config-path");
     const spy = vi.spyOn(configModule, "resolveRepoContext").mockReturnValue({
-      root: "/tmp/mock",
+      root: mockRoot,
       domainMap: {},
       source: "cli",
     } as RepoContext);
 
-    const context = resolveContext({ configPath: "/tmp/test-config" });
+    const context = resolveContext({ configPath: mockConfigPath });
 
     expect(spy).toHaveBeenCalledWith(
-      expect.objectContaining({ configPath: "/tmp/test-config" }),
+      expect.objectContaining({ configPath: mockConfigPath }),
     );
-    expect(context.root).toBe("/tmp/mock");
+    expect(context.root).toBe(mockRoot);
     spy.mockRestore();
   });
 
