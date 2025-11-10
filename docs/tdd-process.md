@@ -32,7 +32,7 @@ npm test:coverage
 1. For each item in the plan:
    a. Write failing test for missing repo alias
    a. Implement code to pass tests (no more than this).
-   a. Refactor shared logic to src/core/config.ts as part of the feature delivery work - see [Refactoring Guidance](./refactoring-process.md)
+   a. Refactor shared logic into the modular `src/config/` helpers (types/git-mode/path-utils) as part of the feature delivery work - see [Refactoring Guidance](./refactoring-process.md)
 1. Validate:
    a. Run `npm run test:coverage`
    b. Address low test coverage with additional tests

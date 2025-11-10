@@ -48,19 +48,19 @@ npm run dev -- --help
 
 Common lifecycle and repo operations (full explanations live in [docs/project.md](docs/project.md)):
 
-| Command                                                                             | Purpose                                                  |
-| ----------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| `drctl decision new <domain> <slug>`                                                | Create a draft Decision Record                           |
-| `drctl decision draft / propose / accept / reject / deprecate / retire / supersede` | Advance lifecycle with git-integrated commits            |
-| `drctl decision correction`                                                         | Apply patch update. Lifecycle state is not changed       |
-| `drctl decision revise`                                                             | revise id with a note …                                  |
-| `drctl decision list --status accepted`                                             | Inspect records                                          |
-| `drctl repo show`                                                                   | Display resolved repository context                      |
-| `drctl repo new <alias> <path> [--domain-dir <dir>] [--default]`                    | Register repositories in `.drctl.yaml`                   |
-| `drctl repo bootstrap <alias>`                                                      | Initialise git (auto no-op if already initialised)       |
-| `drctl config check`                                                                | Validate local/global configs and warn about missing git |
-| `drctl index`                                                                       | Regenerate Markdown index                                |
-| `drctl governance validate [--json]`                                                | Run structural checks across a repo                      |
+| Command                                                                             | Purpose                                                                                         |
+| ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `drctl decision new <domain> <slug>`                                                | Create a draft Decision Record                                                                  |
+| `drctl decision draft / propose / accept / reject / deprecate / retire / supersede` | Advance lifecycle with git-integrated commits                                                   |
+| `drctl decision correction`                                                         | Apply patch update. Lifecycle state is not changed                                              |
+| `drctl decision revise`                                                             | revise id with a note …                                                                         |
+| `drctl decision list --status accepted`                                             | Inspect records                                                                                 |
+| `drctl repo show`                                                                   | Display resolved repository context                                                             |
+| `drctl repo new <alias> <path> [--domain-dir <dir>] [--default]`                    | Register repositories in `.drctl.yaml`                                                          |
+| `drctl repo bootstrap <alias>`                                                      | Initialise git (auto no-op if already initialised)                                              |
+| `drctl config check`                                                                | Validate local/global configs via the modular `src/config/` pipeline and warn about missing git |
+| `drctl index`                                                                       | Regenerate Markdown index                                                                       |
+| `drctl governance validate [--json]`                                                | Run structural checks across a repo                                                             |
 
 Legacy top-level lifecycle verbs remain hidden aliases; the canonical surface is `drctl decision …`.
 

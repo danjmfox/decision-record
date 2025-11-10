@@ -7,7 +7,7 @@
 The CLI enables:
 
 - Full decision lifecycle (`new → draft → propose → accept → revise → retire`)
-- Multi-repo configuration (`work`, `home`, etc.)
+- Multi-repo configuration (`work`, `home`, etc.) backed by the modular `src/config/` stack
 - Clear separation between app (public) and personal decision data (private)
 - Calm, transparent, systemic collaboration between human and AI
 

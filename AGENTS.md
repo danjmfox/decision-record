@@ -67,15 +67,15 @@ See [docs/release.md](./docs/release.md) for prerequisites, validation steps, an
 
 ## 🧱 Code Structure
 
-| Path                     | Purpose                                    |
-| ------------------------ | ------------------------------------------ |
-| `src/cli/index.ts`       | CLI entry point                            |
-| `src/config.ts`          | Config loader (multi-repo `.drctl.yaml`)   |
-| `src/core/service.ts`    | High-level lifecycle actions               |
-| `src/core/repository.ts` | Persistence layer for Markdown frontmatter |
-| `src/core/versioning.ts` | Semantic version bumping                   |
-| `src/core/git.ts`        | Git integration layer                      |
-| `decisions-example/`     | Example decision records for testing/demo  |
+| Path                     | Purpose                                                            |
+| ------------------------ | ------------------------------------------------------------------ |
+| `src/cli/index.ts`       | CLI entry point                                                    |
+| `src/config/`            | Config loader modules (`types`, `paths`, `git-mode`, orchestrator) |
+| `src/core/service.ts`    | High-level lifecycle actions                                       |
+| `src/core/repository.ts` | Persistence layer for Markdown frontmatter                         |
+| `src/core/versioning.ts` | Semantic version bumping                                           |
+| `src/core/git.ts`        | Git integration layer                                              |
+| `decisions-example/`     | Example decision records for testing/demo                          |
 
 See also: [ARCHITECTURE.md](./ARCHITECTURE.md)
 and meta decision record [DR--20251101--meta--architecture-overview](decisions-example/meta/DR--20251101--meta--architecture-overview.md).

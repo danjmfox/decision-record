@@ -2,107 +2,50 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { load as loadYaml } from "js-yaml";
-
-export type GitMode = "enabled" | "disabled";
-export type GitModeSource = "cli" | "env" | "config" | "detected";
-export type GitModeOverrideSource = Exclude<GitModeSource, "detected">;
-
-export type RepoDefinitionSource = "local" | "global";
-
-export type RepoResolutionSource =
-  | "cli"
-  | "env"
-  | "local-config"
-  | "global-config"
-  | "fallback-cwd"
-  | "fallback-home";
-
-export interface RepoContext {
-  root: string;
-  name?: string;
-  source: RepoResolutionSource;
-  definitionSource?: RepoDefinitionSource;
-  configPath?: string;
-  domainMap: Record<string, string>;
-  defaultDomainDir?: string;
-  defaultTemplate?: string;
-  gitMode: GitMode;
-  gitModeSource: GitModeSource;
-  gitModeOverrideCleared?: GitModeOverrideSource;
-  gitRoot?: string | undefined;
-}
-
-export interface RepoDiagnostic {
-  name: string;
-  root: string;
-  definitionSource: RepoDefinitionSource;
-  configPath: string;
-  domainMap: Record<string, string>;
-  defaultDomainDir?: string;
-  defaultTemplate?: string;
-  exists: boolean;
-  gitInitialized: boolean;
-  gitMode: GitMode;
-  gitModeSource: GitModeSource;
-  gitRoot?: string | undefined;
-}
-
-export interface ConfigDiagnostics {
-  cwd: string;
-  localConfigPath?: string;
-  globalConfigPath?: string;
-  defaultRepoName?: string;
-  repos: RepoDiagnostic[];
-  warnings: string[];
-  errors: string[];
-}
-
-export interface ResolveRepoOptions {
-  repoFlag?: string | null;
-  envRepo?: string | null;
-  cwd?: string;
-  configPath?: string | null;
-  gitModeFlag?: GitMode | null;
-}
-
-interface RawDrctlConfig {
-  defaultRepo?: unknown;
-  repos?: Record<string, unknown>;
-}
-
-interface RawRepoConfig {
-  path?: unknown;
-  root?: unknown;
-  directory?: unknown;
-  dir?: unknown;
-  domains?: Record<string, unknown>;
-  defaultDomainDir?: unknown;
-  domainRoot?: unknown;
-  template?: unknown;
-  git?: unknown;
-}
-
-interface RawDomainConfig {
-  path?: unknown;
-  dir?: unknown;
-  directory?: unknown;
-}
-
-interface NormalizedRepo {
-  name: string;
-  root: string;
-  domainMap: Record<string, string>;
-  defaultDomainDir?: string;
-  defaultTemplate?: string;
-  gitMode?: GitMode;
-  definitionSource: RepoDefinitionSource;
-  configPath: string;
-}
-
-interface NormalizedConfigLayer {
-  defaultRepo?: string;
-  repos: Record<string, NormalizedRepo>;
-}
+import {
+  resolvePath,
+  looksLikePath,
+  selectFallbackRoot,
+  resolveTemplatePath,
+} from "./config/path-utils.js";
+import {
+  coerceGitMode,
+  findGitRoot,
+  resolveGitMode,
+} from "./config/git-mode.js";
+import { DiagnosticsCollector } from "./config/diagnostics.js";
+import type {
+  ConfigDiagnostics,
+  GitMode,
+  GitModeOverrideSource,
+  GitModeSource,
+  NormalizedConfigLayer,
+  NormalizedRepo,
+  RawDomainConfig,
+  RawDrctlConfig,
+  RawRepoConfig,
+  RepoContext,
+  RepoDefinitionSource,
+  RepoDiagnostic,
+  RepoResolutionSource,
+  ResolveRepoOptions,
+} from "./config/types.js";
+export type {
+  GitMode,
+  GitModeSource,
+  GitModeOverrideSource,
+  RepoDefinitionSource,
+  RepoResolutionSource,
+  RepoContext,
+  RepoDiagnostic,
+  ConfigDiagnostics,
+  ResolveRepoOptions,
+  RawDrctlConfig,
+  RawRepoConfig,
+  RawDomainConfig,
+  NormalizedRepo,
+  NormalizedConfigLayer,
+} from "./config/types.js";
 
 const CONFIG_FILENAMES = [".drctl.yaml", ".drctl.yml"];
 const GLOBAL_CONFIG_CANDIDATES = [
@@ -407,70 +350,8 @@ function finalizeContext(
   return context;
 }
 
-function resolveGitMode(options: {
-  root: string;
-  gitFlag: GitMode | null;
-  gitEnv: GitMode | null;
-  gitConfig: GitMode | null;
-}): {
-  mode: GitMode;
-  source: GitModeSource;
-  overrideCleared?: GitModeOverrideSource;
-  detectedGitRoot?: string;
-} {
-  const gitRoot = findGitRoot(options.root);
-  const gitExists = Boolean(gitRoot);
-  const detected: GitMode = gitExists ? "enabled" : "disabled";
-
-  const cascade: Array<{ value: GitMode | null; source: GitModeSource }> = [
-    { value: options.gitFlag, source: "cli" },
-    { value: options.gitEnv, source: "env" },
-    { value: options.gitConfig, source: "config" },
-  ];
-
-  for (const entry of cascade) {
-    if (!entry.value) continue;
-    if (entry.value === "disabled" && gitExists) {
-      const overrideSource =
-        entry.source === "detected" ? undefined : entry.source;
-      if (overrideSource) {
-        return {
-          mode: "enabled",
-          source: "detected",
-          overrideCleared: overrideSource,
-          ...(gitRoot ? { detectedGitRoot: gitRoot } : {}),
-        };
-      }
-    }
-    return {
-      mode: entry.value,
-      source: entry.source,
-      ...(gitRoot ? { detectedGitRoot: gitRoot } : {}),
-    };
-  }
-
-  return {
-    mode: detected,
-    source: "detected",
-    ...(gitRoot ? { detectedGitRoot: gitRoot } : {}),
-  };
-}
-
 function sourceFromRepo(repo: NormalizedRepo): RepoResolutionSource {
   return repo.definitionSource === "local" ? "local-config" : "global-config";
-}
-
-function findGitRoot(start: string): string | undefined {
-  let current = path.resolve(start);
-  while (true) {
-    const candidate = path.join(current, ".git");
-    if (fs.existsSync(candidate)) {
-      return current;
-    }
-    const parent = path.dirname(current);
-    if (parent === current) return undefined;
-    current = parent;
-  }
 }
 
 function determineDefaultSource(
@@ -493,159 +374,6 @@ function sanitizeString(value: string | null | undefined): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed.length === 0 ? null : trimmed;
-}
-
-function coerceGitMode(value: unknown): GitMode | null {
-  if (value === null || value === undefined) {
-    return null;
-  }
-  if (typeof value === "string") {
-    const normalized = value.trim().toLowerCase();
-    if (
-      normalized === "enabled" ||
-      normalized === "enable" ||
-      normalized === "on" ||
-      normalized === "true" ||
-      normalized === "1" ||
-      normalized === "yes"
-    ) {
-      return "enabled";
-    }
-    if (
-      normalized === "disabled" ||
-      normalized === "disable" ||
-      normalized === "off" ||
-      normalized === "false" ||
-      normalized === "0" ||
-      normalized === "no"
-    ) {
-      return "disabled";
-    }
-    return null;
-  }
-  if (typeof value === "boolean") {
-    return value ? "enabled" : "disabled";
-  }
-  return null;
-}
-
-class DiagnosticsCollector {
-  private readonly warnings: string[] = [];
-  private readonly errors: string[] = [];
-  private readonly repos: RepoDiagnostic[] = [];
-
-  constructor(private readonly defaultRepoName: string | undefined | null) {}
-
-  collectRepoDiagnostics(repos: Iterable<NormalizedRepo>): void {
-    for (const repo of repos) {
-      this.addRepoDiagnostic(repo);
-    }
-  }
-
-  ensureWarningsForEmptyRepoList(): void {
-    if (this.repos.length === 0) {
-      this.warnings.push(
-        "No repositories configured. Create a .drctl.yaml to get started.",
-      );
-    }
-  }
-
-  ensureWarningsForMissingRepos(): void {
-    for (const repo of this.repos) {
-      if (!repo.exists) {
-        this.warnings.push(
-          `Repository "${repo.name}" points to missing path: ${repo.root}`,
-        );
-      } else if (!repo.gitInitialized && repo.gitModeSource === "detected") {
-        this.warnings.push(
-          `Repository "${repo.name}" is not a git repository. Run "drctl repo bootstrap ${repo.name}" to initialise git.`,
-        );
-      }
-    }
-  }
-
-  ensureDefaultRepoWarning(): void {
-    if (this.repos.length > 1 && !this.defaultRepoName) {
-      this.warnings.push(
-        "Multiple repositories configured but no defaultRepo specified.",
-      );
-    }
-  }
-
-  toDiagnostics(cwd: string): ConfigDiagnostics {
-    return {
-      cwd,
-      warnings: this.warnings,
-      errors: this.errors,
-      repos: this.repos,
-    };
-  }
-
-  private addRepoDiagnostic(repo: NormalizedRepo): void {
-    const exists = fs.existsSync(repo.root);
-    const detectedGitRoot = exists ? findGitRoot(repo.root) : undefined;
-    const gitInitialized = Boolean(detectedGitRoot);
-    const gitResolution = resolveGitMode({
-      root: repo.root,
-      gitFlag: null,
-      gitEnv: null,
-      gitConfig: repo.gitMode ?? null,
-    });
-    const templateAbsolute =
-      repo.defaultTemplate && exists
-        ? resolveTemplatePath(repo.root, repo.defaultTemplate)
-        : undefined;
-    const templateRelative =
-      templateAbsolute === undefined
-        ? undefined
-        : path.relative(repo.root, templateAbsolute);
-
-    this.repos.push({
-      name: repo.name,
-      root: repo.root,
-      definitionSource: repo.definitionSource,
-      configPath: repo.configPath,
-      domainMap: repo.domainMap,
-      ...(repo.defaultDomainDir
-        ? { defaultDomainDir: repo.defaultDomainDir }
-        : {}),
-      ...(repo.defaultTemplate
-        ? { defaultTemplate: repo.defaultTemplate }
-        : {}),
-      exists,
-      gitInitialized,
-      gitMode: gitResolution.mode,
-      gitModeSource: gitResolution.source,
-      ...((gitResolution.detectedGitRoot ?? detectedGitRoot)
-        ? { gitRoot: gitResolution.detectedGitRoot ?? detectedGitRoot }
-        : {}),
-    });
-
-    if (repo.defaultTemplate && exists) {
-      this.ensureTemplateWarnings(repo, templateAbsolute, templateRelative);
-    }
-  }
-
-  private ensureTemplateWarnings(
-    repo: NormalizedRepo,
-    templateAbsolute: string | undefined,
-    templateRelative: string | undefined,
-  ): void {
-    if (!templateAbsolute || !fs.existsSync(templateAbsolute)) {
-      this.warnings.push(
-        `Template "${repo.defaultTemplate}" not found for repository "${repo.name}".`,
-      );
-      return;
-    }
-    if (
-      templateRelative &&
-      (templateRelative.startsWith("..") || path.isAbsolute(templateRelative))
-    ) {
-      this.warnings.push(
-        `Template "${repo.defaultTemplate}" for repository "${repo.name}" is outside the repo root (${templateAbsolute}).`,
-      );
-    }
-  }
 }
 
 function findConfigRecursive(startDir: string): string | undefined {
@@ -793,126 +521,6 @@ function firstString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim().length > 0
     ? value.trim()
     : undefined;
-}
-
-function resolvePath(p: string, baseDir: string): string {
-  const envExpanded = expandEnvVars(p);
-  const withHome = expandTilde(envExpanded);
-  const normalized = withHome.replaceAll("\\", path.sep);
-  if (path.isAbsolute(normalized)) {
-    return path.normalize(normalized);
-  }
-  return path.resolve(baseDir, normalized);
-}
-
-/**
- * Replaces environment variables in a string with their values.
- * Supports both ${VARIABLE_NAME} and $VARIABLE_NAME formats.
- * If the variable is not set, it will be replaced with an empty string.
- * @param input The string to replace environment variables in.
- * @returns The string with environment variables replaced.
- */
-function expandEnvVars(input: string): string {
-  let result = "";
-  let index = 0;
-  while (index < input.length) {
-    const char = input.charAt(index);
-    if (char !== "$") {
-      result += char;
-      index += 1;
-      continue;
-    }
-
-    const nextIndex = index + 1;
-    if (nextIndex >= input.length) {
-      result += char;
-      index += 1;
-      continue;
-    }
-
-    const nextChar = input.charAt(nextIndex);
-    if (nextChar === "{") {
-      const endBrace = input.indexOf("}", nextIndex + 1);
-      if (endBrace === -1 || endBrace === nextIndex + 1) {
-        result += char;
-        index += 1;
-        continue;
-      }
-      const key = input.slice(nextIndex + 1, endBrace);
-      result += process.env[key] ?? "";
-      index = endBrace + 1;
-      continue;
-    }
-
-    if (!isEnvVarStart(nextChar)) {
-      result += char;
-      index += 1;
-      continue;
-    }
-
-    let cursor = nextIndex + 1;
-    while (cursor < input.length && isEnvVarChar(input.charAt(cursor))) {
-      cursor += 1;
-    }
-    const key = input.slice(nextIndex, cursor);
-    result += process.env[key] ?? "";
-    index = cursor;
-  }
-  return result;
-}
-
-function isEnvVarStart(char: string): boolean {
-  return (
-    (char >= "A" && char <= "Z") || (char >= "a" && char <= "z") || char === "_"
-  );
-}
-
-function isEnvVarChar(char: string): boolean {
-  return isEnvVarStart(char) || (char >= "0" && char <= "9");
-}
-
-function resolveTemplatePath(repoRoot: string, templatePath: string): string {
-  const expanded = expandTilde(expandEnvVars(templatePath));
-  if (path.isAbsolute(expanded)) {
-    return path.normalize(expanded);
-  }
-  return path.resolve(repoRoot, expanded);
-}
-
-function expandTilde(input: string): string {
-  if (input === "~") {
-    return os.homedir();
-  }
-  if (input.startsWith("~/")) {
-    return path.join(os.homedir(), input.slice(2));
-  }
-  return input;
-}
-
-function looksLikePath(input: string): boolean {
-  return (
-    input.includes("/") ||
-    input.includes("\\") ||
-    input.startsWith(".") ||
-    input.startsWith("~") ||
-    /^[A-Za-z]:/.test(input)
-  );
-}
-
-function selectFallbackRoot(cwd: string): {
-  root: string;
-  source: RepoResolutionSource;
-} {
-  const localDir = path.resolve(cwd, "decisions");
-  const homeDir = path.join(os.homedir(), "decisions");
-
-  const localExists = fs.existsSync(localDir);
-  const homeExists = fs.existsSync(homeDir);
-
-  if (localExists || !homeExists) {
-    return { root: localDir, source: "fallback-cwd" };
-  }
-  return { root: homeDir, source: "fallback-home" };
 }
 
 function loadConfigLayers(
