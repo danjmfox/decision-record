@@ -12,7 +12,7 @@ Need help with the Decision Record CLI (`drctl`)? Here are the recommended paths
 ## Questions & Discussions
 
 - Open a GitHub discussion or issue if you need clarification, have feature ideas, or want to share learnings.
-- For workflow or governance questions, consider drafting a meta decision record (`drctl new meta ...`) to capture the reasoning.
+- For workflow or governance questions, consider drafting a meta decision record (`drctl decision new meta ...`) to capture the reasoning.
 
 ## Bug Reports
 

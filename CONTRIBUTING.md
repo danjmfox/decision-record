@@ -64,7 +64,7 @@ Thank you for investing time in improving `drctl`. This project is a collaborati
 
 - Search open issues first to avoid duplicates.
 - Provide as much context as possible: environment, steps to reproduce, expected vs. actual behaviour, and any relevant logs.
-- If the issue relates to decision policy or governance, consider capturing it as a Decision Record proposal (`drctl new meta ...`) and link it in the issue.
+- If the issue relates to decision policy or governance, consider capturing it as a Decision Record proposal (`drctl decision new meta ...`) and link it in the issue.
 
 ## Code of Conduct
 

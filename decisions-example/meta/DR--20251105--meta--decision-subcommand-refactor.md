@@ -1,66 +1,76 @@
 ---
 id: DR--20251105--meta--decision-subcommand-refactor
 dateCreated: "2025-11-05"
+lastEdited: "2025-11-05"
 version: 1.0.0
-status: draft
+status: accepted
 changeType: creation
 domain: meta
 slug: decision-subcommand-refactor
 changelog:
   - date: "2025-11-05"
     note: Initial creation
+  - date: "2025-11-05"
+    note: Documented decision-subcommand implementation and doc updates
+  - date: "2025-11-05"
+    note: Marked as draft
+  - date: "2025-11-05"
+    note: Marked as proposed
+  - date: "2025-11-05"
+    note: Marked as accepted
+dateAccepted: "2025-11-05"
 ---
 
 # DR--20251105--meta--decision-subcommand-refactor
 
 ## 🧭 Context
 
-The CLI currently exposes lifecycle commands (`new`, `draft`, `propose`, `accept`, `revise`, etc.) directly off the root `drctl` command. As the surface area has grown (repo utilities, governance checks, indexing, configuration diagnostics), the top-level namespace has become crowded and harder to scan. Contributors now rely on the README/AGENTS guides to remember which commands mutate decision records versus configuration state.
+The CLI previously surfaced every lifecycle command (`new`, `draft`, `propose`, `accept`, etc.) at the root `drctl` namespace. As more features landed (`repo`, `config`, `governance`, `index`, upcoming `diff`/`export`), the top-level command list became noisy and difficult to scan. Contributors now rely on README/AGENTS callouts to remember which verbs mutate decision records, and automation scripts must import a growing set of discrete commands.
 
-Upcoming lifecycle enhancements (hierarchical indexes, export/diff, manual linting) will add more verbs. Without a clear grouping, discoverability continues to erode and onboarding gets noisier—especially for teams delegating the CLI work to automation scripts or less experienced collaborators. Previous DRs (`DR--20251101--meta--architecture-overview`, `DR--20251101--meta--revision-commands`) assume lifecycle operations can be composed as a coherent unit; our command structure should reflect that intent.
+Centralising lifecycle behaviours under a dedicated `decision` subcommand keeps the CLI aligned with the service layer (`core/service.ts`) and reduces accidental misuse. Transitional shims are required so existing workflows do not break immediately.
 
 ## ⚖️ Options Considered
 
-| Option | Description                                                                                 | Outcome  | Rationale                                                                                                                             |
-| ------ | ------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| A      | Keep the current flat command layout                                                        | Rejected | Top-level command list stays noisy; future lifecycle additions worsen discoverability and documentation overhead.                     |
-| B      | Introduce aliases (`drctl decision new` alongside existing commands)                        | Rejected | Adds duplication to maintain; unclear deprecation path; still requires users to remember two sets of verbs.                           |
-| C      | Move lifecycle verbs under a dedicated `decision` subcommand and provide transitional shims | Chosen   | Aligns CLI structure with the service layer; creates a single discoverable home for decision actions while allowing staged migration. |
+| Option | Description                                                                                 | Outcome      | Rationale                                                                                                                             |
+| ------ | ------------------------------------------------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| A      | Keep the current flat command layout                                                        | Rejected     | Top-level command list stays crowded; future lifecycle additions worsen discoverability and documentation overhead.                   |
+| B      | Introduce aliases (`drctl decision new` alongside existing commands)                        | Rejected     | Adds duplication to maintain; unclear deprecation story; still forces users to remember two entry points.                             |
+| C      | Move lifecycle verbs under a dedicated `decision` subcommand and provide transitional shims | **Accepted** | Aligns CLI structure with the service layer; creates a single discoverable home for decision actions while allowing staged migration. |
 
 ## 🧠 Decision
 
-Create a dedicated `drctl decision` command that owns all decision-record lifecycle verbs (`new`, `draft`, `propose`, `accept`, `reject`, `deprecate`, `revise`, `correction`, `retire`, `supersede`, list/index helpers). The existing top-level commands will become thin shims that delegate to the subcommand while emitting deprecation notices and telemetry so adopters can migrate intentionally.
+Expose all decision lifecycles under `drctl decision …` and keep the existing root-level verbs as shims that delegate internally while emitting deprecation warnings. The new subcommand owns:
 
-CLI help output, README examples, and AGENTS working agreements will be updated to reference the new structure. Once documentation and automation pipelines are proven against the subcommand, the shims can be retired in a follow-up DR.
+- Lifecycle verbs (`new`, `draft`, `propose`, `accept`, `reject`, `deprecate`, `retire`, `supersede`, `revise`, `correction`/`correct`).
+- Helper commands (`list`, `index`) so decision-focused workflows stay in one namespace.
+
+Root-level commands will be removed after telemetry confirms adoption. Until then they warn once per invocation with guidance to migrate.
 
 ## 🪶 Principles
 
-- **Progressive disclosure** – Group decision lifecycle commands behind a single, discoverable namespace without breaking existing workflows.
-- **Reasoning as code** – Keep lifecycle ergonomics consistent with our DR policy so the CLI reflects the architectural layering.
-- **Calm collaboration** – Reduce command sprawl to make it easier for human + AI contributors to follow governance checks and automation guidance.
+- **Progressive disclosure** – Experienced users can continue running familiar commands for now, while newcomers see a tidy `drctl decision --help` surface.
+- **Reasoning is code** – CLI shape mirrors the service architecture and DecisionOps documentation so concepts stay aligned.
+- **Calm collaboration** – Explicit deprecation messaging avoids surprise breakage across scripts, CI jobs, and AI-assisted flows.
 
 ## 🔁 Lifecycle
 
-Status: `draft` (new policy captured prior to implementation). Change type: `creation`.
+Status: `accepted`. Change type: `creation`. Track telemetry before planning shim removal.
 
 ## 🧩 Reasoning
 
-Service-layer functions already accept a `RepoOptions` bundle, making it straightforward to move Commander wiring into a dedicated subcommand module. Consolidating help output under `drctl decision --help` reinforces that lifecycle commands share common flags (`--repo`, `--config`, git mode overrides).
-
-A transitional shim honours progressive disclosure: end-users can keep muscle memory while the CLI emits guidance, and automation can migrate gradually. This approach also unlocks future grouping (`drctl repo`, `drctl config`, `drctl governance`, `drctl automation`) without overwhelming the root command.
-
-We intentionally rejected a dual-command approach (Option B) because maintaining two paths risks documentation drift and increases testing burden. By choosing a single canonical home, we preserve clarity and reduce maintenance costs.
+Refactoring the command wiring reduces duplication: the new handlers live in dedicated functions and both the subcommand and legacy shims reuse them. Tests cover the new shape (`drctl decision …`) and confirm shims warn once while still delegating to the service layer. Documentation (README, AGENTS) now references the subcommand explicitly so future adopters do not learn the deprecated syntax. This sets the stage for eventually pruning the top-level verbs once usage metrics (CLI output or wrappers) indicate it is safe.
 
 ## 🔄 Next Actions
 
-1. Implement Commander subcommand wiring with comprehensive Vitest coverage (service delegation, help output, shim logging).
-2. Update README, AGENTS, and relevant DRs to reflect the new command paths and migration guidance.
-3. Capture telemetry/deprecation messaging strategy in a follow-up revision once usage is observed.
+1. ✅ Ship the Commander refactor with Vitest coverage and deprecation warnings.
+2. ✅ Update README, AGENTS, and related guidance to reference `drctl decision` commands.
+3. 🔄 Capture telemetry/feedback (CLI warning counts, support requests) to determine when it is safe to remove shims.
+4. 🔜 Replace shims with hard errors in a subsequent minor release and promote this DR once adoption is confirmed.
 
 ## 🧠 Confidence
 
-Confidence: 0.7 (high confidence in structural benefits; awaiting feedback from real-world usage before retiring shims). Review after subcommand rollout and documentation updates land.
+0.8 — Implementation and docs are in place; waiting on adoption signals before promoting to `proposed`/`accepted`.
 
 ## 🧾 Changelog
 
-See YAML frontmatter for dated entries.
+- See YAML frontmatter for dated updates.

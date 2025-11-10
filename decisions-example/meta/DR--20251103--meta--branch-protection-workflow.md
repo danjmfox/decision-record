@@ -2,13 +2,23 @@
 id: DR--20251103--meta--branch-protection-workflow
 dateCreated: "2025-11-03"
 version: 1.0.0
-status: draft
+status: accepted
 changeType: creation
 domain: meta
 slug: branch-protection-workflow
 changelog:
   - date: "2025-11-03"
     note: Initial creation
+  - date: "2025-11-05"
+    note: Marked as draft
+  - date: "2025-11-05"
+    note: Marked as proposed
+  - date: "2025-11-05"
+    note: Marked as proposed
+  - date: "2025-11-05"
+    note: Marked as accepted
+lastEdited: "2025-11-05"
+dateAccepted: "2025-11-05"
 ---
 
 # DR--20251103--meta--branch-protection-workflow
@@ -41,7 +51,7 @@ Institutionalise a branch-protection workflow:
 
 ## 🔁 Lifecycle
 
-Status: `draft` (lifecycle commands pending in this environment). Change type: `creation`.
+Status: `accepted`. Change type: `creation`.
 
 ## 🧩 Reasoning
 
