@@ -10,8 +10,6 @@ import {
   correctionDecision,
   createDecision,
   draftDecision,
-  proposeDecision,
-  rejectDecision,
   deprecateDecision,
   reviseDecision,
   retireDecision,
@@ -19,7 +17,6 @@ import {
   collectDecisions,
   resolveContext,
 } from "./service.js";
-import * as gitModule from "./git.js";
 import { makeContext, setupServiceTestEnv } from "./service.test-helpers.js";
 
 setupServiceTestEnv();
