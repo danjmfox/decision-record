@@ -15,12 +15,12 @@ decisions-example/ # Public sample decision records for tests and documentation
 The CLI adopts a layered approach:
 
 1. **CLI Layer (`src/cli/index.ts`)**
-   - Defines commands (`new`, `draft`, `propose`, `accept`, `reject`, `deprecate`, `supersede`, `index`, `repo ...`).
+   - Bootstraps Commander and defers per-surface wiring to `cli/decision-command.ts`, `cli/repo-command.ts`, `cli/config-command.ts`, and `cli/governance-command.ts` (ref. [DR--20251110--meta--modularise-large-files](decisions-example/meta/DR--20251110--meta--modularise-large-files.md)).
    - Collects global options (`--repo`, `--config`) via shared middleware.
    - Logs the resolved repository context for transparency before delegating to services.
 
 2. **Service Layer (`src/core/service.ts`)**
-   - Implements lifecycle transitions while preserving Markdown bodies.
+   - Implements lifecycle transitions while preserving Markdown bodies, delegating template resolution/copying to `src/core/templates.ts`.
    - Appends changelog entries and writes git commits through `stageAndCommitWithHint`.
    - Provides helpers such as `listAll` to support CLI output.
 
@@ -49,7 +49,7 @@ Vitest suites colocated with their modules cover:
 
 - Config resolution and diagnostics (`src/config.test.ts`).
 - Repo management operations (`src/cli/repo-manage.test.ts`).
-- Lifecycle services (`src/core/service.test.ts`).
+- Lifecycle services split across `src/core/service.lifecycle.test.ts`, `src/core/service.templates.test.ts`, and the remaining revision/git coverage in `src/core/service.test.ts`.
 - CLI wiring for repo commands (`src/cli/index.repo.test.ts`).
 
 Git interactions are stubbed in tests, while error paths urge users to bootstrap repositories when necessary.

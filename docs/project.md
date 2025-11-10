@@ -8,6 +8,7 @@ The CLI enables:
 
 - Full decision lifecycle (`new → draft → propose → accept → revise → retire`)
 - Multi-repo configuration (`work`, `home`, etc.) backed by the modular `src/config/` stack
+- Modular CLI surfaces (decision, repo, config, governance) that share a single bootstrap in `src/cli/index.ts`
 - Clear separation between app (public) and personal decision data (private)
 - Calm, transparent, systemic collaboration between human and AI
 
@@ -25,6 +26,7 @@ Create a **lightweight, auditable CLI** for managing Decision Records — treati
 - Privacy by design (`.gitignore` defaults)
 - Calm human–AI collaboration
 - Progressive disclosure: works out-of-the-box, scales with need
+- Modular source layout so that CLI wiring, template hygiene, and lifecycle services can evolve independently (see [DR--20251110--meta--modularise-large-files](../decisions-example/meta/DR--20251110--meta--modularise-large-files.md))
 
 ## Design Principles
 

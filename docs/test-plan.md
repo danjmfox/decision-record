@@ -9,6 +9,10 @@
 - Unit tests for core modules
 - Integration tests for lifecycle commands
 - Example-based tests for decision hygiene (`decisions-example/`)
+- Lifecycle coverage is split across dedicated suites:
+  - `src/core/service.lifecycle.test.ts` for draft/propose/accept/reject flows and git staging guards
+  - `src/core/service.templates.test.ts` for template resolution and hygiene
+  - `src/core/service.test.ts` for revisions, corrections, supersedes, and git-root behaviour
 
 ## Coverage Targets
 
