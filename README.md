@@ -64,6 +64,8 @@ Common lifecycle and repo operations (full explanations live in [docs/project.md
 
 Legacy top-level lifecycle verbs remain hidden aliases; the canonical surface is `drctl decision …`.
 
+Lifecycle commands automatically back-fill missing states per [DR--20251103--meta--auto-accept-transitions](decisions-example/meta/DR--20251103--meta--auto-accept-transitions.md). For example, running `drctl decision accept` on a legacy record whose frontmatter still says `status: "new"` will record the draft → proposed transitions (with changelog notes and git commits) before marking it accepted, so workflow history stays intact without extra manual commands.
+
 ### Decision Index Output
 
 `drctl index` now produces a multi-section Markdown report per [DR--20251110--meta--decision-index-ux](decisions-example/meta/DR--20251110--meta--decision-index-ux.md):
