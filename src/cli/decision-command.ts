@@ -1,0 +1,422 @@
+import fs from "node:fs";
+import { Command } from "commander";
+import {
+  acceptDecision,
+  correctionDecision,
+  createDecision,
+  deprecateDecision,
+  draftDecision,
+  listAll,
+  proposeDecision,
+  rejectDecision,
+  retireDecision,
+  reviseDecision,
+  supersedeDecision,
+  type CreateDecisionOptions,
+  type RepoOptions,
+} from "../core/service.js";
+import { generateIndex } from "../core/indexer.js";
+import type { RepoContext } from "../config.js";
+
+type RepoActionFactory = <T extends unknown[]>(
+  fn: (
+    this: Command,
+    repoOptions: RepoOptions & { context: RepoContext },
+    ...args: T
+  ) => void | Promise<void>,
+) => (...args: T) => void | Promise<void>;
+
+interface DecisionCommandOptions {
+  program: Command;
+  createRepoAction: RepoActionFactory;
+}
+
+const legacyDecisionWarningsShown = new Set<string>();
+
+function emitLegacyDecisionWarning(legacyName: string, newPath: string): void {
+  /* c8 ignore next -- exercised only when a legacy command repeats in one run */
+  if (legacyDecisionWarningsShown.has(legacyName)) return;
+  legacyDecisionWarningsShown.add(legacyName);
+  console.warn(
+    `⚠️ The "${legacyName}" command is moving under "${newPath}". Update scripts to use the new form; this top-level command will be removed in a future release.`,
+  );
+}
+
+type DecisionHandler<T extends unknown[]> = (
+  repoOptions: RepoOptions & { context: RepoContext },
+  ...args: T
+) => void | Promise<void>;
+
+function createDecisionAction<T extends unknown[]>(
+  createRepoAction: RepoActionFactory,
+  handler: DecisionHandler<T>,
+) {
+  return createRepoAction(async (repoOptions, ...args: T) => {
+    await handler(repoOptions, ...args);
+  });
+}
+
+function createLegacyDecisionAction<T extends unknown[]>(
+  createRepoAction: RepoActionFactory,
+  legacyName: string,
+  newSubcommand: string,
+  handler: DecisionHandler<T>,
+) {
+  const action = createDecisionAction(
+    createRepoAction,
+    async (repoOptions, ...args: T) => {
+      emitLegacyDecisionWarning(legacyName, `drctl decision ${newSubcommand}`);
+      await handler(repoOptions, ...args);
+    },
+  );
+  return action;
+}
+
+export function registerDecisionCommands({
+  program,
+  createRepoAction,
+}: DecisionCommandOptions): void {
+  const decisionCommand = new Command("decision")
+    .alias("dr")
+    .description("Manage decision records and lifecycle operations");
+
+  const decisionAction = <T extends unknown[]>(handler: DecisionHandler<T>) =>
+    createDecisionAction(createRepoAction, handler);
+
+  decisionCommand
+    .command("index")
+    .description("Generate a markdown index for the current repository")
+    .action(decisionAction(handleGenerateIndex));
+
+  decisionCommand
+    .command("new <domain> <slug>")
+    .description("Create a new decision record for the given domain and slug")
+    .option("--confidence <n>", "initial confidence", (value) =>
+      Number.parseFloat(value),
+    )
+    .option(
+      "--template <path>",
+      "path to a markdown template (overrides config/env defaults)",
+    )
+    .action(decisionAction(handleDecisionNew));
+
+  decisionCommand
+    .command("correction <id>")
+    .alias("correct")
+    .description("Apply a minor correction (patch version) to a decision")
+    .option("--note <note>", "changelog note to record")
+    .action(decisionAction(handleDecisionCorrection));
+
+  decisionCommand
+    .command("revise <id>")
+    .description("Apply a revision (minor version) to a decision")
+    .option("--note <note>", "changelog note to record")
+    .option("--confidence <value>", "update confidence", (value) =>
+      Number.parseFloat(value),
+    )
+    .action(decisionAction(handleDecisionRevise));
+
+  decisionCommand
+    .command("list")
+    .description("List decision records, optionally filtered by status")
+    .option("--status <status>", "filter by status")
+    .action(decisionAction(handleDecisionList));
+
+  decisionCommand
+    .command("draft <id>")
+    .description("Mark a decision as draft and commit the changes")
+    .action(decisionAction(handleDecisionDraft));
+
+  decisionCommand
+    .command("propose <id>")
+    .description("Mark a decision as proposed and commit the changes")
+    .action(decisionAction(handleDecisionPropose));
+
+  decisionCommand
+    .command("accept <id>")
+    .description("Mark a decision as accepted and update its changelog")
+    .action(decisionAction(handleDecisionAccept));
+
+  decisionCommand
+    .command("reject <id>")
+    .description("Mark a decision as rejected and commit the change")
+    .action(decisionAction(handleDecisionReject));
+
+  decisionCommand
+    .command("deprecate <id>")
+    .description("Mark a decision as deprecated and commit the change")
+    .action(decisionAction(handleDecisionDeprecate));
+
+  decisionCommand
+    .command("retire <id>")
+    .description("Retire a decision and commit the change")
+    .action(decisionAction(handleDecisionRetire));
+
+  decisionCommand
+    .command("supersede <oldId> <newId>")
+    .description("Mark an existing decision as superseded by another")
+    .action(decisionAction(handleDecisionSupersede));
+
+  program.addCommand(decisionCommand);
+
+  program
+    .command("index")
+    .description("Generate a markdown index for the current repository")
+    .action(decisionAction(handleGenerateIndex));
+
+  const legacyAction = <T extends unknown[]>(
+    legacyName: string,
+    subcommand: string,
+    handler: DecisionHandler<T>,
+  ) =>
+    createLegacyDecisionAction(
+      createRepoAction,
+      legacyName,
+      subcommand,
+      handler,
+    );
+
+  program
+    .command("new <domain> <slug>", { hidden: true })
+    .description("Create a new decision record for the given domain and slug")
+    .option("--confidence <n>", "initial confidence", (value) =>
+      Number.parseFloat(value),
+    )
+    .option(
+      "--template <path>",
+      "path to a markdown template (overrides config/env defaults)",
+    )
+    .action(legacyAction("new", "new", handleDecisionNew));
+
+  program
+    .command("correction <id>", { hidden: true })
+    .alias("correct")
+    .description("Apply a minor correction (patch version) to a decision")
+    .option("--note <note>", "changelog note to record")
+    .action(legacyAction("correction", "correction", handleDecisionCorrection));
+
+  program
+    .command("revise <id>", { hidden: true })
+    .description("Apply a revision (minor version) to a decision")
+    .option("--note <note>", "changelog note to record")
+    .option("--confidence <value>", "update confidence", (value) =>
+      Number.parseFloat(value),
+    )
+    .action(legacyAction("revise", "revise", handleDecisionRevise));
+
+  program
+    .command("list", { hidden: true })
+    .description("List decision records, optionally filtered by status")
+    .option("--status <status>", "filter by status")
+    .action(legacyAction("list", "list", handleDecisionList));
+
+  program
+    .command("draft <id>", { hidden: true })
+    .description("Mark a decision as draft and commit the changes")
+    .action(legacyAction("draft", "draft", handleDecisionDraft));
+
+  program
+    .command("propose <id>", { hidden: true })
+    .description("Mark a decision as proposed and commit the changes")
+    .action(legacyAction("propose", "propose", handleDecisionPropose));
+
+  program
+    .command("accept <id>", { hidden: true })
+    .description("Mark a decision as accepted and update its changelog")
+    .action(legacyAction("accept", "accept", handleDecisionAccept));
+
+  program
+    .command("reject <id>", { hidden: true })
+    .description("Mark a decision as rejected and commit the change")
+    .action(legacyAction("reject", "reject", handleDecisionReject));
+
+  program
+    .command("deprecate <id>", { hidden: true })
+    .description("Mark a decision as deprecated and commit the change")
+    .action(legacyAction("deprecate", "deprecate", handleDecisionDeprecate));
+
+  program
+    .command("retire <id>", { hidden: true })
+    .description("Retire a decision and commit the change")
+    .action(legacyAction("retire", "retire", handleDecisionRetire));
+
+  program
+    .command("supersede <oldId> <newId>", { hidden: true })
+    .description("Mark an existing decision as superseded by another")
+    .action(legacyAction("supersede", "supersede", handleDecisionSupersede));
+}
+
+export const legacyWarningTest = {
+  emitLegacyDecisionWarning,
+  legacyDecisionWarningsShown,
+};
+
+function handleDecisionNew(
+  repoOptions: RepoOptions & { context: RepoContext },
+  domain: string,
+  slug: string,
+  commandOptions: { confidence?: number; template?: string },
+): void {
+  const confidence =
+    typeof commandOptions.confidence === "number" &&
+    Number.isFinite(commandOptions.confidence)
+      ? commandOptions.confidence
+      : undefined;
+  const options: CreateDecisionOptions = { ...repoOptions };
+  if (confidence !== undefined) {
+    options.confidence = confidence;
+  }
+  if (
+    typeof commandOptions.template === "string" &&
+    commandOptions.template.trim().length > 0
+  ) {
+    options.templatePath = commandOptions.template;
+  }
+  const envTemplate = process.env.DRCTL_TEMPLATE;
+  if (typeof envTemplate === "string" && envTemplate.trim().length > 0) {
+    options.envTemplate = envTemplate;
+  }
+  const result = createDecision(domain, slug, options);
+  console.log(`✅ Created ${result.record.id} (${result.record.status})`);
+  console.log(`📄 File: ${result.filePath}`);
+  if (result.record.templateUsed) {
+    console.log(`🧩 Template: ${result.record.templateUsed}`);
+  }
+}
+
+async function handleDecisionCorrection(
+  repoOptions: RepoOptions & { context: RepoContext },
+  id: string,
+  command: { note?: string },
+): Promise<void> {
+  const result = await correctionDecision(id, {
+    ...repoOptions,
+    ...(command.note ? { note: command.note } : {}),
+  });
+  console.log(`🛠️ ${result.record.id} corrected (v${result.record.version})`);
+  console.log(`📄 File: ${result.filePath}`);
+}
+
+async function handleDecisionRevise(
+  repoOptions: RepoOptions & { context: RepoContext },
+  id: string,
+  command: { note?: string; confidence?: number },
+): Promise<void> {
+  const confidenceOption =
+    typeof command.confidence === "number" &&
+    Number.isFinite(command.confidence)
+      ? { confidence: command.confidence }
+      : {};
+  const result = await reviseDecision(id, {
+    ...repoOptions,
+    ...(command.note ? { note: command.note } : {}),
+    ...confidenceOption,
+  });
+  console.log(`📝 ${result.record.id} revised (v${result.record.version})`);
+  console.log(`📄 File: ${result.filePath}`);
+}
+
+function handleDecisionList(
+  repoOptions: RepoOptions & { context: RepoContext },
+  commandOptions: { status?: string },
+): void {
+  const records = listAll(commandOptions.status, repoOptions);
+  for (const record of records) {
+    console.log(
+      `${record.id.padEnd(45)} ${record.status.padEnd(10)} ${record.domain}`,
+    );
+  }
+}
+
+async function handleDecisionDraft(
+  repoOptions: RepoOptions & { context: RepoContext },
+  id: string,
+): Promise<void> {
+  const result = await draftDecision(id, { ...repoOptions });
+  console.log(`✏️ ${result.record.id} saved as draft`);
+  console.log(`📄 File: ${result.filePath}`);
+}
+
+async function handleDecisionPropose(
+  repoOptions: RepoOptions & { context: RepoContext },
+  id: string,
+): Promise<void> {
+  const options = {
+    ...repoOptions,
+    onTemplateWarning:
+      repoOptions.onTemplateWarning ??
+      ((message: string) => console.warn(message)),
+  };
+  const result = await proposeDecision(id, options);
+  console.log(`📤 ${result.record.id} proposed`);
+  console.log(`📄 File: ${result.filePath}`);
+}
+
+async function handleDecisionAccept(
+  repoOptions: RepoOptions & { context: RepoContext },
+  id: string,
+): Promise<void> {
+  const options = {
+    ...repoOptions,
+    onTemplateWarning:
+      repoOptions.onTemplateWarning ??
+      ((message: string) => console.warn(message)),
+  };
+  const result = await acceptDecision(id, options);
+  console.log(`✅ ${result.record.id} marked as accepted`);
+  console.log(`📄 File: ${result.filePath}`);
+}
+
+async function handleDecisionReject(
+  repoOptions: RepoOptions & { context: RepoContext },
+  id: string,
+): Promise<void> {
+  const result = await rejectDecision(id, { ...repoOptions });
+  console.log(`🚫 ${result.record.id} marked as rejected`);
+  console.log(`📄 File: ${result.filePath}`);
+}
+
+async function handleDecisionDeprecate(
+  repoOptions: RepoOptions & { context: RepoContext },
+  id: string,
+): Promise<void> {
+  const result = await deprecateDecision(id, { ...repoOptions });
+  console.log(`⚠️ ${result.record.id} marked as deprecated`);
+  console.log(`📄 File: ${result.filePath}`);
+}
+
+async function handleDecisionRetire(
+  repoOptions: RepoOptions & { context: RepoContext },
+  id: string,
+): Promise<void> {
+  const result = await retireDecision(id, { ...repoOptions });
+  console.log(`🪦 ${result.record.id} marked as retired`);
+  console.log(`📄 File: ${result.filePath}`);
+}
+
+async function handleDecisionSupersede(
+  repoOptions: RepoOptions & { context: RepoContext },
+  oldId: string,
+  newId: string,
+): Promise<void> {
+  const result = await supersedeDecision(oldId, newId, {
+    ...repoOptions,
+  });
+  console.log(`🔁 ${result.record.id} superseded by ${result.newRecord.id}`);
+  console.log(`📄 Updated: ${result.filePath}`);
+  console.log(`📄 Updated: ${result.newFilePath}`);
+}
+
+async function handleGenerateIndex(
+  repoOptions: RepoOptions & { context: RepoContext },
+): Promise<void> {
+  if (!fs.existsSync(repoOptions.context.root)) {
+    console.error(
+      `❌ Repo root "${repoOptions.context.root}" does not exist. Adjust your configuration or recreate the repository before running this command.`,
+    );
+    process.exitCode = 1;
+    return;
+  }
+  const { filePath } = generateIndex(repoOptions.context);
+  console.log(`📑 Generated index: ${filePath}`);
+}
