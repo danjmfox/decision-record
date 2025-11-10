@@ -18,12 +18,12 @@ runtimes:
 lint:
   enabled:
     - actionlint@1.7.8
-    - checkov@3.2.489
+    - checkov@3.2.491
     - git-diff-check
     - markdownlint@0.45.0
     - osv-scanner@2.2.4
     - prettier@3.6.2
-    - trufflehog@3.90.12
+    - trufflehog@3.90.13
     - yamllint@1.37.1
   ignore:
     - paths:
