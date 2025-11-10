@@ -28,50 +28,105 @@ afterAll(() => {
   }
 });
 
-function makeRecord(domain: string, slug: string): DecisionRecord {
+function makeRecord(
+  domain: string,
+  slug: string,
+  overrides: Partial<DecisionRecord> = {},
+): DecisionRecord {
   const id = `DR--20250101--${domain}--${slug}`;
   return {
     id,
     dateCreated: "2025-01-01",
-    version: "1.0",
+    version: "1.0.0",
     status: "draft",
     changeType: "creation",
     domain,
     slug,
     changelog: [],
+    ...overrides,
   };
 }
 
+function isoDateOffset(days: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 describe("generateIndex", () => {
-  it("produces a markdown index grouped by domain", () => {
+  it("renders dashboard sections with metadata tables and kanban", () => {
     const context = makeContext();
-    const alphaRecord = makeRecord("alpha", "first");
-    const betaRecord = makeRecord("beta", "second");
-    const alphaTwoRecord = makeRecord("alpha", "second");
+    const accepted = makeRecord("meta", "index-overview", {
+      status: "accepted",
+      lastEdited: "2025-02-02",
+      dateAccepted: "2025-02-01",
+      reviewDate: isoDateOffset(10),
+      confidence: 0.87,
+      changeType: "correction",
+      tags: ["governance"],
+      supersedes: "DR--20250101--meta--old-idx",
+    });
+    const draft = makeRecord("product", "capture", {
+      status: "draft",
+      reviewDate: isoDateOffset(-5),
+      supersededBy: "DR--20250105--product--capture",
+    });
 
-    saveDecision(context, alphaRecord, "# alpha first");
-    saveDecision(context, betaRecord, "# beta second");
-    saveDecision(context, alphaTwoRecord, "# alpha second");
+    saveDecision(context, accepted, "# Alpha Index Overview");
+    saveDecision(context, draft, "# Capture UX");
 
-    const result = generateIndex(context);
+    const result = generateIndex(context, { includeGeneratedNote: false });
     expect(result.filePath).toBe(path.join(context.root, "index.md"));
     expect(fs.existsSync(result.filePath)).toBe(true);
 
-    const content = fs.readFileSync(result.filePath, "utf8");
-    expect(content).toContain("# Test Decisions");
-    const alphaHeading = content.indexOf("## alpha");
-    const betaHeading = content.indexOf("## beta");
-    expect(alphaHeading).toBeGreaterThan(-1);
-    expect(betaHeading).toBeGreaterThan(-1);
-    expect(alphaHeading).toBeLessThan(betaHeading);
+    const content = result.markdown;
+    expect(content).toContain("## Summary");
+    expect(content).toContain("| Decisions | 2 |");
+    expect(content).toContain("### Recently Changed");
+    expect(content).toContain("## Upcoming Reviews");
     expect(content).toMatch(
-      /\[DR--20250101--alpha--first]\(\.\/alpha\/DR--20250101--alpha--first\.md\)/,
+      /\[Alpha Index Overview]\(\.\/meta\/DR--20250101--meta--index-overview\.md\)/,
     );
+    expect(content).toMatch(/governance/);
+    expect(content).toContain("## Domain Catalogues");
+    expect(content).toContain("### meta");
     expect(content).toMatch(
-      /\[DR--20250101--beta--second]\(\.\/beta\/DR--20250101--beta--second\.md\)/,
+      /\[Capture UX]\(\.\/product\/DR--20250101--product--capture\.md\)/,
     );
-
+    expect(content).toContain("supersedes DR--20250101--meta--old-idx");
+    expect(content).toContain("superseded by DR--20250105--product--capture");
+    expect(content).toContain("## Status Kanban");
+    expect(content).toContain("### Accepted");
+    expect(content).toContain("### Draft");
+    expect(content).toContain("overdue");
     expect(() => generateIndex(context)).not.toThrow();
+  });
+
+  it("supports status filters and disabling kanban", () => {
+    const context = makeContext();
+    const accepted = makeRecord("meta", "done", {
+      status: "accepted",
+      lastEdited: "2025-03-01",
+    });
+    const rejected = makeRecord("meta", "discarded", {
+      status: "rejected",
+    });
+    saveDecision(context, accepted, "# Completed work");
+    saveDecision(context, rejected, "# Rejected work");
+
+    const result = generateIndex(context, {
+      includeGeneratedNote: false,
+      statusFilter: ["accepted"],
+      includeKanban: false,
+    });
+
+    expect(result.markdown).toContain("Filtered statuses: `accepted`");
+    expect(result.markdown).toContain("| Decisions | 1 / 2 |");
+    expect(result.markdown).not.toContain("## Status Kanban");
+    expect(result.markdown).toMatch(/\[Completed work]/);
+    expect(result.markdown).toContain(
+      "_(No review dates within the next 30 days.)_",
+    );
   });
 
   it("creates the repo directory if it does not exist", () => {
