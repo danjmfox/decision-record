@@ -10,15 +10,22 @@ import {
   getDecisionPath,
 } from "./repository.js";
 import { generateId } from "./utils.js";
-import type { GitMode, RepoContext, ResolveRepoOptions } from "../config.js";
+import type { RepoContext, ResolveRepoOptions } from "../config.js";
 import { resolveRepoContext } from "../config.js";
-import {
-  createGitClient,
-  getStagedFiles,
-  isNotGitRepoError,
-  type GitClient,
-} from "./git.js";
 import { bumpVersion } from "./versioning.js";
+import type {
+  CreateDecisionOptions,
+  RepoOptions,
+  CorrectionOptions,
+  ReviseOptions,
+} from "./service-types.js";
+import { commitLifecycle, commitBatch } from "./git-helpers.js";
+export type {
+  RepoOptions,
+  CreateDecisionOptions,
+  CorrectionOptions,
+  ReviseOptions,
+} from "./service-types.js";
 
 export interface DecisionWriteResult {
   record: DecisionRecord;
@@ -29,33 +36,6 @@ export interface DecisionWriteResult {
 export interface SupersedeResult extends DecisionWriteResult {
   newRecord: DecisionRecord;
   newFilePath: string;
-}
-
-export interface RepoOptions {
-  repo?: string;
-  envRepo?: string;
-  cwd?: string;
-  context?: RepoContext;
-  gitClient?: GitClient;
-  configPath?: string;
-  onTemplateWarning?: (message: string) => void;
-  gitModeFlag?: GitMode;
-  onGitDisabled?: (details: { context: RepoContext }) => void;
-}
-
-export interface CreateDecisionOptions extends RepoOptions {
-  confidence?: number;
-  templatePath?: string;
-  envTemplate?: string;
-}
-
-export interface CorrectionOptions extends RepoOptions {
-  note?: string;
-}
-
-export interface ReviseOptions extends RepoOptions {
-  note?: string;
-  confidence?: number;
 }
 
 export function createDecision(
@@ -292,7 +272,7 @@ export async function supersedeDecision(
   const oldFilePath = saveDecision(context, oldRecord);
   const newFilePath = saveDecision(context, newRecord);
 
-  await commitIfEnabled(
+  await commitBatch(
     context,
     workingOptions,
     [oldFilePath, newFilePath],
@@ -716,91 +696,6 @@ function readDecisionFromFile(filePath: string): DecisionRecord | undefined {
     return data as DecisionRecord;
   } catch {
     return undefined;
-  }
-}
-
-function notifyGitDisabled(options: RepoOptions, context: RepoContext): void {
-  options.onGitDisabled?.({ context });
-}
-
-async function commitIfEnabled(
-  context: RepoContext,
-  options: RepoOptions,
-  paths: string[],
-  message: string,
-): Promise<void> {
-  if (context.gitMode === "disabled") {
-    notifyGitDisabled(options, context);
-    return;
-  }
-  if (paths.length === 0) {
-    return;
-  }
-  options.gitClient ??= createGitClient();
-  const gitCwd = context.gitRoot ?? context.root;
-  await stageAndCommitWithHint(
-    context,
-    options.gitClient,
-    gitCwd,
-    paths,
-    message,
-  );
-}
-
-async function commitSingleFile(
-  context: RepoContext,
-  options: RepoOptions,
-  filePath: string,
-  message: string,
-): Promise<void> {
-  await commitIfEnabled(context, options, [filePath], message);
-}
-
-function commitLifecycle(
-  context: RepoContext,
-  options: RepoOptions,
-  filePath: string,
-  verb: string,
-  id: string,
-): Promise<void> {
-  return commitSingleFile(context, options, filePath, `drctl: ${verb} ${id}`);
-}
-
-async function stageAndCommitWithHint(
-  context: RepoContext,
-  gitClient: GitClient,
-  gitCwd: string,
-  paths: string[],
-  message: string,
-) {
-  const staged = await getStagedFiles(gitCwd);
-  if (staged.length > 0) {
-    const list = staged.join(", ");
-    throw new Error(
-      `Staging area contains unrelated changes in ${gitCwd}: ${list}. Commit or reset them before running drctl.`,
-    );
-  }
-  try {
-    await gitClient.stageAndCommit(paths, {
-      cwd: gitCwd,
-      message,
-    });
-  } catch (error) {
-    if (isNotGitRepoError(error)) {
-      const displayRoot = context.gitRoot ?? context.root;
-      const hintTarget = context.name
-        ? `repo "${context.name}" (${displayRoot})`
-        : displayRoot;
-      const bootstrap = context.name
-        ? `drctl repo bootstrap ${context.name}`
-        : `git init`;
-      const hintMessage =
-        error instanceof Error ? error.message : String(error);
-      throw new Error(
-        `${hintMessage}\n💡 Hint: initialise git in ${hintTarget} via "${bootstrap}" before running this command again.`,
-      );
-    }
-    throw error;
   }
 }
 
