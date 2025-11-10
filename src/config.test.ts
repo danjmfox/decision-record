@@ -26,6 +26,38 @@ function makeTempDir(): string {
   return dir;
 }
 
+type RepoFixtureOptions = {
+  repoFolder?: string;
+  extraLines?:
+    | string[]
+    | ((context: { dir: string; repoDir: string }) => string[]);
+  initialiseGit?: boolean;
+};
+
+function setupRepoFixture(options: RepoFixtureOptions = {}): {
+  dir: string;
+  repoDir: string;
+} {
+  const dir = makeTempDir();
+  const repoFolder = options.repoFolder ?? "workspace";
+  const repoDir = path.join(dir, repoFolder);
+  fs.mkdirSync(repoDir, { recursive: true });
+  if (options.initialiseGit) {
+    fs.mkdirSync(path.join(repoDir, ".git"), { recursive: true });
+  }
+  const extraLines =
+    typeof options.extraLines === "function"
+      ? options.extraLines({ dir, repoDir })
+      : (options.extraLines ?? []);
+  const extraBlock = extraLines.length > 0 ? `\n${extraLines.join("\n")}` : "";
+  const config = `repos:
+  work:
+    path: ./${repoFolder}${extraBlock}
+`;
+  fs.writeFileSync(path.join(dir, ".drctl.yaml"), config);
+  return { dir, repoDir };
+}
+
 function withMockedHome<T>(homePath: string, run: () => T): T {
   const spy = vi.spyOn(os, "homedir").mockReturnValue(homePath);
   restoreSpies.push(() => spy.mockRestore());
@@ -188,10 +220,10 @@ repos:
 
     const context = resolveRepoContext({ cwd: dir });
 
-    expect(context.root).toBe(path.resolve(dir, "outer", "workspace"));
+    expect(context.root).toBe(path.resolve(nested));
     expect(context.gitMode).toBe("enabled");
     expect(context.gitModeSource).toBe("detected");
-    expect(context.gitRoot).toBe(path.resolve(dir, "outer"));
+    expect(context.gitRoot).toBe(path.resolve(outer));
   });
 
   it("selects the only configured repo when no default is specified", () => {
@@ -212,6 +244,7 @@ repos:
     expect(context.source).toBe("local-config");
     expect(context.gitMode).toBe("disabled");
     expect(context.gitModeSource).toBe("detected");
+    expect(context.gitRoot).toBeUndefined();
   });
 
   it("prefers CLI path strings when provided", () => {
@@ -228,6 +261,7 @@ repos:
     expect(context.source).toBe("cli");
     expect(context.gitMode).toBe("disabled");
     expect(context.gitModeSource).toBe("detected");
+    expect(context.gitRoot).toBeUndefined();
   });
 
   it("throws when CLI repo alias does not exist", () => {
@@ -565,7 +599,11 @@ describe("diagnoseConfig", () => {
     const nested = path.join(outer, "workspace");
     fs.mkdirSync(path.join(outer, ".git"), { recursive: true });
     fs.mkdirSync(nested, { recursive: true });
-    const config = `defaultRepo: work\nrepos:\n  work:\n    path: ./outer/workspace\n`;
+    const config = `defaultRepo: work
+repos:
+  work:
+    path: ./outer/workspace
+`;
     fs.writeFileSync(path.join(dir, ".drctl.yaml"), config);
 
     const diagnostics = diagnoseConfig({ cwd: dir });
@@ -573,8 +611,7 @@ describe("diagnoseConfig", () => {
     expect(diagnostics.repos).toHaveLength(1);
     const repo = diagnostics.repos[0];
     expect(repo?.gitInitialized).toBe(true);
-    expect(repo?.gitMode).toBe("enabled");
-    expect(repo?.gitRoot).toBe(path.resolve(dir, "outer"));
+    expect(repo?.gitRoot).toBe(path.resolve(outer));
     expect(
       diagnostics.warnings.some((warning) =>
         /is not a git repository/.test(warning),
@@ -610,12 +647,14 @@ describe("diagnoseConfig", () => {
     const repoDir = path.join(dir, "workspace");
     fs.mkdirSync(repoDir, { recursive: true });
     fs.mkdirSync(path.join(repoDir, ".git"));
-    const config = `repos:
+    fs.writeFileSync(
+      path.join(dir, ".drctl.yaml"),
+      `repos:
   work:
     path: ./workspace
     template: templates/meta.md
-`;
-    fs.writeFileSync(path.join(dir, ".drctl.yaml"), config);
+`,
+    );
 
     const diagnostics = diagnoseConfig({ cwd: dir });
 
@@ -625,27 +664,114 @@ describe("diagnoseConfig", () => {
     );
   });
 
-  it("warns when the configured template path is outside the repository", () => {
+  it("falls back when the configured default repo alias is missing", () => {
     const dir = makeTempDir();
     const repoDir = path.join(dir, "workspace");
     fs.mkdirSync(repoDir, { recursive: true });
-    fs.mkdirSync(path.join(repoDir, ".git"));
+    const localDecisions = path.join(dir, "decisions");
+    fs.mkdirSync(localDecisions, { recursive: true });
+    fs.writeFileSync(
+      path.join(dir, ".drctl.yaml"),
+      `defaultRepo: missing
+repos:
+  work:
+    path: ./workspace
+`,
+    );
+
+    const context = resolveRepoContext({ cwd: dir });
+
+    expect(context.root).toBe(localDecisions);
+    expect(context.source).toBe("fallback-cwd");
+  });
+
+  it("warns when the configured template path is outside the repository", () => {
+    const { dir } = setupRepoFixture({
+      initialiseGit: true,
+      extraLines: ["    template: ../external/custom.md"],
+    });
     const externalDir = path.join(dir, "external");
     fs.mkdirSync(externalDir, { recursive: true });
     const externalTemplate = path.join(externalDir, "custom.md");
     fs.writeFileSync(externalTemplate, "# External Template\n", "utf8");
-    const config = `repos:
-  work:
-    path: ./workspace
-    template: ../external/custom.md
-`;
-    fs.writeFileSync(path.join(dir, ".drctl.yaml"), config);
 
     const diagnostics = diagnoseConfig({ cwd: dir });
 
     expect(diagnostics.warnings).toContainEqual(
       expect.stringMatching(/outside the repo root/i),
     );
+  });
+
+  it("honours boolean git flags defined in repo config", () => {
+    const { dir } = setupRepoFixture({
+      extraLines: ["    git: true"],
+    });
+
+    const diagnostics = diagnoseConfig({ cwd: dir });
+
+    expect(diagnostics.repos).toHaveLength(1);
+    expect(diagnostics.repos[0]?.gitMode).toBe("enabled");
+    expect(diagnostics.repos[0]?.gitModeSource).toBe("config");
+  });
+
+  it("honours string git values defined in repo config", () => {
+    const { dir } = setupRepoFixture({
+      extraLines: ["    git: enabled"],
+    });
+
+    const diagnostics = diagnoseConfig({ cwd: dir });
+
+    expect(diagnostics.repos[0]?.gitMode).toBe("enabled");
+    expect(diagnostics.repos[0]?.gitModeSource).toBe("config");
+  });
+
+  it("ignores unrecognised string git values", () => {
+    const { dir } = setupRepoFixture({
+      extraLines: ["    git: maybe"],
+    });
+
+    const diagnostics = diagnoseConfig({ cwd: dir });
+
+    expect(diagnostics.repos[0]?.gitModeSource).toBe("detected");
+  });
+
+  it("ignores git values that are neither strings nor booleans", () => {
+    const { dir } = setupRepoFixture({
+      extraLines: ["    git: 123"],
+    });
+
+    const diagnostics = diagnoseConfig({ cwd: dir });
+
+    expect(diagnostics.repos[0]?.gitModeSource).toBe("detected");
+  });
+
+  it("ignores domain entries that are not strings or objects", () => {
+    const { dir } = setupRepoFixture({
+      repoFolder: "repo",
+      extraLines: ["    domains:", "      invalid: 123"],
+    });
+
+    const context = resolveRepoContext({ cwd: dir, repoFlag: "work" });
+
+    expect(context.domainMap.invalid).toBeUndefined();
+  });
+
+  it("accepts absolute template paths without rewriting the value", () => {
+    const { dir, repoDir } = setupRepoFixture({
+      initialiseGit: true,
+      extraLines: ({ repoDir }) => [
+        `    template: ${path.join(repoDir, "templates", "absolute.md")}`,
+      ],
+    });
+    const templateDir = path.join(repoDir, "templates");
+    fs.mkdirSync(templateDir, { recursive: true });
+    const absoluteTemplate = path.join(templateDir, "absolute.md");
+    fs.writeFileSync(absoluteTemplate, "# Absolute template\n");
+
+    const diagnostics = diagnoseConfig({ cwd: dir });
+
+    expect(diagnostics.repos[0]?.defaultTemplate).toBe(absoluteTemplate);
+    expect(diagnostics.warnings).toHaveLength(0);
   });
 });
 

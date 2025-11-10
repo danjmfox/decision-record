@@ -1,7 +1,11 @@
+import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { RepoContext } from "../config.js";
 import { formatRepoContext } from "./repo-format.js";
+
+const TMP_BASE = path.join(os.tmpdir(), "drctl-repo-format");
+const fromTmp = (...segments: string[]) => path.join(TMP_BASE, ...segments);
 
 const NOTE =
   "   Note: No .drctl.yaml found. Create one to configure multiple decision repos.";
@@ -10,7 +14,7 @@ describe("formatRepoContext", () => {
   it("includes config details and domain overrides", () => {
     const context: RepoContext = {
       name: "home",
-      root: path.join("/tmp", "home-decisions"),
+      root: fromTmp("home-decisions"),
       source: "local-config",
       definitionSource: "local",
       configPath: "/configs/.drctl.yaml",
@@ -22,7 +26,7 @@ describe("formatRepoContext", () => {
       },
       gitMode: "enabled",
       gitModeSource: "detected",
-      gitRoot: path.join("/tmp", "home-decisions"),
+      gitRoot: fromTmp("home-decisions"),
     };
 
     const lines = formatRepoContext(context);
@@ -42,14 +46,14 @@ describe("formatRepoContext", () => {
     ]);
   });
 
-  it("labels inherited git roots when the repo is nested", () => {
+  it("labels inherited git roots when the repository is nested", () => {
     const context: RepoContext = {
-      root: path.join("/tmp", "outer", "workspace"),
+      root: fromTmp("outer", "workspace"),
       source: "local-config",
       domainMap: {},
       gitMode: "enabled",
       gitModeSource: "detected",
-      gitRoot: path.join("/tmp", "outer"),
+      gitRoot: fromTmp("outer"),
     };
 
     const lines = formatRepoContext(context);
@@ -61,7 +65,7 @@ describe("formatRepoContext", () => {
 
   it("falls back gracefully when optional fields are missing", () => {
     const context: RepoContext = {
-      root: path.join("/tmp", "workspace"),
+      root: fromTmp("workspace"),
       source: "cli",
       domainMap: {},
       gitMode: "disabled",
@@ -85,7 +89,7 @@ describe("formatRepoContext", () => {
 
   it("appends the missing-config note for fallback sources", () => {
     const context: RepoContext = {
-      root: path.join("/tmp", "decisions"),
+      root: fromTmp("decisions"),
       source: "fallback-home",
       domainMap: {},
       gitMode: "disabled",
@@ -98,7 +102,7 @@ describe("formatRepoContext", () => {
 
   it("includes git override notes when detected", () => {
     const context: RepoContext = {
-      root: path.join("/tmp", "workspace"),
+      root: fromTmp("workspace"),
       source: "cli",
       domainMap: {},
       gitMode: "enabled",
