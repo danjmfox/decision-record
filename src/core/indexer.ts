@@ -98,20 +98,22 @@ function buildMarkdown(
     );
   }
 
-  lines.push(
-    ...renderSummarySection(decorated, validRecords.length, recentLimit),
-  );
+  const sections: string[][] = [
+    renderSummarySection(decorated, validRecords.length, recentLimit),
+  ];
 
   if (decorated.length === 0) {
-    lines.push("_(No decisions match the current filters.)_", "");
-    return lines.join("\n");
+    sections.push(["_(No decisions match the current filters.)_", ""]);
+  } else {
+    sections.push(renderUpcomingReviewsSection(decorated, upcomingWindow));
+    sections.push(renderDomainCatalogueSection(decorated));
+    if (options.includeKanban !== false) {
+      sections.push(renderKanbanSection(decorated));
+    }
   }
 
-  lines.push(...renderUpcomingReviewsSection(decorated, upcomingWindow));
-  lines.push(...renderDomainCatalogueSection(decorated));
-
-  if (options.includeKanban !== false) {
-    lines.push(...renderKanbanSection(decorated));
+  for (const section of sections) {
+    lines.push(...section);
   }
 
   return lines.join("\n");
@@ -123,30 +125,37 @@ function renderSummarySection(
   recentLimit: number,
 ): string[] {
   const domainCount = new Set(records.map((item) => item.record.domain)).size;
-  const summary: string[] = [];
-  summary.push("## Summary", "");
-  summary.push("| Metric | Value |", "| --- | --- |");
-  if (records.length === totalRecords) {
-    summary.push(`| Decisions | ${records.length} |`);
-  } else {
-    summary.push(`| Decisions | ${records.length} / ${totalRecords} |`);
-  }
-  summary.push(`| Domains | ${domainCount} |`, "");
+  const summary: string[] = [
+    "## Summary",
+    "",
+    "| Metric | Value |",
+    "| --- | --- |",
+    records.length === totalRecords
+      ? `| Decisions | ${records.length} |`
+      : `| Decisions | ${records.length} / ${totalRecords} |`,
+    `| Domains | ${domainCount} |`,
+    "",
+    "### Status Counts",
+    "",
+    "| Status | Count |",
+    "| --- | --- |",
+  ];
 
-  summary.push("### Status Counts", "");
-  summary.push("| Status | Count |", "| --- | --- |");
   const counts = countStatuses(records.map((item) => item.record));
-  for (const status of STATUS_ORDER) {
-    const count = counts.get(status) ?? 0;
-    summary.push(`| ${status} | ${count} |`);
-  }
-  summary.push("");
+  summary.push(
+    ...STATUS_ORDER.map(
+      (status) => `| ${status} | ${counts.get(status) ?? 0} |`,
+    ),
+    "",
+    "### Recently Changed",
+    "",
+  );
 
-  summary.push("### Recently Changed", "");
   if (records.length === 0) {
     summary.push("_(No recent changes.)_", "");
     return summary;
   }
+
   summary.push(
     "| Decision | Status | Last Updated | Version | Domain |",
     "| --- | --- | --- | --- | --- |",
