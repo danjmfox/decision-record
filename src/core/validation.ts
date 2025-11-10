@@ -121,7 +121,8 @@ function validateChangeType(record: DecisionRecord): ValidationIssue[] {
   if (
     record.changeType === "creation" &&
     record.status !== "draft" &&
-    record.status !== "proposed"
+    record.status !== "proposed" &&
+    record.status !== "accepted"
   ) {
     return [
       {
@@ -129,7 +130,7 @@ function validateChangeType(record: DecisionRecord): ValidationIssue[] {
         recordId: record.id,
         severity: "error",
         message:
-          'Records with changeType "creation" should remain in draft/proposed status.',
+          'Records with changeType "creation" must remain in draft, proposed, or accepted status.',
         details: { status: record.status, changeType: record.changeType },
       },
     ];
