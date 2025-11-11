@@ -10,6 +10,8 @@ changelog:
     note: "{{ changeNote }}"
 confidence: "{{ confidence }}"
 reviewDate: "{{ reviewDate }}"
+lastReviewedAt: "{{ lastReviewedAt }}"
+reviewHistory: []
 domain: "{{ domain }}"
 slug: "{{ slug }}"
 supersedes: "{{ supersedes }}"

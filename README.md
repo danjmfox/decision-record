@@ -103,6 +103,7 @@ See [docs/tech-stack.md](docs/tech-stack.md) for dependencies and build tooling,
 - Templates & samples: [`decisions-example/decision-record-template.md`](decisions-example/decision-record-template.md)
 - Meta-level governance DRs: [`decisions-example/meta`](decisions-example/meta)
 - Lifecycle automation is defined in [DR--20251105--meta--decision-subcommand-refactor](decisions-example/meta/DR--20251105--meta--decision-subcommand-refactor.md) and related records.
+- Review metadata lives with the record: `reviewDate` schedules the next check-in, `lastReviewedAt` captures the most recent review, and `reviewHistory[]` keeps structured entries (`type`, `outcome`, `reviewer`, `reason`) so governance tooling can surface context. Repo defaults for cadence/warnings live under `review_policy` in `.drctl.yaml`.
 
 Use `drctl decision new` + lifecycle commands rather than editing files manually so changelog/version metadata stay consistent.
 
