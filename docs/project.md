@@ -32,12 +32,14 @@ Create a **lightweight, auditable CLI** for managing Decision Records — treati
 
 ## Design Principles
 
-1. Reasoning is code
-2. Separation of concerns
-3. Progressive disclosure
-4. Trust through transparency
-5. DecisionOps mindset
-6. Future-proofing
+1. Honest, proactive collaboration
+2. Reasoning is code
+3. Separation of concerns
+4. Progressive disclosure
+5. Trust through transparency
+6. DecisionOps mindset
+7. Lean governance
+8. Future-proofing
 
 ## Related Docs
 
