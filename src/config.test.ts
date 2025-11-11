@@ -185,6 +185,30 @@ repos:
     expect(context.gitModeSource).toBe("detected");
   });
 
+  it("parses review policy metadata from repo config", () => {
+    const dir = makeTempDir();
+    const repoRoot = path.join(dir, "workspace");
+    fs.mkdirSync(repoRoot, { recursive: true });
+    const config = `
+repos:
+  work:
+    path: ./workspace
+    review_policy:
+      default_type: contextual
+      interval_months: 6
+      warn_before_days: 10
+`;
+    fs.writeFileSync(path.join(dir, ".drctl.yaml"), config);
+
+    const context = resolveRepoContext({ cwd: dir });
+
+    expect(context.reviewPolicy).toEqual({
+      defaultType: "contextual",
+      intervalMonths: 6,
+      warnBeforeDays: 10,
+    });
+  });
+
   it("detects git mode as enabled when a .git directory exists", () => {
     const dir = makeTempDir();
     const repoRoot = path.join(dir, "workspace");

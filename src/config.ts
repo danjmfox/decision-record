@@ -21,6 +21,7 @@ import type {
   RepoDefinitionSource,
   RepoResolutionSource,
   ResolveRepoOptions,
+  ReviewPolicyConfig,
 } from "./config/types.js";
 export type {
   GitMode,
@@ -185,6 +186,9 @@ function buildContext(
   }
   if (repo.defaultTemplate) {
     context.defaultTemplate = repo.defaultTemplate;
+  }
+  if (repo.reviewPolicy) {
+    context.reviewPolicy = repo.reviewPolicy;
   }
   return context;
 }
@@ -472,6 +476,9 @@ function normalizeRepoConfig(
   const defaultDomainDir =
     firstString(raw.defaultDomainDir) ?? firstString(raw.domainRoot);
   const defaultTemplate = firstString(raw.template);
+  const reviewPolicy = normalizeReviewPolicy(
+    raw.reviewPolicy ?? raw.review_policy,
+  );
 
   const normalized: NormalizedRepo = {
     name,
@@ -485,6 +492,9 @@ function normalizeRepoConfig(
   }
   if (defaultTemplate) {
     normalized.defaultTemplate = defaultTemplate;
+  }
+  if (reviewPolicy) {
+    normalized.reviewPolicy = reviewPolicy;
   }
   const configGitMode = coerceGitMode(raw.git);
   if (configGitMode) {
@@ -513,6 +523,60 @@ function firstString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim().length > 0
     ? value.trim()
     : undefined;
+}
+
+function toInteger(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.trunc(value);
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return undefined;
+    const parsed = Number.parseInt(trimmed, 10);
+    if (!Number.isNaN(parsed)) {
+      return parsed;
+    }
+  }
+  return undefined;
+}
+
+function normalizeReviewType(
+  value?: string,
+): ReviewPolicyConfig["defaultType"] | undefined {
+  if (!value) return undefined;
+  const normalized = value.toLowerCase();
+  if (
+    normalized === "scheduled" ||
+    normalized === "adhoc" ||
+    normalized === "contextual"
+  ) {
+    return normalized;
+  }
+  return undefined;
+}
+
+function normalizeReviewPolicy(value: unknown): ReviewPolicyConfig | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const raw = value as Record<string, unknown>;
+  const policy: ReviewPolicyConfig = {};
+  const defaultTypeCandidate = firstString(
+    (raw.defaultType ?? raw.default_type) as unknown,
+  );
+  const defaultType = normalizeReviewType(defaultTypeCandidate);
+  if (defaultType) {
+    policy.defaultType = defaultType;
+  }
+  const intervalCandidate = toInteger(
+    raw.intervalMonths ?? raw.interval_months,
+  );
+  if (intervalCandidate !== undefined && intervalCandidate > 0) {
+    policy.intervalMonths = intervalCandidate;
+  }
+  const warnCandidate = toInteger(raw.warnBeforeDays ?? raw.warn_before_days);
+  if (warnCandidate !== undefined && warnCandidate >= 0) {
+    policy.warnBeforeDays = warnCandidate;
+  }
+  return Object.keys(policy).length > 0 ? policy : undefined;
 }
 
 function loadConfigLayers(

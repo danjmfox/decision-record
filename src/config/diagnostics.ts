@@ -91,6 +91,7 @@ export class DiagnosticsCollector {
       ...(repo.defaultTemplate
         ? { defaultTemplate: repo.defaultTemplate }
         : {}),
+      ...(repo.reviewPolicy ? { reviewPolicy: repo.reviewPolicy } : {}),
       exists,
       gitInitialized,
       gitMode: gitResolution.mode,
