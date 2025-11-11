@@ -17,7 +17,6 @@ runtimes:
 # This is the section where you manage your linters. (https://docs.trunk.io/check/configuration)
 lint:
   enabled:
-    - prevent-main-commits
     - actionlint@1.7.8
     - checkov@3.2.491
     - git-diff-check
@@ -32,6 +31,7 @@ lint:
       linters: [prettier, markdownlint]
 actions:
   enabled:
+    - prevent-main-commits
     - trunk-announce
     - trunk-check-pre-push
     - trunk-fmt-pre-commit
@@ -41,7 +41,7 @@ actions:
       triggers:
         - git_hooks: [pre-commit]
       display_name: Block direct commits to main
-      description: Prevent direct commits to 'main' branch; feature branch required.
+      description: Prevent direct commits to main to protect branch integrity.
       run: |
         branch=$(git rev-parse --abbrev-ref HEAD)
         if [ "$branch" = "main" ]; then
