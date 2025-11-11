@@ -89,15 +89,16 @@ and meta decision record [DR--20251101--meta--architecture-overview](decisions-e
 
 ---
 
-## 🧠 Design Principles
+## 🧠 Principles
 
-1. **Reasoning is code** — Decisions are first-class, versioned artefacts.
-2. **Separation of concerns** — App, config, and data live in distinct repos.
-3. **Progressive disclosure** — Simple defaults; complexity scales by need.
-4. **Trust through transparency** — Each architectural choice has a DR.
-5. **Human–AI collaboration** — Calm, reflective, non-performative dialogue.
-6. **DecisionOps mindset** — Treat decision flow as a testable system.
-7. **Future-proofing** — File-based now; API + n8n + UI integration later.
+1. **Honest, proactive collaboration** — Surface hard truths early, flag risks before they bite, and keep reasoning calm and concise.
+2. **Reasoning is code** — Decisions are first-class artefacts with the same care, review, and versioning as source.
+3. **Separation of concerns** — App logic, configuration, and private decision data belong in distinct repos and layers.
+4. **Progressive disclosure** — Default workflows stay simple while leaving headroom for power features (templates, governance, automation).
+5. **Trust through transparency** — Every architectural or governance choice gets a DR; command output and logs remain visible.
+6. **DecisionOps mindset** — Treat lifecycle flow, review cadences, and automation hooks as testable systems.
+7. **Lean governance** — Prefer implicit, metadata-rich workflows (e.g., review history) over heavy ceremony; automate reminders instead of bureaucracy.
+8. **Future-proofing** — Build file-first today while paving the path for APIs, n8n, dashboards, and other integrations tomorrow.
 
 ---
 

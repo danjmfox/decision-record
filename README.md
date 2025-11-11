@@ -35,7 +35,7 @@ Decision policies that guide the CLI itself live under [`decisions-example/meta`
 npm install
 npm run build
 npm test
-npm test:coverage
+npm run test:coverage
 npx trunk check      # lint + type + policy
 npm run dev -- --help
 ```
