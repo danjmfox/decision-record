@@ -21,6 +21,7 @@ export interface RepoContext {
   domainMap: Record<string, string>;
   defaultDomainDir?: string;
   defaultTemplate?: string;
+  reviewPolicy?: ReviewPolicyConfig;
   gitMode: GitMode;
   gitModeSource: GitModeSource;
   gitModeOverrideCleared?: GitModeOverrideSource;
@@ -35,6 +36,7 @@ export interface RepoDiagnostic {
   domainMap: Record<string, string>;
   defaultDomainDir?: string;
   defaultTemplate?: string;
+  reviewPolicy?: ReviewPolicyConfig;
   exists: boolean;
   gitInitialized: boolean;
   gitMode: GitMode;
@@ -75,6 +77,8 @@ export interface RawRepoConfig {
   domainRoot?: unknown;
   template?: unknown;
   git?: unknown;
+  reviewPolicy?: unknown;
+  review_policy?: unknown;
 }
 
 export interface RawDomainConfig {
@@ -89,6 +93,7 @@ export interface NormalizedRepo {
   domainMap: Record<string, string>;
   defaultDomainDir?: string;
   defaultTemplate?: string;
+  reviewPolicy?: ReviewPolicyConfig;
   gitMode?: GitMode;
   definitionSource: RepoDefinitionSource;
   configPath: string;
@@ -97,4 +102,12 @@ export interface NormalizedRepo {
 export interface NormalizedConfigLayer {
   defaultRepo?: string;
   repos: Record<string, NormalizedRepo>;
+}
+
+export type ReviewPolicyType = "scheduled" | "adhoc" | "contextual";
+
+export interface ReviewPolicyConfig {
+  defaultType?: ReviewPolicyType;
+  intervalMonths?: number;
+  warnBeforeDays?: number;
 }
