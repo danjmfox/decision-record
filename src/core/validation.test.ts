@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { DecisionRecord } from "./models.js";
+import type { DecisionRecord, ReviewHistoryEntry } from "./models.js";
 import { validateDecisions, type ValidationIssue } from "./validation.js";
 
 const base: DecisionRecord = {
@@ -129,6 +129,48 @@ describe("governance validation (per-repo)", () => {
         expect.objectContaining({
           code: "invalid-change-type",
           recordId: "DR--20240101--meta--deprecated",
+        }),
+      ]),
+    );
+  });
+
+  it("warns when review history entries are invalid", () => {
+    const withInvalidHistory: DecisionRecord = {
+      ...base,
+      id: "DR--20240101--meta--bad-review-history",
+      reviewHistory: [
+        {
+          date: "not-a-date",
+          type: "foo" as ReviewHistoryEntry["type"],
+          outcome: "bar" as ReviewHistoryEntry["outcome"],
+        },
+      ],
+    };
+    const result = issues([withInvalidHistory]);
+    expect(result).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "invalid-review-entry",
+          severity: "warning",
+          recordId: "DR--20240101--meta--bad-review-history",
+        }),
+      ]),
+    );
+  });
+
+  it("warns when lastReviewedAt uses invalid format", () => {
+    const invalidLastReviewed: DecisionRecord = {
+      ...base,
+      id: "DR--20240101--meta--bad-last-review",
+      lastReviewedAt: "Jan 01 2025",
+    };
+    const result = issues([invalidLastReviewed]);
+    expect(result).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "invalid-review-entry",
+          severity: "warning",
+          recordId: "DR--20240101--meta--bad-last-review",
         }),
       ]),
     );
