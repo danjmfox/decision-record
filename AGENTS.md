@@ -31,6 +31,7 @@ Refer to these sections when relevant:
 - [tdd-process.md](./docs/tdd-process.md) — TDD workflow
 - [tech-stack.md](./docs/tech-stack.md) — tech and tools
 - [test-plan.md](./docs/test-plan.md) — testing and coverage
+- [ci.md](./docs/ci.md) — CI integration cookbook
 - [typescript-style.md](./docs/typescript-style.md) — coding conventions
 - [release.md](./docs/release.md) — release-it workflow, tagging, post-release steps
 - [README.md](./README.md) — quickstart commands and documentation index
@@ -49,7 +50,7 @@ npm run build
 ### Dev & Test
 
 ```bash
-npm dev              # Start local dev mode
+npm run dev          # Start local dev mode
 npm test             # Run all tests
 npm test:coverage    # Run with V8 coverage
 npx trunk check      # Lint, type, and policy checks

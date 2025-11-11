@@ -4,7 +4,7 @@
 
 - Strict mode enabled
 - ESM imports only
-- Single quotes, no semicolons
+- Double quotes for strings and terminate statements with semicolons (matches the repo-wide lint config)
 - Prefer functional, composable patterns
 - Avoid classes unless encapsulation is essential
 
