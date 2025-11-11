@@ -3,6 +3,7 @@ id: DR--20251111--meta--governance-review-lifecycle
 dateCreated: "2025-11-11"
 dateAccepted: "2025-11-11"
 reviewDate: "2026-11-11"
+lastReviewedAt: "2025-11-11"
 version: 1.0.1
 status: accepted
 changeType: correction
@@ -21,6 +22,12 @@ changelog:
     note: Marked as accepted
   - date: "2025-11-11"
     note: Minor correction
+reviewHistory:
+  - date: "2025-11-11"
+    type: adhoc
+    outcome: keep
+    reviewer: drctl
+    reason: Accepted per DR--20251111 rollout
 lastEdited: "2025-11-11"
 ---
 
