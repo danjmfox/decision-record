@@ -2,7 +2,11 @@ import fs from "node:fs";
 import path from "node:path";
 import type { RepoContext } from "../config.js";
 import { listDecisions, getDecisionPath } from "./repository.js";
-import type { DecisionRecord, DecisionStatus } from "./models.js";
+import type {
+  DecisionRecord,
+  DecisionStatus,
+  ReviewHistoryEntry,
+} from "./models.js";
 
 const STATUS_ORDER: DecisionStatus[] = [
   "new",
@@ -27,6 +31,7 @@ export interface GenerateIndexOptions {
   statusFilter?: DecisionStatus[];
   upcomingDays?: number;
   recentLimit?: number;
+  includeReviewDetails?: boolean;
 }
 
 export interface GenerateIndexResult {
@@ -42,6 +47,9 @@ interface DecoratedDecision {
   lastActivityDate?: Date;
   reviewDateLabel?: string;
   reviewDate?: Date;
+  lastReviewEntry?: ReviewHistoryEntry;
+  lastReviewOutcome?: string;
+  reviewHistory?: ReviewHistoryEntry[];
 }
 
 export function generateIndex(
@@ -110,6 +118,9 @@ function buildMarkdown(
       renderUpcomingReviewsSection(decorated, upcomingWindow),
       renderDomainCatalogueSection(decorated),
     );
+    if (options.includeReviewDetails) {
+      sections.push(renderReviewHistorySection(decorated));
+    }
     if (options.includeKanban !== false) {
       sections.push(renderKanbanSection(decorated));
     }
@@ -203,8 +214,8 @@ function renderUpcomingReviewsSection(
   }
 
   section.push(
-    "| Decision | Domain | Status | Review Date | Confidence | Due |",
-    "| --- | --- | --- | --- | --- | --- |",
+    "| Decision | Domain | Status | Next Review | Last Outcome | Confidence | Due |",
+    "| --- | --- | --- | --- | --- | --- | --- |",
   );
   const today = new Date();
   for (const entry of upcoming) {
@@ -215,8 +226,10 @@ function renderUpcomingReviewsSection(
       `| ${linkFor(entry)} | ${entry.record.domain} | ${
         entry.record.status
       } | ${entry.reviewDateLabel ?? "—"} | ${
-        formatConfidence(entry.record.confidence) ?? "—"
-      } | ${formatDue(diffDays)} |`,
+        entry.lastReviewOutcome ?? "—"
+      } | ${formatConfidence(entry.record.confidence) ?? "—"} | ${formatDue(
+        diffDays,
+      )} |`,
     );
   }
   section.push("");
@@ -250,8 +263,8 @@ function renderDomainCatalogueSection(records: DecoratedDecision[]): string[] {
       ),
     );
     section.push(
-      "| Decision | Status | Version | Change | Accepted/Created | Last Edited | Review | Confidence | Tags | Lineage |",
-      "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+      "| Decision | Status | Version | Change | Accepted/Created | Last Edited | Next Review | Last Outcome | Confidence | Tags | Lineage |",
+      "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     );
     for (const entry of entries) {
       section.push(
@@ -262,7 +275,8 @@ function renderDomainCatalogueSection(records: DecoratedDecision[]): string[] {
           entry.record.changeType,
           entry.record.dateAccepted ?? entry.record.dateCreated ?? "—",
           entry.record.lastEdited ?? "—",
-          entry.record.reviewDate ?? "—",
+          entry.reviewDateLabel ?? "—",
+          entry.lastReviewOutcome ?? "—",
           formatConfidence(entry.record.confidence) ?? "—",
           formatTags(entry.record.tags),
           formatLineage(entry.record),
@@ -306,13 +320,44 @@ function renderKanbanSection(records: DecoratedDecision[]): string[] {
         section.push(
           `- ${linkFor(entry)} — ${entry.record.domain} (v${
             entry.record.version
-          }, updated ${entry.lastActivityLabel})`,
+          }, updated ${entry.lastActivityLabel ?? "—"})`,
         );
       }
     }
     section.push("");
   }
 
+  return section;
+}
+
+function renderReviewHistorySection(records: DecoratedDecision[]): string[] {
+  const withHistory = records.filter(
+    (entry) => (entry.reviewHistory?.length ?? 0) > 0,
+  );
+  const section: string[] = [];
+  section.push("## Review History", "");
+  if (withHistory.length === 0) {
+    section.push("_(No review events recorded.)_", "");
+    return section;
+  }
+  for (const entry of withHistory) {
+    section.push(`### ${entry.title}`, "");
+    section.push(
+      "| Date | Outcome | Type | Reviewer | Note |",
+      "| --- | --- | --- | --- | --- |",
+    );
+    const history = [...(entry.reviewHistory ?? [])].reverse();
+    for (const item of history) {
+      section.push(
+        `| ${item.date ?? "—"} | ${
+          formatReviewOutcome(item) ?? "—"
+        } | ${formatReviewType(item.type) ?? "—"} | ${
+          item.reviewer ?? "—"
+        } | ${item.reason ? escapePipes(item.reason) : "—"} |`,
+      );
+    }
+    section.push("");
+  }
   return section;
 }
 
@@ -326,12 +371,16 @@ function decorateDecision(
   const { label: lastActivityLabel, date: lastActivityDate } =
     deriveLastActivity(record);
   const review = deriveReviewDate(record);
+  const lastReview = deriveLastReview(record);
   const decoration: DecoratedDecision = {
     record,
     title,
     relativePath: relative,
     lastActivityLabel,
   };
+  if (Array.isArray(record.reviewHistory)) {
+    decoration.reviewHistory = [...record.reviewHistory];
+  }
   if (lastActivityDate) {
     decoration.lastActivityDate = lastActivityDate;
   }
@@ -340,6 +389,13 @@ function decorateDecision(
   }
   if (review?.date) {
     decoration.reviewDate = review.date;
+  }
+  if (lastReview.entry) {
+    decoration.lastReviewEntry = lastReview.entry;
+    const outcome = formatReviewOutcome(lastReview.entry);
+    if (outcome) {
+      decoration.lastReviewOutcome = outcome;
+    }
   }
   return decoration;
 }
@@ -380,6 +436,24 @@ function deriveReviewDate(
     return undefined;
   }
   return { label: record.reviewDate, date: parsed };
+}
+
+interface LastReviewResult {
+  entry?: ReviewHistoryEntry;
+  label?: string;
+}
+
+function deriveLastReview(record: DecisionRecord): LastReviewResult {
+  if (Array.isArray(record.reviewHistory) && record.reviewHistory.length > 0) {
+    const entry = record.reviewHistory[record.reviewHistory.length - 1];
+    if (entry) {
+      return { entry, label: entry.date };
+    }
+  }
+  if (record.lastReviewedAt) {
+    return { label: record.lastReviewedAt };
+  }
+  return {};
 }
 
 function deriveTitle(record: DecisionRecord, filePath: string): string {
@@ -467,6 +541,30 @@ function formatDue(diffDays?: number): string {
   }
   if (diffDays === 0) return "today";
   return `in ${diffDays}d`;
+}
+
+function formatReviewOutcome(entry?: ReviewHistoryEntry): string | undefined {
+  if (!entry) return undefined;
+  const outcomeLabel = capitalize(entry.outcome);
+  if (!outcomeLabel) return undefined;
+  const typeLabel = formatReviewType(entry.type);
+  return typeLabel ? `${outcomeLabel} (${typeLabel})` : outcomeLabel;
+}
+
+function formatReviewType(
+  type?: ReviewHistoryEntry["type"],
+): string | undefined {
+  if (!type) return undefined;
+  return capitalize(type);
+}
+
+function capitalize(value?: string): string | undefined {
+  if (!value) return undefined;
+  return value.slice(0, 1).toUpperCase() + value.slice(1);
+}
+
+function escapePipes(value: string): string {
+  return value.replace(/\|/g, "\\|");
 }
 
 function linkFor(entry: DecoratedDecision): string {

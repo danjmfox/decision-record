@@ -509,7 +509,7 @@ function computeNextReviewDate(
 
 function addMonths(dateString: string, months: number): string {
   const date = new Date(`${dateString}T00:00:00Z`);
-  const copy = new Date(date.getTime());
+  const copy = new Date(date);
   copy.setUTCMonth(copy.getUTCMonth() + months);
   return copy.toISOString().slice(0, 10);
 }

@@ -231,7 +231,7 @@ function validateReviewHistory(record: DecisionRecord): ValidationIssue[] {
     return issues;
   }
 
-  history.forEach((entry, index) => {
+  for (const [index, entry] of history.entries()) {
     const problems: string[] = [];
     if (!entry || typeof entry !== "object") {
       problems.push("entry missing or malformed");
@@ -257,7 +257,7 @@ function validateReviewHistory(record: DecisionRecord): ValidationIssue[] {
         details: { index, problems },
       });
     }
-  });
+  }
 
   if (record.lastReviewedAt && !isIsoDate(record.lastReviewedAt)) {
     issues.push({
