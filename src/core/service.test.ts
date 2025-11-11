@@ -113,6 +113,14 @@ describe("service layer", () => {
       date: "2025-10-30",
       note: "Raised confidence after adoption",
     });
+    expect(revised.record.lastReviewedAt).toBe("2025-10-30");
+    expect(revised.record.reviewHistory).toHaveLength(1);
+    expect(revised.record.reviewHistory?.[0]).toEqual(
+      expect.objectContaining({
+        type: "adhoc",
+        outcome: "revise",
+      }),
+    );
 
     const frontmatter = matter.read(revised.filePath);
     expect(frontmatter.data.version).toBe("1.1.0");
@@ -179,6 +187,15 @@ describe("service layer", () => {
       date: "2025-10-30",
       note: "Marked as retired",
     });
+    expect(result.record.lastReviewedAt).toBe("2025-10-30");
+    expect(result.record.reviewHistory).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "adhoc",
+          outcome: "retire",
+        }),
+      ]),
+    );
 
     const stored = matter.read(result.filePath);
     expect(stored.data.status).toBe("retired");
@@ -215,6 +232,12 @@ describe("service layer", () => {
       date: "2025-10-30",
       note: `Superseded by ${newDecision.record.id}`,
     });
+    expect(result.record.reviewHistory?.at(-1)).toEqual(
+      expect.objectContaining({
+        type: "adhoc",
+        outcome: "supersede",
+      }),
+    );
 
     const storedOld = matter.read(result.filePath);
     expect(storedOld.data.status).toBe("superseded");

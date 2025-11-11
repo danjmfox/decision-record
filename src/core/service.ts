@@ -250,6 +250,10 @@ export async function retireDecision(
   const changelog = rec.changelog ?? [];
   changelog.push({ date: today, note: "Marked as retired" });
   rec.changelog = changelog;
+  appendReviewMetadata(rec, context, {
+    reviewType: "adhoc",
+    outcome: "retire",
+  });
   const filePath = saveDecision(context, rec);
   await commitLifecycle(context, workingOptions, filePath, "retire", rec.id);
   return { record: rec, filePath, context };
@@ -272,6 +276,11 @@ export async function supersedeDecision(
   const oldChangelog = oldRecord.changelog ?? [];
   oldChangelog.push({ date: today, note: `Superseded by ${newId}` });
   oldRecord.changelog = oldChangelog;
+  appendReviewMetadata(oldRecord, context, {
+    reviewType: "adhoc",
+    outcome: "supersede",
+    note: `Superseded by ${newId}`,
+  });
 
   newRecord.supersedes = oldId;
   newRecord.lastEdited = today;
@@ -352,6 +361,11 @@ export async function reviseDecision(
     note: options.note ?? "Revision",
   });
   record.changelog = changelog;
+  appendReviewMetadata(record, context, {
+    reviewType: "adhoc",
+    outcome: "revise",
+    note: options.note,
+  });
 
   const filePath = saveDecision(context, record);
   await commitLifecycle(context, workingOptions, filePath, "revise", record.id);
@@ -366,38 +380,12 @@ export async function reviewDecision(
   const context = ensureContext(options);
   const workingOptions = withContext(options, context);
   const record = loadDecision(context, id);
-  const today = currentIsoDate();
-  const reviewType = resolveReviewTypeOption(
-    options.reviewType,
-    context.reviewPolicy,
-  );
-  const reviewOutcome = resolveReviewOutcomeOption(options.outcome);
-  const reviewEntry: ReviewHistoryEntry = {
-    date: today,
-    type: reviewType,
-    outcome: reviewOutcome,
-  };
-  const reviewer = resolveReviewer(options.reviewer);
-  if (reviewer) {
-    reviewEntry.reviewer = reviewer;
-  }
-  if (options.note) {
-    reviewEntry.reason = options.note;
-  }
-
-  const history = record.reviewHistory ? [...record.reviewHistory] : [];
-  history.push(reviewEntry);
-  record.reviewHistory = history;
-  record.lastReviewedAt = today;
-
-  const extendedReviewDate = computeNextReviewDate(
-    today,
-    reviewOutcome,
-    context.reviewPolicy,
-  );
-  if (extendedReviewDate) {
-    record.reviewDate = extendedReviewDate;
-  }
+  const reviewEntry = appendReviewMetadata(record, context, {
+    reviewType: options.reviewType,
+    outcome: options.outcome,
+    note: options.note,
+    reviewer: options.reviewer,
+  });
 
   const filePath = saveDecision(context, record);
   await commitLifecycle(context, workingOptions, filePath, "review", record.id);
@@ -443,6 +431,47 @@ function ensureContext(options: RepoOptions): RepoContext {
 
 export function resolveContext(options: RepoOptions = {}): RepoContext {
   return ensureContext(options);
+}
+
+interface ReviewMetadataOverrides {
+  reviewType?: ReviewType | undefined;
+  outcome?: ReviewOutcome | undefined;
+  note?: string | undefined;
+  reviewer?: string | undefined;
+}
+
+function appendReviewMetadata(
+  record: DecisionRecord,
+  context: RepoContext,
+  overrides: ReviewMetadataOverrides = {},
+): ReviewHistoryEntry {
+  const today = currentIsoDate();
+  const reviewEntry: ReviewHistoryEntry = {
+    date: today,
+    type: resolveReviewTypeOption(overrides.reviewType, context.reviewPolicy),
+    outcome: resolveReviewOutcomeOption(overrides.outcome),
+  };
+  const reviewer = resolveReviewer(overrides.reviewer);
+  if (reviewer) {
+    reviewEntry.reviewer = reviewer;
+  }
+  const note = sanitizeOptionalString(overrides.note);
+  if (note) {
+    reviewEntry.reason = note;
+  }
+  const history = record.reviewHistory ? [...record.reviewHistory] : [];
+  history.push(reviewEntry);
+  record.reviewHistory = history;
+  record.lastReviewedAt = today;
+  const nextReview = computeNextReviewDate(
+    today,
+    reviewEntry.outcome,
+    context.reviewPolicy,
+  );
+  if (nextReview) {
+    record.reviewDate = nextReview;
+  }
+  return reviewEntry;
 }
 
 const DEFAULT_REVIEW_TYPE: ReviewType = "scheduled";
@@ -495,11 +524,18 @@ function resolveReviewer(override?: string): string | undefined {
     process.env.USERNAME,
   ];
   for (const candidate of candidates) {
-    if (typeof candidate === "string" && candidate.trim().length > 0) {
-      return candidate.trim();
+    const sanitized = sanitizeOptionalString(candidate);
+    if (sanitized) {
+      return sanitized;
     }
   }
   return undefined;
+}
+
+function sanitizeOptionalString(value?: string | null): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 function currentIsoDate(): string {
