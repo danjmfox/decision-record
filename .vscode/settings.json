@@ -2,6 +2,6 @@
   "conventionalCommits.scopes": ["add decision"],
   "sonarlint.connectedMode.project": {
     "connectionId": "danjmfox",
-    "projectKey": "danjmfox_decision-record"
+    "projectKey": "decision-record"
   }
 }
