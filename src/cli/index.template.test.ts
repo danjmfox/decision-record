@@ -280,7 +280,9 @@ describe("cli template-aware flows", () => {
         confidence: 0.9,
       }),
     );
-    expect(collectOutput(logSpy).some((entry) => entry.includes("📝"))).toBe(
+    const logs = collectOutput(logSpy);
+    expect(logs.some((entry) => entry.includes("📝"))).toBe(true);
+    expect(logs.some((entry) => entry.includes("Review: adhoc → revise"))).toBe(
       true,
     );
   });
@@ -376,6 +378,13 @@ describe("cli template-aware flows", () => {
       expect(
         collectOutput(logSpy).some((entry) => entry.includes(symbol)),
       ).toBe(true);
+      if (serviceKey === "retireDecision") {
+        expect(
+          collectOutput(logSpy).some((entry) =>
+            entry.includes("Review: adhoc → retire"),
+          ),
+        ).toBe(true);
+      }
       if (warningMessage) {
         expect(
           collectOutput(warnSpy).some((entry) =>
@@ -414,6 +423,9 @@ describe("cli template-aware flows", () => {
     const logs = collectOutput(logSpy);
     expect(logs.some((entry) => entry.includes("🔁"))).toBe(true);
     expect(logs.some((entry) => entry.includes("Updated:"))).toBe(true);
+    expect(
+      logs.some((entry) => entry.includes("Review: adhoc → supersede")),
+    ).toBe(true);
   });
 
   it("supports legacy revise command with confidence overrides", async () => {
