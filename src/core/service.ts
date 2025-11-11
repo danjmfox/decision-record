@@ -204,59 +204,49 @@ export async function rejectDecision(
   id: string,
   options: RepoOptions = {},
 ): Promise<DecisionWriteResult> {
-  const context = ensureContext(options);
-  const workingOptions = withContext(options, context);
-  const rec = loadDecision(context, id);
-  const today = new Date().toISOString().slice(0, 10);
-  rec.status = "rejected";
-  rec.lastEdited = today;
-  const changelog = rec.changelog ?? [];
-  changelog.push({ date: today, note: "Marked as rejected" });
-  rec.changelog = changelog;
-  const filePath = saveDecision(context, rec);
-  await commitLifecycle(context, workingOptions, filePath, "reject", rec.id);
-  return { record: rec, filePath, context };
+  return runLifecycleUpdate(id, options, "reject", (rec, _context, today) => {
+    rec.status = "rejected";
+    rec.lastEdited = today;
+    const changelog = rec.changelog ?? [];
+    changelog.push({ date: today, note: "Marked as rejected" });
+    rec.changelog = changelog;
+  });
 }
 
 export async function deprecateDecision(
   id: string,
   options: RepoOptions = {},
 ): Promise<DecisionWriteResult> {
-  const context = ensureContext(options);
-  const workingOptions = withContext(options, context);
-  const rec = loadDecision(context, id);
-  const today = new Date().toISOString().slice(0, 10);
-  rec.status = "deprecated";
-  rec.lastEdited = today;
-  const changelog = rec.changelog ?? [];
-  changelog.push({ date: today, note: "Marked as deprecated" });
-  rec.changelog = changelog;
-  const filePath = saveDecision(context, rec);
-  await commitLifecycle(context, workingOptions, filePath, "deprecate", rec.id);
-  return { record: rec, filePath, context };
+  return runLifecycleUpdate(
+    id,
+    options,
+    "deprecate",
+    (rec, _context, today) => {
+      rec.status = "deprecated";
+      rec.lastEdited = today;
+      const changelog = rec.changelog ?? [];
+      changelog.push({ date: today, note: "Marked as deprecated" });
+      rec.changelog = changelog;
+    },
+  );
 }
 
 export async function retireDecision(
   id: string,
   options: RepoOptions = {},
 ): Promise<DecisionWriteResult> {
-  const context = ensureContext(options);
-  const workingOptions = withContext(options, context);
-  const rec = loadDecision(context, id);
-  const today = new Date().toISOString().slice(0, 10);
-  rec.status = "retired";
-  rec.lastEdited = today;
-  rec.changeType = "retirement";
-  const changelog = rec.changelog ?? [];
-  changelog.push({ date: today, note: "Marked as retired" });
-  rec.changelog = changelog;
-  appendReviewMetadata(rec, context, {
-    reviewType: "adhoc",
-    outcome: "retire",
+  return runLifecycleUpdate(id, options, "retire", (rec, context, today) => {
+    rec.status = "retired";
+    rec.lastEdited = today;
+    rec.changeType = "retirement";
+    const changelog = rec.changelog ?? [];
+    changelog.push({ date: today, note: "Marked as retired" });
+    rec.changelog = changelog;
+    appendReviewMetadata(rec, context, {
+      reviewType: "adhoc",
+      outcome: "retire",
+    });
   });
-  const filePath = saveDecision(context, rec);
-  await commitLifecycle(context, workingOptions, filePath, "retire", rec.id);
-  return { record: rec, filePath, context };
 }
 
 export async function supersedeDecision(
@@ -431,6 +421,26 @@ function ensureContext(options: RepoOptions): RepoContext {
 
 export function resolveContext(options: RepoOptions = {}): RepoContext {
   return ensureContext(options);
+}
+
+async function runLifecycleUpdate(
+  id: string,
+  options: RepoOptions,
+  verb: string,
+  mutator: (
+    record: DecisionRecord,
+    context: RepoContext,
+    today: string,
+  ) => void,
+): Promise<DecisionWriteResult> {
+  const context = ensureContext(options);
+  const workingOptions = withContext(options, context);
+  const record = loadDecision(context, id);
+  const today = currentIsoDate();
+  mutator(record, context, today);
+  const filePath = saveDecision(context, record);
+  await commitLifecycle(context, workingOptions, filePath, verb, record.id);
+  return { record, filePath, context };
 }
 
 interface ReviewMetadataOverrides {
