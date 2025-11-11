@@ -1,4 +1,4 @@
-import type { DecisionRecord } from "./models.js";
+import type { DecisionRecord, ReviewHistoryEntry } from "./models.js";
 
 export type ValidationSeverity = "error" | "warning";
 
@@ -9,7 +9,8 @@ export interface ValidationIssue {
     | "duplicate-id"
     | "missing-supersede-link"
     | "dangling-supersedes"
-    | "invalid-change-type";
+    | "invalid-change-type"
+    | "invalid-review-entry";
   recordId: string;
   severity: ValidationSeverity;
   message: string;
@@ -38,6 +39,19 @@ const CHANGE_TYPES = new Set<DecisionRecord["changeType"]>([
   "revision",
   "supersession",
   "retirement",
+]);
+
+const REVIEW_TYPES = new Set<ReviewHistoryEntry["type"]>([
+  "scheduled",
+  "adhoc",
+  "contextual",
+]);
+
+const REVIEW_OUTCOMES = new Set<ReviewHistoryEntry["outcome"]>([
+  "keep",
+  "revise",
+  "retire",
+  "supersede",
 ]);
 
 export function validateDecisions(
@@ -73,6 +87,7 @@ function collectRecordIssues(
     ...validateStatus(record),
     ...validateChangeType(record),
     ...validateSupersedeLinks(record, records),
+    ...validateReviewHistory(record),
   );
   return issues;
 }
@@ -186,4 +201,85 @@ function collectDuplicateIdIssues(
     }
   }
   return issues;
+}
+
+function validateReviewHistory(record: DecisionRecord): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  const history = record.reviewHistory;
+
+  if (history === undefined) {
+    if (record.lastReviewedAt && !isIsoDate(record.lastReviewedAt)) {
+      issues.push({
+        code: "invalid-review-entry",
+        recordId: record.id,
+        severity: "warning",
+        message: `lastReviewedAt "${record.lastReviewedAt}" is not a valid ISO date (YYYY-MM-DD).`,
+        details: { field: "lastReviewedAt" },
+      });
+    }
+    return issues;
+  }
+
+  if (!Array.isArray(history)) {
+    issues.push({
+      code: "invalid-review-entry",
+      recordId: record.id,
+      severity: "warning",
+      message: "reviewHistory must be an array.",
+      details: { value: history },
+    });
+    return issues;
+  }
+
+  history.forEach((entry, index) => {
+    const problems: string[] = [];
+    if (!entry || typeof entry !== "object") {
+      problems.push("entry missing or malformed");
+    } else {
+      if (!isIsoDate(entry.date)) {
+        problems.push("invalid date");
+      }
+      if (!entry.type || !REVIEW_TYPES.has(entry.type)) {
+        problems.push("invalid type");
+      }
+      if (!entry.outcome || !REVIEW_OUTCOMES.has(entry.outcome)) {
+        problems.push("invalid outcome");
+      }
+    }
+    if (problems.length > 0) {
+      issues.push({
+        code: "invalid-review-entry",
+        recordId: record.id,
+        severity: "warning",
+        message: `Review history entry #${index + 1} is invalid: ${problems.join(
+          ", ",
+        )}.`,
+        details: { index, problems },
+      });
+    }
+  });
+
+  if (record.lastReviewedAt && !isIsoDate(record.lastReviewedAt)) {
+    issues.push({
+      code: "invalid-review-entry",
+      recordId: record.id,
+      severity: "warning",
+      message: `lastReviewedAt "${record.lastReviewedAt}" is not a valid ISO date (YYYY-MM-DD).`,
+      details: { field: "lastReviewedAt" },
+    });
+  }
+
+  return issues;
+}
+
+function isIsoDate(value?: string): boolean {
+  if (typeof value !== "string") {
+    return false;
+  }
+  const trimmed = value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return false;
+  }
+  const parsed = Date.parse(trimmed);
+  return Number.isFinite(parsed);
 }
