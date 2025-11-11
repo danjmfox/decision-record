@@ -67,6 +67,8 @@ Legacy top-level lifecycle verbs remain hidden aliases; the canonical surface is
 
 Lifecycle commands automatically back-fill missing states per [DR--20251103--meta--auto-accept-transitions](decisions-example/meta/DR--20251103--meta--auto-accept-transitions.md). Newly created records intentionally start in `status: "new"` and remain unstaged; the first lifecycle action (`drctl decision draft`, or a higher-level command such as `drctl decision accept`) records the draft/proposed transitions, stages the file if git is enabled, and then applies the requested state. This keeps the git history aligned with the changelog without forcing extra manual steps.
 
+`drctl decision revise`, `drctl decision retire`, and `drctl decision supersede` implicitly log adhoc review entries (visible in `reviewHistory`) so every post-accept change has an audit trail; run `drctl decision review` manually to override the default type/outcome.
+
 ### Decision Index Output
 
 `drctl index` now produces a multi-section Markdown report per [DR--20251110--meta--decision-index-ux](decisions-example/meta/DR--20251110--meta--decision-index-ux.md):
