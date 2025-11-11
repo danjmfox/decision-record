@@ -16,6 +16,9 @@ Maintain quality through small, safe, reversible changes — always covered by t
 
 In particular, look out for these common issues, and refactor code appropriately before claiming completion of the task:
 
+1. Prefer `.at(…)` over `[….length - index]`.
+1. Prefer `String#replaceAll()` over `String#replace()`.
+1. `String.raw` should be used to avoid escaping `\`.
 1. Use `for…of` instead of `.forEach(…)`.
 1. Do not call `Array#push()` multiple times. Use `Array.push(a, b, c)` instead
 1. Avoid Code Duplication: Refactor repeated code into called functions to keep duplication below 3%.

@@ -348,7 +348,7 @@ async function handleDecisionRevise(
   });
   console.log(`📝 ${result.record.id} revised (v${result.record.version})`);
   console.log(`📄 File: ${result.filePath}`);
-  console.log("🧾 Review: adhoc → revise (override via drctl decision review)");
+  logReviewHint("revise");
 }
 
 async function handleDecisionReview(
@@ -460,7 +460,7 @@ async function handleDecisionRetire(
   const result = await retireDecision(id, { ...repoOptions });
   console.log(`🪦 ${result.record.id} marked as retired`);
   console.log(`📄 File: ${result.filePath}`);
-  console.log("🧾 Review: adhoc → retire (override via drctl decision review)");
+  logReviewHint("retire");
 }
 
 async function handleDecisionSupersede(
@@ -474,9 +474,7 @@ async function handleDecisionSupersede(
   console.log(`🔁 ${result.record.id} superseded by ${result.newRecord.id}`);
   console.log(`📄 Updated: ${result.filePath}`);
   console.log(`📄 Updated: ${result.newFilePath}`);
-  console.log(
-    "🧾 Review: adhoc → supersede (override via drctl decision review)",
-  );
+  logReviewHint("supersede");
 }
 
 async function handleGenerateIndex(
@@ -565,6 +563,12 @@ function parseReviewOutcome(value?: string): ReviewOutcome | undefined {
   if (!value) return undefined;
   const normalized = value.trim().toLowerCase();
   return REVIEW_OUTCOME_VALUES.find((entry) => entry === normalized);
+}
+
+function logReviewHint(outcome: string): void {
+  console.log(
+    `🧾 Review: adhoc → ${outcome} (override via drctl decision review)`,
+  );
 }
 
 function normalizeStatuses(
