@@ -112,7 +112,7 @@ export function formatReviewType(
 }
 
 export function escapePipes(value: string): string {
-  return value.replace(/\|/g, "\\|");
+  return value.replaceAll("\\", "\\\\").replaceAll("|", "\\|");
 }
 
 function relativePath(context: RepoContext, record: DecisionRecord): string {
@@ -160,7 +160,7 @@ interface LastReviewResult {
 
 function deriveLastReview(record: DecisionRecord): LastReviewResult {
   if (Array.isArray(record.reviewHistory) && record.reviewHistory.length > 0) {
-    const entry = record.reviewHistory[record.reviewHistory.length - 1];
+    const entry = record.reviewHistory.at(-1);
     if (entry) {
       return { entry, label: entry.date };
     }

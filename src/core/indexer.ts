@@ -337,14 +337,15 @@ function renderReviewHistorySection(records: DecoratedDecision[]): string[] {
     return section;
   }
   for (const entry of withHistory) {
-    section.push(`### ${entry.title}`, "");
-    section.push(
+    const lines = [
+      `### ${entry.title}`,
+      "",
       "| Date | Outcome | Type | Reviewer | Note |",
       "| --- | --- | --- | --- | --- |",
-    );
+    ];
     const history = [...(entry.reviewHistory ?? [])].reverse();
     for (const item of history) {
-      section.push(
+      lines.push(
         `| ${item.date ?? "—"} | ${
           formatReviewOutcome(item) ?? "—"
         } | ${formatReviewType(item.type) ?? "—"} | ${
@@ -352,7 +353,8 @@ function renderReviewHistorySection(records: DecoratedDecision[]): string[] {
         } | ${item.reason ? escapePipes(item.reason) : "—"} |`,
       );
     }
-    section.push("");
+    lines.push("");
+    section.push(...lines);
   }
   return section;
 }

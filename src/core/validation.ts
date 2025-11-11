@@ -204,72 +204,77 @@ function collectDuplicateIdIssues(
 }
 
 function validateReviewHistory(record: DecisionRecord): ValidationIssue[] {
-  const issues: ValidationIssue[] = [];
   const history = record.reviewHistory;
-
-  if (history === undefined) {
-    if (record.lastReviewedAt && !isIsoDate(record.lastReviewedAt)) {
-      issues.push({
-        code: "invalid-review-entry",
-        recordId: record.id,
-        severity: "warning",
+  if (!history) {
+    return record.lastReviewedAt && !isIsoDate(record.lastReviewedAt)
+      ? [
+          buildInvalidReviewIssue(record.id, {
+            message: `lastReviewedAt "${record.lastReviewedAt}" is not a valid ISO date (YYYY-MM-DD).`,
+            details: { field: "lastReviewedAt" },
+          }),
+        ]
+      : [];
+  }
+  if (!Array.isArray(history)) {
+    return [
+      buildInvalidReviewIssue(record.id, {
+        message: "reviewHistory must be an array.",
+        details: { value: history },
+      }),
+    ];
+  }
+  const issues: ValidationIssue[] = [];
+  history.forEach((entry, index) => {
+    const problems = collectReviewEntryProblems(entry);
+    if (problems.length > 0) {
+      issues.push(
+        buildInvalidReviewIssue(record.id, {
+          message: `Review history entry #${index + 1} is invalid: ${problems.join(", ")}.`,
+          details: { index, problems },
+        }),
+      );
+    }
+  });
+  if (record.lastReviewedAt && !isIsoDate(record.lastReviewedAt)) {
+    issues.push(
+      buildInvalidReviewIssue(record.id, {
         message: `lastReviewedAt "${record.lastReviewedAt}" is not a valid ISO date (YYYY-MM-DD).`,
         details: { field: "lastReviewedAt" },
-      });
-    }
-    return issues;
+      }),
+    );
   }
-
-  if (!Array.isArray(history)) {
-    issues.push({
-      code: "invalid-review-entry",
-      recordId: record.id,
-      severity: "warning",
-      message: "reviewHistory must be an array.",
-      details: { value: history },
-    });
-    return issues;
-  }
-
-  for (const [index, entry] of history.entries()) {
-    const problems: string[] = [];
-    if (!entry || typeof entry !== "object") {
-      problems.push("entry missing or malformed");
-    } else {
-      if (!isIsoDate(entry.date)) {
-        problems.push("invalid date");
-      }
-      if (!entry.type || !REVIEW_TYPES.has(entry.type)) {
-        problems.push("invalid type");
-      }
-      if (!entry.outcome || !REVIEW_OUTCOMES.has(entry.outcome)) {
-        problems.push("invalid outcome");
-      }
-    }
-    if (problems.length > 0) {
-      issues.push({
-        code: "invalid-review-entry",
-        recordId: record.id,
-        severity: "warning",
-        message: `Review history entry #${index + 1} is invalid: ${problems.join(
-          ", ",
-        )}.`,
-        details: { index, problems },
-      });
-    }
-  }
-
-  if (record.lastReviewedAt && !isIsoDate(record.lastReviewedAt)) {
-    issues.push({
-      code: "invalid-review-entry",
-      recordId: record.id,
-      severity: "warning",
-      message: `lastReviewedAt "${record.lastReviewedAt}" is not a valid ISO date (YYYY-MM-DD).`,
-      details: { field: "lastReviewedAt" },
-    });
-  }
-
   return issues;
+}
+
+function buildInvalidReviewIssue(
+  recordId: string,
+  payload: Pick<ValidationIssue, "message" | "details">,
+): ValidationIssue {
+  return {
+    code: "invalid-review-entry",
+    recordId,
+    severity: "warning",
+    ...payload,
+  };
+}
+
+function collectReviewEntryProblems(
+  entry: ReviewHistoryEntry | undefined,
+): string[] {
+  if (!entry || typeof entry !== "object") {
+    return ["entry missing or malformed"];
+  }
+  const problems: string[] = [];
+  if (!isIsoDate(entry.date)) {
+    problems.push("invalid date");
+  }
+  if (!entry.type || !REVIEW_TYPES.has(entry.type)) {
+    problems.push("invalid type");
+  }
+  if (!entry.outcome || !REVIEW_OUTCOMES.has(entry.outcome)) {
+    problems.push("invalid outcome");
+  }
+  return problems;
 }
 
 function isIsoDate(value?: string): boolean {
