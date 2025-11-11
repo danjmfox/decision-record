@@ -46,22 +46,39 @@ npm run dev -- --help
 
 ## 🧑‍💻 Everyday Commands
 
-Common lifecycle and repo operations (full explanations live in [docs/project.md](docs/project.md)):
+Commands are grouped by intent; see [docs/project.md](docs/project.md) for deeper context.
+
+### Capture
+
+| Command                              | Purpose                                                   |
+| ------------------------------------ | --------------------------------------------------------- |
+| `drctl decision new <domain> <slug>` | Capture a `new` Decision Record (unstaged until promoted) |
+
+### Lifecycle
+
+| Command                                                                             | Purpose                                                        |
+| ----------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `drctl decision draft / propose / accept / reject / deprecate / retire / supersede` | Advance lifecycle with git-integrated commits                  |
+| `drctl decision correction`                                                         | Apply patch update. Lifecycle state is not changed             |
+| `drctl decision revise`                                                             | Apply a revision (minor version) with optional confidence/note |
+
+### Review & Governance
+
+| Command                                                          | Purpose                                                                 |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `drctl decision review <id> [--type …] [--outcome …] [--note …]` | Record a review event (`reviewHistory`, `lastReviewedAt`, `reviewDate`) |
+| `drctl decision list --status accepted`                          | Inspect records with optional filters                                   |
+| `drctl governance validate [--json]`                             | Run structural checks across a repo                                     |
+
+### Reporting & Repo Management
 
 | Command                                                                                              | Purpose                                                                                                                         |
 | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `drctl decision new <domain> <slug>`                                                                 | Capture a `new` Decision Record (unstaged until promoted)                                                                       |
-| `drctl decision draft / propose / accept / reject / deprecate / retire / supersede`                  | Advance lifecycle with git-integrated commits                                                                                   |
-| `drctl decision correction`                                                                          | Apply patch update. Lifecycle state is not changed                                                                              |
-| `drctl decision revise`                                                                              | revise id with a note …                                                                                                         |
-| `drctl decision review <id> [--type …] [--outcome …] [--note …]`                                     | Record a review event (updates `reviewHistory`, `lastReviewedAt`, and schedules the next review)                                |
-| `drctl decision list --status accepted`                                                              | Inspect records                                                                                                                 |
+| `drctl index [--status <status...>] [--upcoming <days>] [--no-kanban] [--output <file>] [--reviews]` | Generate the dashboard-style Markdown index (summary metrics, review radar, per-domain tables, optional review history, Kanban) |
 | `drctl repo show`                                                                                    | Display resolved repository context                                                                                             |
 | `drctl repo new <alias> <path> [--domain-dir <dir>] [--default]`                                     | Register repositories in `.drctl.yaml`                                                                                          |
 | `drctl repo bootstrap <alias>`                                                                       | Initialise git (auto no-op if already initialised)                                                                              |
 | `drctl config check`                                                                                 | Validate local/global configs via the modular `src/config/` pipeline and warn about missing git                                 |
-| `drctl index [--status <status...>] [--upcoming <days>] [--no-kanban] [--output <file>] [--reviews]` | Generate the dashboard-style Markdown index (summary metrics, review radar, per-domain tables, optional review history, Kanban) |
-| `drctl governance validate [--json]`                                                                 | Run structural checks across a repo                                                                                             |
 
 Legacy top-level lifecycle verbs remain hidden aliases; the canonical surface is `drctl decision …`.
 
