@@ -1,0 +1,60 @@
+---
+id: DR--20251111--tmp--trial-1-dr
+dateCreated: "2025-11-11"
+version: 1.0.1
+status: new
+changeType: revision
+domain: tmp
+slug: trial-1-dr
+changelog:
+  - date: "2025-11-11"
+    note: Initial creation
+  - date: "2025-11-11"
+    note: Updated link references
+sources:
+  - "https://www.google.com"
+lastEdited: "2025-11-11"
+---
+
+# DR--20251111--tmp--trial-1-dr
+
+## 🧭 Context
+
+_Describe the background and circumstances leading to this decision._
+
+## ⚖️ Options Considered
+
+_List the main options or alternatives that were evaluated before making the decision, including why each was accepted or rejected._
+
+| Option | Description | Outcome  | Rationale                      |
+| ------ | ----------- | -------- | ------------------------------ |
+| A      | Do nothing  | Rejected | Insufficient long-term clarity |
+| B      |             |          |                                |
+
+## 🧠 Decision
+
+_State the decision made clearly and succinctly._
+
+## 🪶 Principles
+
+_List the guiding principles or values that influenced this decision._
+
+## 🔁 Lifecycle
+
+_Outline the current lifecycle state and any relevant change types._
+
+## 🧩 Reasoning
+
+_Explain the rationale, trade-offs, and considerations behind the decision._
+
+## 🔄 Next Actions
+
+_Specify the immediate next steps or actions following this decision._
+
+## 🧠 Confidence
+
+_Indicate the confidence level in this decision and any planned reviews._
+
+## 🧾 Changelog
+
+_Summarise notable updates, revisions, or corrections. Each should have a date and note in YAML frontmatter for traceability._
