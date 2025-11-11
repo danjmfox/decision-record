@@ -3,9 +3,9 @@ id: DR--20251111--meta--governance-review-lifecycle
 dateCreated: "2025-11-11"
 dateAccepted: "2025-11-11"
 reviewDate: "2026-11-11"
-version: 1.0.0
+version: 1.0.1
 status: accepted
-changeType: creation
+changeType: correction
 domain: meta
 slug: governance-review-lifecycle
 changelog:
@@ -19,6 +19,8 @@ changelog:
     note: Marked as proposed
   - date: "2025-11-11"
     note: Marked as accepted
+  - date: "2025-11-11"
+    note: Minor correction
 lastEdited: "2025-11-11"
 ---
 
@@ -51,24 +53,30 @@ Adopt an **implicit review model** that keeps lifecycle verbs lean while guarant
 - **YAML schema**
   - Maintain `reviewDate: "YYYY-MM-DD"` as the planning anchor.
   - Add a structured `review_history` array:
-    ```yaml
-    review_history:
-      - date: "YYYY-MM-DD"
-        type: scheduled|adhoc|contextual
-        outcome: keep|revise|retire|supersede
-        reviewer: "<user>"
-        reason: "<string or note>"
-    ```
+
+  ```yaml
+  review_history:
+    - date: "YYYY-MM-DD"
+      type: scheduled|adhoc|contextual
+      outcome: keep|revise|retire|supersede
+      reviewer: "<user>"
+      reason: "<string or note>"
+  ```
+
   - Persist `lastReviewedAt` (mirror of the most recent entry) for simplified filtering and reporting.
+
 - **Configuration**
   - `.drctl.yaml` accepts
-    ```yaml
-    review_policy:
-      default_type: scheduled
-      interval_months: 12
-      warn_before_days: 30
-    ```
-  - Policies define cadence, default review types, and warning windows consumed by the CLI and automation.
+
+```yaml
+review_policy:
+  default_type: scheduled
+  interval_months: 12
+  warn_before_days: 30
+```
+
+- Policies define cadence, default review types, and warning windows consumed by the CLI and automation.
+
 - **Governance & validation**
   - `drctl governance validate --check review_dates` warns when reviews are overdue, `reviewDate` is missing, or lifecycle transitions occur without matching `review_history`.
   - JSON output includes review diagnostics so CI pipelines or n8n flows can react programmatically.
