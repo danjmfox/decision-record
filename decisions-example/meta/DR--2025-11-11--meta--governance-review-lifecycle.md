@@ -4,7 +4,7 @@ dateCreated: "2025-11-11"
 dateAccepted: "2025-11-11"
 reviewDate: "2026-11-11"
 version: 1.0.0
-status: proposed
+status: accepted
 changeType: creation
 domain: meta
 slug: governance-review-lifecycle
@@ -17,5 +17,7 @@ changelog:
     note: Marked as draft
   - date: "2025-11-11"
     note: Marked as proposed
+  - date: "2025-11-11"
+    note: Marked as accepted
 lastEdited: "2025-11-11"
 ---
