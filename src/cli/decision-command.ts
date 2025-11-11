@@ -10,13 +10,18 @@ import {
   proposeDecision,
   rejectDecision,
   retireDecision,
+  reviewDecision,
   reviseDecision,
   supersedeDecision,
   type CreateDecisionOptions,
   type RepoOptions,
 } from "../core/service.js";
 import { generateIndex, type GenerateIndexOptions } from "../core/indexer.js";
-import type { DecisionStatus } from "../core/models.js";
+import type {
+  DecisionStatus,
+  ReviewOutcome,
+  ReviewType,
+} from "../core/models.js";
 import type { RepoContext } from "../config.js";
 
 type RepoActionFactory = <T extends unknown[]>(
@@ -30,6 +35,13 @@ type RepoActionFactory = <T extends unknown[]>(
 interface DecisionCommandOptions {
   program: Command;
   createRepoAction: RepoActionFactory;
+}
+
+interface ReviewCommandOptions {
+  type?: string;
+  outcome?: string;
+  note?: string;
+  reviewer?: string;
 }
 
 const legacyDecisionWarningsShown = new Set<string>();
@@ -121,6 +133,21 @@ export function registerDecisionCommands({
       Number.parseFloat(value),
     )
     .action(decisionAction(handleDecisionRevise));
+
+  decisionCommand
+    .command("review <id>")
+    .description("Record a review event for a decision")
+    .option("--type <value>", "review type (scheduled|adhoc|contextual)")
+    .option(
+      "--outcome <value>",
+      "review outcome (keep|revise|retire|supersede)",
+    )
+    .option("--note <note>", "reason to capture alongside the review")
+    .option(
+      "--reviewer <name>",
+      "override the reviewer metadata (defaults to environment)",
+    )
+    .action(decisionAction(handleDecisionReview));
 
   decisionCommand
     .command("list")
@@ -323,6 +350,39 @@ async function handleDecisionRevise(
   console.log(`📄 File: ${result.filePath}`);
 }
 
+async function handleDecisionReview(
+  repoOptions: RepoOptions & { context: RepoContext },
+  id: string,
+  command: ReviewCommandOptions,
+): Promise<void> {
+  const reviewType = parseReviewType(command.type);
+  const outcome = parseReviewOutcome(command.outcome);
+  const note =
+    typeof command.note === "string" && command.note.trim().length > 0
+      ? command.note
+      : undefined;
+  const reviewer =
+    typeof command.reviewer === "string" && command.reviewer.trim().length > 0
+      ? command.reviewer
+      : undefined;
+
+  const result = await reviewDecision(id, {
+    ...repoOptions,
+    ...(reviewType ? { reviewType } : {}),
+    ...(outcome ? { outcome } : {}),
+    ...(note ? { note } : {}),
+    ...(reviewer ? { reviewer } : {}),
+  });
+
+  console.log(
+    `🧾 ${result.record.id} reviewed (${result.reviewEntry.type} → ${result.reviewEntry.outcome})`,
+  );
+  console.log(`📄 File: ${result.filePath}`);
+  if (result.record.reviewDate) {
+    console.log(`📆 Next review: ${result.record.reviewDate}`);
+  }
+}
+
 function handleDecisionList(
   repoOptions: RepoOptions & { context: RepoContext },
   commandOptions: { status?: string },
@@ -474,6 +534,27 @@ function resolveIndexOptions(command: Command): GenerateIndexOptions {
     options.upcomingDays = upcomingDays;
   }
   return options;
+}
+
+const REVIEW_TYPE_VALUES: ReviewType[] = ["scheduled", "adhoc", "contextual"];
+
+function parseReviewType(value?: string): ReviewType | undefined {
+  if (!value) return undefined;
+  const normalized = value.trim().toLowerCase();
+  return REVIEW_TYPE_VALUES.find((entry) => entry === normalized);
+}
+
+const REVIEW_OUTCOME_VALUES: ReviewOutcome[] = [
+  "keep",
+  "revise",
+  "retire",
+  "supersede",
+];
+
+function parseReviewOutcome(value?: string): ReviewOutcome | undefined {
+  if (!value) return undefined;
+  const normalized = value.trim().toLowerCase();
+  return REVIEW_OUTCOME_VALUES.find((entry) => entry === normalized);
 }
 
 function normalizeStatuses(

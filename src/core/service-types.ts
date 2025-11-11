@@ -1,4 +1,5 @@
 import type { GitMode, RepoContext } from "../config.js";
+import type { ReviewOutcome, ReviewType } from "./models.js";
 import type { GitClient } from "./git.js";
 
 export interface RepoOptions {
@@ -26,4 +27,11 @@ export interface CorrectionOptions extends RepoOptions {
 export interface ReviseOptions extends RepoOptions {
   note?: string;
   confidence?: number;
+}
+
+export interface ReviewOptions extends RepoOptions {
+  reviewType?: ReviewType;
+  outcome?: ReviewOutcome;
+  note?: string;
+  reviewer?: string;
 }

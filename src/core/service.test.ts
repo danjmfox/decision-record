@@ -13,6 +13,7 @@ import {
   deprecateDecision,
   reviseDecision,
   retireDecision,
+  reviewDecision,
   supersedeDecision,
   collectDecisions,
   resolveContext,
@@ -236,6 +237,67 @@ describe("service layer", () => {
         message: `drctl: supersede ${oldDecision.record.id} -> ${newDecision.record.id}`,
       },
     );
+  });
+
+  it("records a review event with defaults and advances review date", async () => {
+    const context = makeContext();
+    context.reviewPolicy = { defaultType: "scheduled", intervalMonths: 3 };
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const creation = createDecision("meta", "pulse-check", { context });
+
+    const reviewed = await reviewDecision(creation.record.id, {
+      context,
+      gitClient,
+      note: "Quarterly check-in",
+    });
+
+    expect(reviewed.reviewEntry).toEqual(
+      expect.objectContaining({
+        type: "scheduled",
+        outcome: "keep",
+        reason: "Quarterly check-in",
+      }),
+    );
+    expect(reviewed.record.lastReviewedAt).toBe("2025-10-30");
+    expect(reviewed.record.reviewHistory).toHaveLength(1);
+    expect(reviewed.record.reviewDate).toBe("2026-01-30");
+
+    expect(gitClient.stageAndCommit).toHaveBeenCalledWith([reviewed.filePath], {
+      cwd: context.root,
+      message: `drctl: review ${creation.record.id}`,
+    });
+  });
+
+  it("captures explicit review types/outcomes and reviewer overrides", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const creation = createDecision("meta", "targeted-review", { context });
+    process.env.DRCTL_REVIEWER = "policy-bot";
+
+    try {
+      const reviewed = await reviewDecision(creation.record.id, {
+        context,
+        gitClient,
+        reviewType: "adhoc",
+        outcome: "revise",
+        reviewer: "team-lead",
+      });
+
+      expect(reviewed.reviewEntry).toEqual(
+        expect.objectContaining({
+          type: "adhoc",
+          outcome: "revise",
+          reviewer: "team-lead",
+        }),
+      );
+      expect(reviewed.record.reviewDate).toBeUndefined();
+    } finally {
+      delete process.env.DRCTL_REVIEWER;
+    }
   });
 
   it("preserves markdown body when lifecycle updates occur", async () => {

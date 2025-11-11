@@ -124,6 +124,7 @@ function buildDefaultServiceMocks(context: RepoContext) {
     retireDecision: vi.fn(),
     supersedeDecision: vi.fn(),
     reviseDecision: vi.fn(),
+    reviewDecision: vi.fn(),
     listAll: vi.fn().mockReturnValue([]),
     resolveContext: vi.fn().mockReturnValue(context),
   };
@@ -198,6 +199,54 @@ describe("cli template-aware flows", () => {
     expect(
       warningMessages.some((message) => message.includes("drctl decision new")),
     ).toBe(true);
+  });
+
+  it("routes decision review with metadata overrides", async () => {
+    const { tempDir, context } = createTempContext("drctl-cli-review-");
+    const recordId = "DR--20250101--meta--review-me";
+    const baseResult = buildDecisionResult(context, recordId);
+    const reviewDecision = vi.fn().mockResolvedValue({
+      ...baseResult,
+      record: {
+        ...baseResult.record,
+        reviewDate: "2025-12-30",
+      },
+      reviewEntry: {
+        date: "2025-10-30",
+        type: "adhoc",
+        outcome: "revise",
+        reviewer: "cli-user",
+        reason: "Adjustment",
+      },
+    });
+    mockService(context, { reviewDecision });
+    const { log: logSpy } = spyConsole();
+
+    await runCli(tempDir, [
+      "decision",
+      "review",
+      recordId,
+      "--type",
+      "adhoc",
+      "--outcome",
+      "revise",
+      "--note",
+      "Adjustment",
+      "--reviewer",
+      "cli-user",
+    ]);
+
+    expect(reviewDecision).toHaveBeenCalledWith(
+      recordId,
+      expect.objectContaining({
+        reviewType: "adhoc",
+        outcome: "revise",
+        note: "Adjustment",
+        reviewer: "cli-user",
+      }),
+    );
+    const logs = collectOutput(logSpy);
+    expect(logs.some((line) => line.includes("Next review"))).toBe(true);
   });
 
   it("routes decision revise with note and confidence options", async () => {
