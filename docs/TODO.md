@@ -43,6 +43,9 @@
    - [ ] Add regression tests covering body preservation and changelog entries for every transition.
    - [ ] Decide whether lifecycle commands should regenerate or remind about repository indexes.
    - [ ] Provide guardrails for manually-authored decision files (lint/doctor command or stronger governance hints when frontmatter is incomplete).
+     - [ ] Add governance lint to ensure `basename === id` and flag duplicate IDs across files.
+     - [ ] Add pre-flight warning in lifecycle commands when multiple files share an id or when template hygiene fails so users know which path was touched.
+     - [ ] Consider a `drctl decision doctor` helper to reconcile filenames/IDs and clean up untracked duplicates.
    - [x] Restructure lifecycle commands under a `drctl decision` subcommand group for clearer CLI organisation (legacy shims emit deprecation warnings).
 
 6. **Reliability & Modernisation (Planned)**
