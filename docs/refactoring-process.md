@@ -16,6 +16,7 @@ Maintain quality through small, safe, reversible changes — always covered by t
 
 In particular, look out for these common issues, and refactor code appropriately before claiming completion of the task:
 
+1. Use `for…of` instead of `.forEach(…)`.
 1. Do not call `Array#push()` multiple times. Use `Array.push(a, b, c)` instead
 1. Avoid Code Duplication: Refactor repeated code into called functions to keep duplication below 3%.
 1. Avoid “publicly writable directory”: use fs.mkdtempSync() instead of "tmp"
