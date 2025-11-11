@@ -203,6 +203,7 @@ dist
 # drctl workspaces
 .drctl.yaml
 .drctl.yml
+decision-examples/tmp # this is for trialling new features in a disposable way.
 decisions/
 work-decisions/
 home-decisions/

@@ -52,4 +52,7 @@ export interface DecisionRecord {
   supersededBy?: string | null;
   tags?: string[];
   templateUsed?: string;
+  sources?: string[];
+  implementedBy?: string[];
+  relatedArtifacts?: string[];
 }

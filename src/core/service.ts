@@ -24,6 +24,8 @@ import type {
   CorrectionOptions,
   ReviseOptions,
   ReviewOptions,
+  LinkOptions,
+  LinkField,
 } from "./service-types.js";
 import { commitLifecycle, commitBatch } from "./git-helpers.js";
 import { resolveTemplateBody, emitTemplateWarnings } from "./templates.js";
@@ -32,7 +34,14 @@ export type {
   CreateDecisionOptions,
   CorrectionOptions,
   ReviseOptions,
+  LinkOptions,
 } from "./service-types.js";
+
+const LINK_FIELDS: LinkField[] = [
+  "sources",
+  "implementedBy",
+  "relatedArtifacts",
+];
 
 export interface DecisionWriteResult {
   record: DecisionRecord;
@@ -363,6 +372,38 @@ export async function reviseDecision(
   return { record, filePath, context };
 }
 
+export async function linkDecision(
+  id: string,
+  options: LinkOptions = {},
+): Promise<DecisionWriteResult> {
+  const context = ensureContext(options);
+  const workingOptions = withContext(options, context);
+  const record = loadDecision(context, id);
+  const add = options.add ?? {};
+  const remove = options.remove ?? {};
+  const updated = applyLinkMutations(record, add, remove);
+  if (!updated) {
+    throw new Error(
+      "No link updates provided. Use --source/--impl/--related or removal flags to change references.",
+    );
+  }
+  const today = currentIsoDate();
+  record.lastEdited = today;
+  record.changeType = "revision";
+  if (!options.skipVersion) {
+    record.version = bumpVersion(record.version, "patch");
+  }
+  const changelog = record.changelog ?? [];
+  changelog.push({
+    date: today,
+    note: options.note ?? "Updated link references",
+  });
+  record.changelog = changelog;
+  const filePath = saveDecision(context, record);
+  await commitLifecycle(context, workingOptions, filePath, "link", record.id);
+  return { record, filePath, context };
+}
+
 export async function reviewDecision(
   id: string,
   options: ReviewOptions = {},
@@ -482,6 +523,58 @@ function appendReviewMetadata(
     record.reviewDate = nextReview;
   }
   return reviewEntry;
+}
+
+function applyLinkMutations(
+  record: DecisionRecord,
+  add: Partial<Record<LinkField, string[]>>,
+  remove: Partial<Record<LinkField, string[]>>,
+): boolean {
+  let changed = false;
+  const linkRecord = record as Pick<DecisionRecord, LinkField>;
+  for (const field of LINK_FIELDS) {
+    const additions = normalizeLinkValues(add[field]);
+    const removals = normalizeLinkValues(remove[field]);
+    if (additions.length === 0 && removals.length === 0) {
+      continue;
+    }
+    const current = [...(linkRecord[field] ?? [])];
+    let next = current.filter((entry) => {
+      const toRemove = removals.includes(entry);
+      if (toRemove) {
+        changed = true;
+      }
+      return !toRemove;
+    });
+    for (const value of additions) {
+      if (!next.includes(value)) {
+        next.push(value);
+        changed = true;
+      }
+    }
+    if (next.length === 0) {
+      if (linkRecord[field]) {
+        delete linkRecord[field];
+      }
+    } else {
+      linkRecord[field] = next;
+    }
+  }
+  return changed;
+}
+
+function normalizeLinkValues(values?: string[]): string[] {
+  if (!values) return [];
+  const results: string[] = [];
+  for (const raw of values) {
+    if (typeof raw !== "string") continue;
+    const trimmed = raw.trim();
+    if (!trimmed) continue;
+    if (!results.includes(trimmed)) {
+      results.push(trimmed);
+    }
+  }
+  return results;
 }
 
 const DEFAULT_REVIEW_TYPE: ReviewType = "scheduled";

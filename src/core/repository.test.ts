@@ -111,4 +111,27 @@ describe("repository domain handling", () => {
       "DR--20250101--personal--hydrate",
     ]);
   });
+
+  it("round-trips link metadata arrays", () => {
+    const cwd = makeTempDir();
+    const repoRoot = path.join(cwd, "repo");
+    fs.mkdirSync(repoRoot, { recursive: true });
+    const configPath = path.join(cwd, ".drctl.yaml");
+    fs.writeFileSync(configPath, `repos:\n  work:\n    path: ./repo\n`);
+
+    const context = resolveRepoContext({ cwd, repoFlag: "work" });
+    const record = createRecord("meta", "value-stream-links");
+    record.sources = ["obsidian://vault/Meetings/2025-10-21"];
+    record.implementedBy = [
+      "https://github.com/danjmfox/decision-record/pull/123",
+    ];
+    record.relatedArtifacts = ["chat:Dave", "incident:INC-1234"];
+
+    saveDecision(context, record, "body");
+    const loaded = loadDecision(context, record.id);
+
+    expect(loaded.sources).toEqual(record.sources);
+    expect(loaded.implementedBy).toEqual(record.implementedBy);
+    expect(loaded.relatedArtifacts).toEqual(record.relatedArtifacts);
+  });
 });

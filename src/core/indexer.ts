@@ -15,6 +15,8 @@ import {
   linkFor,
   escapePipes,
   parseDate,
+  countLinkMetadata,
+  type LinkCounts,
 } from "./indexer.helpers.js";
 
 const STATUS_ORDER: DecisionStatus[] = [
@@ -135,6 +137,7 @@ function renderSummarySection(
   recentLimit: number,
 ): string[] {
   const domainCount = new Set(records.map((item) => item.record.domain)).size;
+  const linkTotals = aggregateLinkCounts(records);
   const summary: string[] = [
     "## Summary",
     "",
@@ -144,6 +147,7 @@ function renderSummarySection(
       ? `| Decisions | ${records.length} |`
       : `| Decisions | ${records.length} / ${totalRecords} |`,
     `| Domains | ${domainCount} |`,
+    `| Links (S/I/R) | ${formatLinkTotals(linkTotals)} |`,
     "",
     "### Status Counts",
     "",
@@ -259,8 +263,8 @@ function renderDomainCatalogueSection(records: DecoratedDecision[]): string[] {
       ),
     );
     section.push(
-      "| Decision | Status | Version | Change | Accepted/Created | Last Edited | Next Review | Last Outcome | Confidence | Tags | Lineage |",
-      "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+      "| Decision | Status | Version | Change | Accepted/Created | Last Edited | Next Review | Last Outcome | Confidence | Links (S/I/R) | Tags | Lineage |",
+      "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     );
     for (const entry of entries) {
       section.push(
@@ -274,6 +278,7 @@ function renderDomainCatalogueSection(records: DecoratedDecision[]): string[] {
           entry.reviewDateLabel ?? "—",
           entry.lastReviewOutcome ?? "—",
           formatConfidence(entry.record.confidence) ?? "—",
+          formatLinkTriple(entry.record),
           formatTags(entry.record.tags),
           formatLineage(entry.record),
         ].join(" | ") + " |",
@@ -283,6 +288,39 @@ function renderDomainCatalogueSection(records: DecoratedDecision[]): string[] {
   }
 
   return section;
+}
+
+function aggregateLinkCounts(records: DecoratedDecision[]): LinkCounts {
+  return records.reduce<LinkCounts>(
+    (totals, entry) => {
+      const counts = countLinkMetadata(entry.record);
+      totals.sources += counts.sources;
+      totals.implementedBy += counts.implementedBy;
+      totals.relatedArtifacts += counts.relatedArtifacts;
+      return totals;
+    },
+    { sources: 0, implementedBy: 0, relatedArtifacts: 0 },
+  );
+}
+
+function formatLinkTotals(counts: LinkCounts): string {
+  return `${counts.sources} / ${counts.implementedBy} / ${counts.relatedArtifacts}`;
+}
+
+function formatLinkTriple(record: DecisionRecord): string {
+  return formatLinkTotals(countLinkMetadata(record));
+}
+
+function formatKanbanLinkSummary(record: DecisionRecord): string | undefined {
+  const counts = countLinkMetadata(record);
+  if (
+    counts.sources === 0 &&
+    counts.implementedBy === 0 &&
+    counts.relatedArtifacts === 0
+  ) {
+    return undefined;
+  }
+  return `Inputs:${counts.sources} · Outputs:${counts.implementedBy} · Context:${counts.relatedArtifacts}`;
 }
 
 function renderKanbanSection(records: DecoratedDecision[]): string[] {
@@ -313,10 +351,13 @@ function renderKanbanSection(records: DecoratedDecision[]): string[] {
       section.push("- _None_");
     } else {
       for (const entry of entries) {
+        const linkSummary = formatKanbanLinkSummary(entry.record);
         section.push(
           `- ${linkFor(entry)} — ${entry.record.domain} (v${
             entry.record.version
-          }, updated ${entry.lastActivityLabel ?? "—"})`,
+          }, updated ${entry.lastActivityLabel ?? "—"})${
+            linkSummary ? ` — Links: ${linkSummary}` : ""
+          }`,
         );
       }
     }

@@ -35,3 +35,12 @@ export interface ReviewOptions extends RepoOptions {
   note?: string;
   reviewer?: string;
 }
+
+export type LinkField = "sources" | "implementedBy" | "relatedArtifacts";
+
+export interface LinkOptions extends RepoOptions {
+  add?: Partial<Record<LinkField, string[]>>;
+  remove?: Partial<Record<LinkField, string[]>>;
+  note?: string;
+  skipVersion?: boolean;
+}

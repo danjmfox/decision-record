@@ -65,6 +65,12 @@ describe("generateIndex", () => {
       changeType: "correction",
       tags: ["governance"],
       supersedes: "DR--20250101--meta--old-idx",
+      sources: ["obsidian://vault/Meetings/2025-10-21"],
+      implementedBy: [
+        "https://github.com/example/repo/pull/42",
+        "policy://runbooks/value-stream",
+      ],
+      relatedArtifacts: ["incident:INC-42"],
       reviewHistory: [
         {
           date: "2025-02-01",
@@ -98,6 +104,7 @@ describe("generateIndex", () => {
       /\[Alpha Index Overview]\(\.\/meta\/DR--20250101--meta--index-overview\.md\)/,
     );
     expect(content).toMatch(/governance/);
+    expect(content).toContain("| Links (S\/I\/R) | 1 / 2 / 1 |");
     expect(content).toContain("## Domain Catalogues");
     expect(content).toContain("### meta");
     expect(content).toMatch(
@@ -108,6 +115,7 @@ describe("generateIndex", () => {
     expect(content).toContain("## Status Kanban");
     expect(content).toContain("### Accepted");
     expect(content).toContain("### Draft");
+    expect(content).toContain("Links: Inputs:1 · Outputs:2 · Context:1");
     expect(content).toContain("overdue");
     expect(content).toContain("Last Outcome");
     expect(() => generateIndex(context)).not.toThrow();

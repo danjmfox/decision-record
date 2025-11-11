@@ -6,6 +6,7 @@ import {
   createDecision,
   deprecateDecision,
   draftDecision,
+  linkDecision,
   listAll,
   proposeDecision,
   rejectDecision,
@@ -23,6 +24,7 @@ import type {
   ReviewType,
 } from "../core/models.js";
 import type { RepoContext } from "../config.js";
+import type { LinkField } from "../core/service-types.js";
 
 type RepoActionFactory = <T extends unknown[]>(
   fn: (
@@ -44,6 +46,21 @@ interface ReviewCommandOptions {
   reviewer?: string;
 }
 
+interface LinkCommandOptions {
+  source?: string[];
+  impl?: string[];
+  related?: string[];
+  remove?: string[];
+  note?: string;
+  skipVersion?: boolean;
+}
+
+const LINK_FIELD_ORDER: LinkField[] = [
+  "sources",
+  "implementedBy",
+  "relatedArtifacts",
+];
+
 const legacyDecisionWarningsShown = new Set<string>();
 
 function emitLegacyDecisionWarning(legacyName: string, newPath: string): void {
@@ -53,6 +70,12 @@ function emitLegacyDecisionWarning(legacyName: string, newPath: string): void {
   console.warn(
     `⚠️ The "${legacyName}" command is moving under "${newPath}". Update scripts to use the new form; this top-level command will be removed in a future release.`,
   );
+}
+
+function collectValues(value: string, previous?: string[]): string[] {
+  const bucket = previous ?? [];
+  bucket.push(value);
+  return bucket;
 }
 
 type DecisionHandler<T extends unknown[]> = (
@@ -133,6 +156,27 @@ export function registerDecisionCommands({
       Number.parseFloat(value),
     )
     .action(decisionAction(handleDecisionRevise));
+
+  decisionCommand
+    .command("link <id>")
+    .description(
+      "Add or remove decision links (sources, implementations, related artifacts)",
+    )
+    .option("--source <value>", "Add a source reference", collectValues)
+    .option("--impl <value>", "Add an implementation reference", collectValues)
+    .option(
+      "--related <value>",
+      "Add a related artifact reference",
+      collectValues,
+    )
+    .option(
+      "--remove <entry>",
+      "Remove a reference using <field>:<value>",
+      collectValues,
+    )
+    .option("--note <note>", "changelog note to record")
+    .option("--skip-version", "Skip the default patch version bump")
+    .action(decisionAction(handleDecisionLink));
 
   decisionCommand
     .command("review <id>")
@@ -351,6 +395,31 @@ async function handleDecisionRevise(
   logReviewHint("revise");
 }
 
+async function handleDecisionLink(
+  repoOptions: RepoOptions & { context: RepoContext },
+  id: string,
+  command: LinkCommandOptions,
+): Promise<void> {
+  const addPayload = buildLinkPayload(command);
+  const removePayload = parseRemovalEntries(command.remove ?? []);
+  if (!hasLinkChanges(addPayload, removePayload)) {
+    throw new Error(
+      "Provide at least one --source/--impl/--related or --remove <field:value> flag.",
+    );
+  }
+  const result = await linkDecision(id, {
+    ...repoOptions,
+    ...(Object.keys(addPayload).length > 0 ? { add: addPayload } : {}),
+    ...(Object.keys(removePayload).length > 0 ? { remove: removePayload } : {}),
+    ...(command.note ? { note: command.note } : {}),
+    skipVersion: Boolean(command.skipVersion),
+  });
+  console.log(
+    `🔗 ${result.record.id} links updated (v${result.record.version})`,
+  );
+  console.log(`📄 File: ${result.filePath}`);
+}
+
 async function handleDecisionReview(
   repoOptions: RepoOptions & { context: RepoContext },
   id: string,
@@ -542,6 +611,88 @@ function resolveIndexOptions(command: Command): GenerateIndexOptions {
     options.includeReviewDetails = true;
   }
   return options;
+}
+
+type LinkPayload = Partial<Record<LinkField, string[]>>;
+
+const LINK_FIELD_ALIAS_MAP: Record<string, LinkField> = {
+  source: "sources",
+  sources: "sources",
+  input: "sources",
+  impl: "implementedBy",
+  implementation: "implementedBy",
+  implementations: "implementedBy",
+  implemented: "implementedBy",
+  implementedby: "implementedBy",
+  output: "implementedBy",
+  outputs: "implementedBy",
+  related: "relatedArtifacts",
+  artifact: "relatedArtifacts",
+  artifacts: "relatedArtifacts",
+  context: "relatedArtifacts",
+  reference: "relatedArtifacts",
+};
+
+function buildLinkPayload(command: LinkCommandOptions): LinkPayload {
+  const payload: LinkPayload = {};
+  if (command.source && command.source.length > 0) {
+    payload.sources = command.source;
+  }
+  if (command.impl && command.impl.length > 0) {
+    payload.implementedBy = command.impl;
+  }
+  if (command.related && command.related.length > 0) {
+    payload.relatedArtifacts = command.related;
+  }
+  return payload;
+}
+
+function parseRemovalEntries(entries: string[]): LinkPayload {
+  if (!entries || entries.length === 0) return {};
+  const payload: LinkPayload = {};
+  for (const entry of entries) {
+    if (typeof entry !== "string") continue;
+    const trimmed = entry.trim();
+    if (!trimmed) continue;
+    const separatorIndex = trimmed.indexOf(":");
+    if (separatorIndex === -1) {
+      throw new Error(
+        `Invalid --remove value "${entry}". Use <field>:<value>.`,
+      );
+    }
+    const fieldToken = trimmed.slice(0, separatorIndex);
+    const value = trimmed.slice(separatorIndex + 1).trim();
+    if (!value) {
+      throw new Error(
+        `Invalid --remove value "${entry}". Provide a non-empty value after ':'.`,
+      );
+    }
+    const normalizedField = normalizeLinkField(fieldToken);
+    if (!normalizedField) {
+      throw new Error(
+        `Unknown link field "${fieldToken}". Use source, impl, or related.`,
+      );
+    }
+    const bucket = payload[normalizedField] ?? [];
+    bucket.push(value);
+    payload[normalizedField] = bucket;
+  }
+  return payload;
+}
+
+function normalizeLinkField(value: string): LinkField | undefined {
+  const normalized = value.trim().toLowerCase();
+  return LINK_FIELD_ALIAS_MAP[normalized];
+}
+
+function hasLinkChanges(add: LinkPayload, remove: LinkPayload): boolean {
+  return LINK_FIELD_ORDER.some((field) => {
+    const additions = add[field];
+    const removals = remove[field];
+    return Boolean(
+      (additions && additions.length > 0) || (removals && removals.length > 0),
+    );
+  });
 }
 
 const REVIEW_TYPE_VALUES: ReviewType[] = ["scheduled", "adhoc", "contextual"];

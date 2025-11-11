@@ -11,6 +11,7 @@ import {
   createDecision,
   draftDecision,
   deprecateDecision,
+  linkDecision,
   reviseDecision,
   retireDecision,
   reviewDecision,
@@ -430,5 +431,93 @@ describe("service layer", () => {
         record: expect.objectContaining(created.record),
       }),
     ]);
+  });
+
+  it("adds link references with a patch bump", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const creation = createDecision("meta", "link-test", { context });
+
+    const result = await linkDecision(creation.record.id, {
+      context,
+      gitClient,
+      add: {
+        sources: ["obsidian://vault/Meetings/2025-10-21"],
+        implementedBy: ["https://github.com/example/repo/pull/42"],
+        relatedArtifacts: ["incident:INC-42", "dashboard:decisions"],
+      },
+      note: "Documented links",
+    });
+
+    expect(result.record.version).toBe("1.0.1");
+    expect(result.record.changeType).toBe("revision");
+    expect(result.record.sources).toEqual([
+      "obsidian://vault/Meetings/2025-10-21",
+    ]);
+    expect(result.record.implementedBy).toEqual([
+      "https://github.com/example/repo/pull/42",
+    ]);
+    expect(result.record.relatedArtifacts).toEqual([
+      "incident:INC-42",
+      "dashboard:decisions",
+    ]);
+    expect(result.record.changelog?.at(-1)).toEqual({
+      date: "2025-10-30",
+      note: "Documented links",
+    });
+
+    expect(gitClient.stageAndCommit).toHaveBeenCalledWith([result.filePath], {
+      cwd: context.root,
+      message: `drctl: link ${creation.record.id}`,
+    });
+  });
+
+  it("removes link references without bumping version when requested", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const creation = createDecision("meta", "link-remove", { context });
+
+    await linkDecision(creation.record.id, {
+      context,
+      gitClient,
+      add: {
+        sources: ["chat:Dave"],
+        relatedArtifacts: ["dashboard:decisions"],
+      },
+    });
+
+    const second = await linkDecision(creation.record.id, {
+      context,
+      gitClient,
+      remove: {
+        sources: ["chat:Dave"],
+        relatedArtifacts: ["dashboard:decisions"],
+      },
+      skipVersion: true,
+    });
+
+    expect(second.record.version).toBe("1.0.1");
+    expect(second.record.sources).toBeUndefined();
+    expect(second.record.relatedArtifacts).toBeUndefined();
+    expect(second.record.changelog?.at(-1)).toEqual({
+      date: "2025-10-30",
+      note: "Updated link references",
+    });
+  });
+
+  it("throws if no link changes are provided", async () => {
+    const context = makeContext();
+    const gitClient = {
+      stageAndCommit: vi.fn().mockResolvedValue(undefined),
+    };
+    const creation = createDecision("meta", "link-noop", { context });
+
+    await expect(
+      linkDecision(creation.record.id, { context, gitClient }),
+    ).rejects.toThrow(/No link updates provided/);
   });
 });

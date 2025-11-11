@@ -175,4 +175,25 @@ describe("governance validation (per-repo)", () => {
       ]),
     );
   });
+
+  it("validates link metadata collections", () => {
+    const record: DecisionRecord = {
+      ...base,
+      id: "DR--20240101--meta--links",
+      sources: ["", "obsidian://vault/Meetings/2025-10-21"],
+      implementedBy: "not-an-array" as unknown as string[],
+      relatedArtifacts: ["", "incident:INC-42"],
+    };
+    const result = issues([record]);
+    const linkIssues = result.filter(
+      (issue) => issue.code === "invalid-link-entry",
+    );
+    expect(linkIssues.length).toBeGreaterThanOrEqual(2);
+    expect(linkIssues[0]).toEqual(
+      expect.objectContaining({
+        severity: "warning",
+        recordId: "DR--20240101--meta--links",
+      }),
+    );
+  });
 });
