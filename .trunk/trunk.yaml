@@ -35,9 +35,15 @@ actions:
     - trunk-check-pre-push
     - trunk-fmt-pre-commit
     - trunk-upgrade-available
-  #   - commitlint-pre-commit
-
-  # definitions:
-  #   - id: commitlint-pre-commit
-  #     trigger: pre-commit
-  #     run: npx commitlint --edit "$1"
+  definitions:
+    - id: prevent-main-commits
+      triggers:
+        - git_hooks: [pre-commit]
+      display_name: Block direct commits to main
+      description: Prevent direct commits to 'main' branch; feature branch required.
+      run: |
+        branch=$(git rev-parse --abbrev-ref HEAD)
+        if [ "$branch" = "main" ]; then
+          echo "❌ Direct commits to 'main' are blocked. Please create a feature branch."
+          exit 1
+        fi
