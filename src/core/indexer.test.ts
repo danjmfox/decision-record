@@ -104,7 +104,7 @@ describe("generateIndex", () => {
       /\[Alpha Index Overview]\(\.\/meta\/DR--20250101--meta--index-overview\.md\)/,
     );
     expect(content).toMatch(/governance/);
-    expect(content).toContain("| Links (S\/I\/R) | 1 / 2 / 1 |");
+    expect(content).toContain("| Links (S/I/R) | 1 / 2 / 1 |");
     expect(content).toContain("## Domain Catalogues");
     expect(content).toContain("### meta");
     expect(content).toMatch(

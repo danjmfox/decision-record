@@ -1,40 +1,12 @@
-import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { setupCliTestEnv } from "./test-helpers.js";
 
 describe("correction command aliases", () => {
-  const originalArgv = process.argv.slice();
-  const originalCwd = process.cwd();
-  const tempDirs: string[] = [];
-  let stderrSpy: ReturnType<typeof vi.spyOn> | undefined;
-
-  afterEach(() => {
-    vi.resetModules();
-    vi.clearAllMocks();
-    process.argv = originalArgv.slice();
-    process.chdir(originalCwd);
-    for (const dir of tempDirs.splice(0, tempDirs.length)) {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-    stderrSpy?.mockRestore();
-    stderrSpy = undefined;
-  });
+  const env = setupCliTestEnv();
 
   it("routes `drctl correct` to the correction handler", async () => {
-    const tempDir = fs.mkdtempSync(
-      path.join(os.tmpdir(), "drctl-correct-alias-"),
-    );
-    tempDirs.push(tempDir);
-
-    const context = {
-      root: tempDir,
-      name: "test",
-      source: "cli" as const,
-      domainMap: {},
-      gitMode: "disabled" as const,
-      gitModeSource: "detected" as const,
-    };
+    const { context, tempDir } = env.createContext("drctl-correct-alias-");
 
     const correctionSpy = vi.fn().mockResolvedValue({
       record: {
@@ -65,9 +37,8 @@ describe("correction command aliases", () => {
     }));
 
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    stderrSpy = vi
-      .spyOn(process.stderr, "write")
-      .mockImplementation(() => true);
+    env.registerSpy(logSpy);
+    env.mockStderr();
     process.argv = [
       "node",
       "drctl",
@@ -85,6 +56,6 @@ describe("correction command aliases", () => {
     expect(optionsArg?.note).toBe("Alias test");
     expect(optionsArg?.context).toEqual(context);
 
-    logSpy.mockRestore();
+    // env reset restores spies
   });
 });

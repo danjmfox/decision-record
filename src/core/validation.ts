@@ -266,7 +266,8 @@ function validateLinkCollections(record: DecisionRecord): ValidationIssue[] {
       );
       continue;
     }
-    value.forEach((entry, index) => {
+    for (let index = 0; index < value.length; index += 1) {
+      const entry = value[index];
       if (typeof entry !== "string" || entry.trim().length === 0) {
         issues.push(
           buildLinkIssue(
@@ -280,7 +281,7 @@ function validateLinkCollections(record: DecisionRecord): ValidationIssue[] {
           ),
         );
       }
-    });
+    }
   }
   return issues;
 }

@@ -1,38 +1,12 @@
-import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { setupCliTestEnv } from "./test-helpers.js";
 
 describe("decision link command", () => {
-  const originalArgv = process.argv.slice();
-  const originalCwd = process.cwd();
-  const tempDirs: string[] = [];
-  let stderrSpy: ReturnType<typeof vi.spyOn> | undefined;
-
-  afterEach(() => {
-    vi.resetModules();
-    vi.clearAllMocks();
-    process.argv = originalArgv.slice();
-    process.chdir(originalCwd);
-    for (const dir of tempDirs.splice(0, tempDirs.length)) {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-    stderrSpy?.mockRestore();
-    stderrSpy = undefined;
-  });
+  const env = setupCliTestEnv();
 
   it("passes link additions and removals to the service layer", async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "drctl-link-"));
-    tempDirs.push(tempDir);
-
-    const context = {
-      root: tempDir,
-      name: "work",
-      source: "cli" as const,
-      domainMap: {},
-      gitMode: "disabled" as const,
-      gitModeSource: "detected" as const,
-    };
+    const { context, tempDir } = env.createContext("drctl-link-");
 
     const linkSpy = vi.fn().mockResolvedValue({
       record: {
@@ -69,9 +43,8 @@ describe("decision link command", () => {
     }));
 
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    stderrSpy = vi
-      .spyOn(process.stderr, "write")
-      .mockImplementation(() => true);
+    env.registerSpy(logSpy);
+    env.mockStderr();
 
     process.argv = [
       "node",
@@ -112,6 +85,6 @@ describe("decision link command", () => {
     expect(optionsArg?.note).toBe("Documented links");
     expect(optionsArg?.context).toEqual(context);
 
-    logSpy.mockRestore();
+    // env reset restores spies
   });
 });
