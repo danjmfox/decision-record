@@ -10,7 +10,7 @@ The CLI enables:
 - Multi-repo configuration (`work`, `home`, etc.) backed by the modular `src/config/` stack
 - Modular CLI surfaces (decision, repo, config, governance) that share a single bootstrap in `src/cli/index.ts`
 - Dashboard-style `drctl index` output with summary metrics, review radar, per-domain catalogues, and Kanban groupings (see DR--20251110--meta--decision-index-ux)
-- Embedded review metadata (`reviewHistory`, `lastReviewedAt`, repo-level `review_policy`) so governance automation can surface cadence and outcomes without external systems
+- Embedded review metadata (`reviewHistory`, `lastReviewedAt`, repo-level `review_policy`) so governance automation can surface cadence and outcomes without external systems. Lifecycle commands such as `revise`, `retire`, and `supersede` automatically append review entries so every transition carries an audit trail.
 - Auto-promotion of lifecycle states: commands like `drctl decision accept` back-fill missing transitions (including legacy `status: "new"`) so changelog history stays complete (see DR--20251103--meta--auto-accept-transitions)
 - Clear separation between app (public) and personal decision data (private)
 - Calm, transparent, systemic collaboration between human and AI
