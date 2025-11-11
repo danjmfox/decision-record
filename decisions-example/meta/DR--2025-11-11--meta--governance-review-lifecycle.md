@@ -4,8 +4,8 @@ dateCreated: "2025-11-11"
 dateAccepted: "2025-11-11"
 reviewDate: "2026-11-11"
 version: 1.0.0
-status: accepted
-changeType: creation
+status: retired
+changeType: retirement
 domain: meta
 slug: governance-review-lifecycle
 changelog:
@@ -19,5 +19,7 @@ changelog:
     note: Marked as proposed
   - date: "2025-11-11"
     note: Marked as accepted
+  - date: "2025-11-11"
+    note: Marked as retired
 lastEdited: "2025-11-11"
 ---
