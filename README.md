@@ -54,6 +54,7 @@ Common lifecycle and repo operations (full explanations live in [docs/project.md
 | `drctl decision draft / propose / accept / reject / deprecate / retire / supersede`      | Advance lifecycle with git-integrated commits                                                          |
 | `drctl decision correction`                                                              | Apply patch update. Lifecycle state is not changed                                                     |
 | `drctl decision revise`                                                                  | revise id with a note …                                                                                |
+| `drctl decision review <id> [--type …] [--outcome …] [--note …]`                         | Record a review event (updates `reviewHistory`, `lastReviewedAt`, and schedules the next review)       |
 | `drctl decision list --status accepted`                                                  | Inspect records                                                                                        |
 | `drctl repo show`                                                                        | Display resolved repository context                                                                    |
 | `drctl repo new <alias> <path> [--domain-dir <dir>] [--default]`                         | Register repositories in `.drctl.yaml`                                                                 |

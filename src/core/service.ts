@@ -1,7 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
-import type { DecisionRecord, DecisionStatus } from "./models.js";
+import type {
+  DecisionRecord,
+  DecisionStatus,
+  ReviewHistoryEntry,
+  ReviewOutcome,
+  ReviewType,
+} from "./models.js";
 import {
   saveDecision,
   loadDecision,
@@ -17,6 +23,7 @@ import type {
   RepoOptions,
   CorrectionOptions,
   ReviseOptions,
+  ReviewOptions,
 } from "./service-types.js";
 import { commitLifecycle, commitBatch } from "./git-helpers.js";
 import { resolveTemplateBody, emitTemplateWarnings } from "./templates.js";
@@ -36,6 +43,10 @@ export interface DecisionWriteResult {
 export interface SupersedeResult extends DecisionWriteResult {
   newRecord: DecisionRecord;
   newFilePath: string;
+}
+
+export interface ReviewDecisionResult extends DecisionWriteResult {
+  reviewEntry: ReviewHistoryEntry;
 }
 
 export function createDecision(
@@ -348,6 +359,51 @@ export async function reviseDecision(
   return { record, filePath, context };
 }
 
+export async function reviewDecision(
+  id: string,
+  options: ReviewOptions = {},
+): Promise<ReviewDecisionResult> {
+  const context = ensureContext(options);
+  const workingOptions = withContext(options, context);
+  const record = loadDecision(context, id);
+  const today = currentIsoDate();
+  const reviewType = resolveReviewTypeOption(
+    options.reviewType,
+    context.reviewPolicy,
+  );
+  const reviewOutcome = resolveReviewOutcomeOption(options.outcome);
+  const reviewEntry: ReviewHistoryEntry = {
+    date: today,
+    type: reviewType,
+    outcome: reviewOutcome,
+  };
+  const reviewer = resolveReviewer(options.reviewer);
+  if (reviewer) {
+    reviewEntry.reviewer = reviewer;
+  }
+  if (options.note) {
+    reviewEntry.reason = options.note;
+  }
+
+  const history = record.reviewHistory ? [...record.reviewHistory] : [];
+  history.push(reviewEntry);
+  record.reviewHistory = history;
+  record.lastReviewedAt = today;
+
+  const extendedReviewDate = computeNextReviewDate(
+    today,
+    reviewOutcome,
+    context.reviewPolicy,
+  );
+  if (extendedReviewDate) {
+    record.reviewDate = extendedReviewDate;
+  }
+
+  const filePath = saveDecision(context, record);
+  await commitLifecycle(context, workingOptions, filePath, "review", record.id);
+  return { record, filePath, context, reviewEntry };
+}
+
 export function listAll(
   status?: string,
   options: RepoOptions = {},
@@ -387,6 +443,67 @@ function ensureContext(options: RepoOptions): RepoContext {
 
 export function resolveContext(options: RepoOptions = {}): RepoContext {
   return ensureContext(options);
+}
+
+const DEFAULT_REVIEW_TYPE: ReviewType = "scheduled";
+const DEFAULT_REVIEW_OUTCOME: ReviewOutcome = "keep";
+
+function resolveReviewTypeOption(
+  explicit: ReviewType | undefined,
+  policy?: RepoContext["reviewPolicy"],
+): ReviewType {
+  if (explicit) return explicit;
+  if (policy?.defaultType) return policy.defaultType;
+  return DEFAULT_REVIEW_TYPE;
+}
+
+function resolveReviewOutcomeOption(
+  explicit: ReviewOutcome | undefined,
+): ReviewOutcome {
+  return explicit ?? DEFAULT_REVIEW_OUTCOME;
+}
+
+function computeNextReviewDate(
+  currentDate: string,
+  outcome: ReviewOutcome,
+  policy?: RepoContext["reviewPolicy"],
+): string | undefined {
+  const months = policy?.intervalMonths;
+  if (!months || !Number.isFinite(months) || months <= 0) {
+    return undefined;
+  }
+  if (outcome === "retire" || outcome === "supersede") {
+    return undefined;
+  }
+  return addMonths(currentDate, months);
+}
+
+function addMonths(dateString: string, months: number): string {
+  const date = new Date(`${dateString}T00:00:00Z`);
+  const copy = new Date(date.getTime());
+  copy.setUTCMonth(copy.getUTCMonth() + months);
+  return copy.toISOString().slice(0, 10);
+}
+
+function resolveReviewer(override?: string): string | undefined {
+  const candidates = [
+    override,
+    process.env.DRCTL_REVIEWER,
+    process.env.GIT_AUTHOR_NAME,
+    process.env.GIT_COMMITTER_NAME,
+    process.env.USER,
+    process.env.USERNAME,
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim().length > 0) {
+      return candidate.trim();
+    }
+  }
+  return undefined;
+}
+
+function currentIsoDate(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
 function readVisibleEntries(dir: string): fs.Dirent[] {
