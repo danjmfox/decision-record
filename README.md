@@ -54,11 +54,16 @@ drctl decision new meta architecture-overview
 drctl decision draft DR--20251101--meta--architecture-overview
 drctl decision accept DR--20251101--meta--architecture-overview
 drctl decision index --output docs/DecisionIndex.md
+drctl decision link DR--20251101--meta--architecture-overview \\
+  --source obsidian://vault/Meetings/2025-10-21 \\
+  --impl https://github.com/danjmfox/decision-record/pull/123 \\
+  --related incident:INC-42
 ```
 
 - Pass `--template` for custom Markdown scaffolds and `--confidence` to seed metadata.
 - Git is enabled by default. Use `--no-git` or `DRCTL_GIT=disabled` when working in shared drives; the CLI emits an ℹ️ notice and leaves files unstaged.
 - `drctl governance validate` surfaces structural errors before you trust a repository.
+- `drctl decision link` records sources, implementations, and related artifacts so the index shows link counts (Inputs/Outputs/Context).
 
 ### Everyday commands
 
@@ -86,6 +91,12 @@ Commands are grouped by intent; see [docs/project.md](docs/project.md) for deepe
 | `drctl decision list --status accepted`                          | Inspect records with optional filters                                   |
 | `drctl governance validate [--json]`                             | Run structural checks across a repo                                     |
 
+#### References
+
+| Command                                                                                                    | Purpose                                                                                                 |
+| ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `drctl decision link <id> [--source …] [--impl …] [--related …] [--remove <field:value>] [--skip-version]` | Manage sources (inputs), implementations (outputs), and contextual artifacts with automatic patch bumps |
+
 #### Reporting & Repo hygiene
 
 | Command                                                  | Purpose                                          |
@@ -107,6 +118,7 @@ Use `drctl decision new` + lifecycle commands rather than editing files manually
 - **Map domains and templates** per repo (`defaultDomainDir`, `domains`, `defaultTemplate`) so teams get consistent folder layouts and Markdown scaffolds.
 - **Share configs**: repo commands read from the nearest `.drctl.yaml`, `DRCTL_CONFIG`, or `--config`; see `src/config.ts` for the resolution order captured in the meta DRs.
 - **Validate regularly**: pair lifecycle commands with `drctl governance validate --json` to block malformed frontmatter before PRs merge.
+- **Link inputs and outputs**: use `drctl decision link` to capture sources (idea triggers), implementations (PRs/policies), and related artifacts so audits and indexes show value-stream coverage.
 - **Automate indexes**: run `drctl decision index` post-commit or as part of documentation jobs to refresh the dashboard-style digest defined in DR--20251110.
 
 Refer to [docs/project.md](docs/project.md) for a deeper architectural overview and to [docs/tech-stack.md](docs/tech-stack.md) for the module layout.

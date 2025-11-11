@@ -11,6 +11,7 @@ import {
   createDecision,
   draftDecision,
   deprecateDecision,
+  linkDecision,
   reviseDecision,
   retireDecision,
   reviewDecision,
@@ -18,16 +19,18 @@ import {
   collectDecisions,
   resolveContext,
 } from "./service.js";
-import { makeContext, setupServiceTestEnv } from "./service.test-helpers.js";
+import {
+  makeContext,
+  makeGitClient,
+  setupServiceTestEnv,
+} from "./service.test-helpers.js";
 
 setupServiceTestEnv();
 
 describe("service layer", () => {
   it("applies a correction with a patch version bump", async () => {
     const context = makeContext();
-    const gitClient = {
-      stageAndCommit: vi.fn().mockResolvedValue(undefined),
-    };
+    const gitClient = makeGitClient();
     const creation = createDecision("meta", "typo-fix", { context });
 
     const corrected = await correctionDecision(creation.record.id, {
@@ -71,9 +74,7 @@ describe("service layer", () => {
       gitRoot,
     };
 
-    const gitClient = {
-      stageAndCommit: vi.fn().mockResolvedValue(undefined),
-    };
+    const gitClient = makeGitClient();
 
     const creation = createDecision("meta", "nested-case", { context });
 
@@ -90,9 +91,7 @@ describe("service layer", () => {
 
   it("applies a revision with a minor version bump and metadata update", async () => {
     const context = makeContext();
-    const gitClient = {
-      stageAndCommit: vi.fn().mockResolvedValue(undefined),
-    };
+    const gitClient = makeGitClient();
     const creation = createDecision("meta", "confidence-update", {
       context,
       confidence: 0.4,
@@ -134,9 +133,7 @@ describe("service layer", () => {
 
   it("deprecates a decision and commits via git", async () => {
     const context = makeContext();
-    const gitClient = {
-      stageAndCommit: vi.fn().mockResolvedValue(undefined),
-    };
+    const gitClient = makeGitClient();
     const creation = createDecision("meta", "deprecate-test", { context });
 
     const result = await deprecateDecision(creation.record.id, {
@@ -163,9 +160,7 @@ describe("service layer", () => {
 
   it("retires a decision and commits via git", async () => {
     const context = makeContext();
-    const gitClient = {
-      stageAndCommit: vi.fn().mockResolvedValue(undefined),
-    };
+    const gitClient = makeGitClient();
     const creation = createDecision("meta", "retire-test", { context });
     const filePath = creation.filePath;
     fs.writeFileSync(
@@ -210,9 +205,7 @@ describe("service layer", () => {
 
   it("supersedes a decision, linking the replacement, and commits via git", async () => {
     const context = makeContext();
-    const gitClient = {
-      stageAndCommit: vi.fn().mockResolvedValue(undefined),
-    };
+    const gitClient = makeGitClient();
     const oldDecision = createDecision("meta", "old-decision", { context });
     const newDecision = createDecision("meta", "new-direction", { context });
 
@@ -265,9 +258,7 @@ describe("service layer", () => {
   it("records a review event with defaults and advances review date", async () => {
     const context = makeContext();
     context.reviewPolicy = { defaultType: "scheduled", intervalMonths: 3 };
-    const gitClient = {
-      stageAndCommit: vi.fn().mockResolvedValue(undefined),
-    };
+    const gitClient = makeGitClient();
     const creation = createDecision("meta", "pulse-check", { context });
 
     const reviewed = await reviewDecision(creation.record.id, {
@@ -295,9 +286,7 @@ describe("service layer", () => {
 
   it("captures explicit review types/outcomes and reviewer overrides", async () => {
     const context = makeContext();
-    const gitClient = {
-      stageAndCommit: vi.fn().mockResolvedValue(undefined),
-    };
+    const gitClient = makeGitClient();
     const creation = createDecision("meta", "targeted-review", { context });
     process.env.DRCTL_REVIEWER = "policy-bot";
 
@@ -325,9 +314,7 @@ describe("service layer", () => {
 
   it("preserves markdown body when lifecycle updates occur", async () => {
     const context = makeContext();
-    const gitClient = {
-      stageAndCommit: vi.fn().mockResolvedValue(undefined),
-    };
+    const gitClient = makeGitClient();
     const creation = createDecision("meta", "keep-body", { context });
     const before = matter.read(creation.filePath);
     expect(before.content).toContain("## 🧭 Context");
@@ -430,5 +417,87 @@ describe("service layer", () => {
         record: expect.objectContaining(created.record),
       }),
     ]);
+  });
+
+  it("adds link references with a patch bump", async () => {
+    const context = makeContext();
+    const gitClient = makeGitClient();
+    const creation = createDecision("meta", "link-test", { context });
+
+    const result = await linkDecision(creation.record.id, {
+      context,
+      gitClient,
+      add: {
+        sources: ["obsidian://vault/Meetings/2025-10-21"],
+        implementedBy: ["https://github.com/example/repo/pull/42"],
+        relatedArtifacts: ["incident:INC-42", "dashboard:decisions"],
+      },
+      note: "Documented links",
+    });
+
+    expect(result.record.version).toBe("1.0.1");
+    expect(result.record.changeType).toBe("revision");
+    expect(result.record.sources).toEqual([
+      "obsidian://vault/Meetings/2025-10-21",
+    ]);
+    expect(result.record.implementedBy).toEqual([
+      "https://github.com/example/repo/pull/42",
+    ]);
+    expect(result.record.relatedArtifacts).toEqual([
+      "incident:INC-42",
+      "dashboard:decisions",
+    ]);
+    expect(result.record.changelog?.at(-1)).toEqual({
+      date: "2025-10-30",
+      note: "Documented links",
+    });
+
+    expect(gitClient.stageAndCommit).toHaveBeenCalledWith([result.filePath], {
+      cwd: context.root,
+      message: `drctl: link ${creation.record.id}`,
+    });
+  });
+
+  it("removes link references without bumping version when requested", async () => {
+    const context = makeContext();
+    const gitClient = makeGitClient();
+    const creation = createDecision("meta", "link-remove", { context });
+
+    await linkDecision(creation.record.id, {
+      context,
+      gitClient,
+      add: {
+        sources: ["chat:Dave"],
+        relatedArtifacts: ["dashboard:decisions"],
+      },
+    });
+
+    const second = await linkDecision(creation.record.id, {
+      context,
+      gitClient,
+      remove: {
+        sources: ["chat:Dave"],
+        relatedArtifacts: ["dashboard:decisions"],
+      },
+      skipVersion: true,
+    });
+
+    expect(second.record.version).toBe("1.0.1");
+    expect(second.record.sources).toBeUndefined();
+    expect(second.record.relatedArtifacts).toBeUndefined();
+    expect(second.record.changelog?.at(-1)).toEqual({
+      date: "2025-10-30",
+      note: "Updated link references",
+    });
+  });
+
+  it("throws if no link changes are provided", async () => {
+    const context = makeContext();
+    const gitClient = makeGitClient();
+    const creation = createDecision("meta", "link-noop", { context });
+
+    await expect(
+      linkDecision(creation.record.id, { context, gitClient }),
+    ).rejects.toThrow(/No link updates provided/);
   });
 });

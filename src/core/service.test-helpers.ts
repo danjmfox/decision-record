@@ -39,3 +39,9 @@ export function setupServiceTestEnv(): void {
     }
   });
 }
+
+export function makeGitClient() {
+  return {
+    stageAndCommit: vi.fn().mockResolvedValue(undefined),
+  } as const;
+}

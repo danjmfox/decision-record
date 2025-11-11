@@ -10,7 +10,8 @@ export interface ValidationIssue {
     | "missing-supersede-link"
     | "dangling-supersedes"
     | "invalid-change-type"
-    | "invalid-review-entry";
+    | "invalid-review-entry"
+    | "invalid-link-entry";
   recordId: string;
   severity: ValidationSeverity;
   message: string;
@@ -87,6 +88,7 @@ function collectRecordIssues(
     ...validateStatus(record),
     ...validateChangeType(record),
     ...validateSupersedeLinks(record, records),
+    ...validateLinkCollections(record),
     ...validateReviewHistory(record),
   );
   return issues;
@@ -244,6 +246,59 @@ function validateReviewHistory(record: DecisionRecord): ValidationIssue[] {
     );
   }
   return issues;
+}
+
+type LinkField = "sources" | "implementedBy" | "relatedArtifacts";
+
+function validateLinkCollections(record: DecisionRecord): ValidationIssue[] {
+  const fields: Array<{ key: LinkField; label: string }> = [
+    { key: "sources", label: "sources" },
+    { key: "implementedBy", label: "implementedBy" },
+    { key: "relatedArtifacts", label: "relatedArtifacts" },
+  ];
+  const issues: ValidationIssue[] = [];
+  for (const field of fields) {
+    const value = record[field.key];
+    if (value === undefined) continue;
+    if (!Array.isArray(value)) {
+      issues.push(
+        buildLinkIssue(record.id, field.label, "must be an array of strings."),
+      );
+      continue;
+    }
+    for (let index = 0; index < value.length; index += 1) {
+      const entry = value[index];
+      if (typeof entry !== "string" || entry.trim().length === 0) {
+        issues.push(
+          buildLinkIssue(
+            record.id,
+            field.label,
+            "must contain non-empty strings only.",
+            {
+              index,
+              value: entry,
+            },
+          ),
+        );
+      }
+    }
+  }
+  return issues;
+}
+
+function buildLinkIssue(
+  recordId: string,
+  field: string,
+  message: string,
+  details?: Record<string, unknown>,
+): ValidationIssue {
+  return {
+    code: "invalid-link-entry",
+    recordId,
+    severity: "warning",
+    message: `Field "${field}" ${message}`,
+    ...(details ? { details: { field, ...details } } : { details: { field } }),
+  };
 }
 
 function buildInvalidReviewIssue(

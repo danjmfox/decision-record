@@ -4,6 +4,12 @@ import type { RepoContext } from "../config.js";
 import type { DecisionRecord, ReviewHistoryEntry } from "./models.js";
 import { getDecisionPath } from "./repository.js";
 
+export interface LinkCounts {
+  sources: number;
+  implementedBy: number;
+  relatedArtifacts: number;
+}
+
 export interface DecoratedDecision {
   record: DecisionRecord;
   title: string;
@@ -54,6 +60,14 @@ export function decorateDecision(
     }
   }
   return decoration;
+}
+
+export function countLinkMetadata(record: DecisionRecord): LinkCounts {
+  return {
+    sources: record.sources?.length ?? 0,
+    implementedBy: record.implementedBy?.length ?? 0,
+    relatedArtifacts: record.relatedArtifacts?.length ?? 0,
+  };
 }
 
 export function formatConfidence(
