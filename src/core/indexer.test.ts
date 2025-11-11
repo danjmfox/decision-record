@@ -65,6 +65,16 @@ describe("generateIndex", () => {
       changeType: "correction",
       tags: ["governance"],
       supersedes: "DR--20250101--meta--old-idx",
+      reviewHistory: [
+        {
+          date: "2025-02-01",
+          type: "scheduled",
+          outcome: "keep",
+          reviewer: "policy-bot",
+          reason: "Quarterly cadence",
+        },
+      ],
+      lastReviewedAt: "2025-02-01",
     });
     const draft = makeRecord("product", "capture", {
       status: "draft",
@@ -99,7 +109,42 @@ describe("generateIndex", () => {
     expect(content).toContain("### Accepted");
     expect(content).toContain("### Draft");
     expect(content).toContain("overdue");
+    expect(content).toContain("Last Outcome");
     expect(() => generateIndex(context)).not.toThrow();
+  });
+
+  it("includes review history tables when requested", () => {
+    const context = makeContext();
+    const record = makeRecord("meta", "history", {
+      status: "accepted",
+      reviewDate: "2025-12-30",
+      reviewHistory: [
+        {
+          date: "2025-01-15",
+          type: "scheduled",
+          outcome: "keep",
+          reviewer: "bot",
+          reason: "aligned",
+        },
+        {
+          date: "2025-03-01",
+          type: "adhoc",
+          outcome: "revise",
+          reviewer: "lead",
+          reason: "scope shift",
+        },
+      ],
+    });
+    saveDecision(context, record, "# Body");
+
+    const result = generateIndex(context, {
+      includeGeneratedNote: false,
+      includeReviewDetails: true,
+    });
+
+    expect(result.markdown).toContain("## Review History");
+    expect(result.markdown).toContain("scope shift");
+    expect(result.markdown).toContain("Revise (Adhoc)");
   });
 
   it("supports status filters and disabling kanban", () => {

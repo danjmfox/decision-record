@@ -508,6 +508,7 @@ function applyIndexOptions(command: Command): Command {
       "show review reminders for decisions due within <days> (default: 30)",
       (value: string) => Number.parseInt(value, 10),
     )
+    .option("--reviews", "include detailed review history tables")
     .option("--no-kanban", "omit the Kanban-style status summary");
 }
 
@@ -517,6 +518,7 @@ interface IndexCommandOptions {
   status?: string[] | string;
   upcoming?: number;
   kanban?: boolean;
+  reviews?: boolean;
 }
 
 function resolveIndexOptions(command: Command): GenerateIndexOptions {
@@ -537,6 +539,9 @@ function resolveIndexOptions(command: Command): GenerateIndexOptions {
   const upcomingDays = sanitizeUpcomingDays(opts.upcoming);
   if (upcomingDays !== undefined) {
     options.upcomingDays = upcomingDays;
+  }
+  if (opts.reviews) {
+    options.includeReviewDetails = true;
   }
   return options;
 }
